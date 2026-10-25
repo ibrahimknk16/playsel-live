@@ -1,0 +1,7 @@
+
+User-agent: *
+Allow: /
+
+Disallow: /cgi-bin/
+
+Sitemap: https://playsel.com/sitemap.xml

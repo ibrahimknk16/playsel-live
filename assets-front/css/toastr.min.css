@@ -1,0 +1,35 @@
+/* Playsel Toastr Core Minimal Styles */
+#toast-container {
+    position: fixed;
+    z-index: 999999;
+    pointer-events: none;
+}
+#toast-container * {
+    box-sizing: border-box;
+}
+#toast-container > div {
+    position: relative;
+    pointer-events: auto;
+    overflow: hidden;
+    margin: 0;
+    cursor: pointer;
+    background-image: none !important;
+}
+#toast-container > .toast-info,
+#toast-container > .toast-error,
+#toast-container > .toast-success,
+#toast-container > .toast-warning {
+    background-image: none !important;
+}
+.toast-title {
+    font-weight: 700;
+}
+.toast-message {
+    word-wrap: break-word;
+}
+.toast-close-button {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+}

@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+*.md
+/uploads/*
+/.vscode/
+/vendor
+/migration/
