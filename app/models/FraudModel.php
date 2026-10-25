@@ -8,8 +8,36 @@ class FraudModel extends MY_Model
     }
 
     /**
+     * Tüm ödeme yöntemlerinin ortak girişi: true dönerse sipariş fraud incelemesine (13) alınmalıdır.
+     * Kontrol hata verirse akış bozulmaz; güvenli tarafta kalıp incelemeye alır ve logs'a yazar.
+     */
+    public function needsReview($order_id)
+    {
+        $previousDbDebug = $this->db->db_debug;
+        $this->db->db_debug = false;
+        try {
+            $result = $this->fraudCheck((int)$order_id);
+            $dbError = $this->db->error();
+            if (!empty($dbError['code'])) {
+                throw new RuntimeException('DB error: ' . json_encode($dbError, JSON_UNESCAPED_UNICODE));
+            }
+            return empty($result['status']);
+        } catch (Throwable $e) {
+            $this->db->insert('logs', [
+                'log_controller' => 'fraudCheck',
+                'log_message' => json_encode(['order_id' => (int)$order_id, 'error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'log_error_code' => 'fraud_check_failed',
+                'log_order_id' => (int)$order_id,
+            ]);
+            return true;
+        } finally {
+            $this->db->db_debug = $previousDbDebug;
+        }
+    }
+
+    /**
      * Sipariş için Şablon Kural Setlerine Bağlı, Kategori İzoleli Fraud Kontrolü Yapar
-     * 
+     *
      * @param int $order_id
      * @return array Fraud sonucu (status: boolean, message: string)
      */

@@ -451,13 +451,21 @@ class Cron2 extends MY_Controller
 					continue;
 				}
 
+				$this->load->model('FraudModel', 'fraudModel');
+				$fraudGroupIDs = [];
+				foreach ($paymentGroupOrders as $groupOrder) {
+					if ($this->fraudModel->needsReview((int)$groupOrder->order_id)) {
+						$fraudGroupIDs[] = (int)$groupOrder->order_id;
+					}
+				}
+
 				$this->db->trans_begin();
 				$this->db->where('order_eft_id', $refNo)
 					->where('order_eft_bank_id', $order->order_eft_bank_id)
 					->where('order_status', 11)
 					->where('order_vomsis_id IS NULL', null, false)
 					->update('orders', [
-						'order_status' => 0,
+						'order_status' => empty($fraudGroupIDs) ? 0 : 13,
 						'order_vomsis_id' => $paymentID,
 					]);
 				$claimedOrders = $this->db->affected_rows();

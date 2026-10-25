@@ -825,9 +825,16 @@ class Balance extends MY_Controller
             $info = is_array($info) ? $info : [];
             $info['vomsis_payment_id'] = $paymentId;
             $info['vomsis_transaction'] = $transaction;
+            $this->load->model('FraudModel', 'fraudModel');
+            $fraudReview = false;
+            foreach ($groupOrderIds as $groupOrderId) {
+                if ($this->fraudModel->needsReview((int)$groupOrderId)) {
+                    $fraudReview = true;
+                }
+            }
             $this->db->trans_begin();
             $this->db->where_in('order_id', $groupOrderIds)->where_in('order_status', [11, 12])->where('order_vomsis_id IS NULL', null, false)->update('orders', [
-                'order_status' => 0,
+                'order_status' => $fraudReview ? 13 : 0,
                 'order_vomsis_id' => $paymentId,
                 'order_payment_info' => json_encode($info, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ]);

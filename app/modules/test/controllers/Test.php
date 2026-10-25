@@ -361,4 +361,10 @@ class Test extends MY_Controller
 			->set_content_type('application/json', 'utf-8')
 			->set_output(json_encode($payload, JSON_UNESCAPED_UNICODE));
 	}
+
+	public function adfdfd()
+	{
+		echo "This is someFunction";
+	}
+
 }

@@ -971,6 +971,20 @@ class Payment extends MY_Controller
 
 	public function finalize()
 	{
+		// PHP uyarıları/DB hata sayfaları JSON yanıtını bozup "Sistem hatası" gösteriyordu.
+		ini_set('display_errors', '0');
+		$this->db->db_debug = false;
+		$finalizeDb = $this->db;
+		register_shutdown_function(function () use ($finalizeDb) {
+			$error = error_get_last();
+			if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR], true)) {
+				@$finalizeDb->insert('logs', [
+					'log_controller' => 'payment.finalize.fatal',
+					'log_message' => json_encode($error, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+					'log_error_code' => 'finalize_fatal',
+				]);
+			}
+		});
 		$userID = (int)($this->data['user']['user_id'] ?? 0);
 		$restriction = customerRestriction($userID, 'purchase');
 		if ($restriction) {
@@ -1073,6 +1087,32 @@ class Payment extends MY_Controller
 		}
 	}
 
+	// A failing fraud check must never break the checkout response; fail closed to manual review.
+	private function orderNeedsFraudReview($orderID)
+	{
+		$previousDbDebug = $this->db->db_debug;
+		$this->db->db_debug = false;
+		try {
+			$this->load->model('FraudModel', 'fraudModel');
+			$result = $this->fraudModel->fraudCheck((int)$orderID);
+			$dbError = $this->db->error();
+			if (!empty($dbError['code'])) {
+				throw new RuntimeException('DB error: ' . json_encode($dbError, JSON_UNESCAPED_UNICODE));
+			}
+			return empty($result['status']);
+		} catch (Throwable $e) {
+			$this->db->insert('logs', [
+				'log_controller' => 'payment.fraudCheck',
+				'log_message' => json_encode(['order_id' => (int)$orderID, 'error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+				'log_error_code' => 'fraud_check_failed',
+				'log_order_id' => (int)$orderID,
+			]);
+			return true;
+		} finally {
+			$this->db->db_debug = $previousDbDebug;
+		}
+	}
+
 	private function payWallet($userID, $netTotal, $cartData, $post)
 	{
 		$data = $this->data;
@@ -1090,6 +1130,13 @@ class Payment extends MY_Controller
 		}
 
 		$orderIDs = array_column($order['orders'], 'order_id');
+		$fraudOrderIDs = [];
+		foreach ($order['orders'] as $createdOrder) {
+			if ($this->orderNeedsFraudReview((int)$createdOrder['order_id'])) {
+				$fraudOrderIDs[] = (int)$createdOrder['order_id'];
+			}
+		}
+
 		$walletCharge = round(array_sum(array_map(function ($createdOrder) {
 			return (float)$createdOrder['wallet_price'];
 		}, $order['orders'])), 2);
@@ -1125,7 +1172,13 @@ class Payment extends MY_Controller
 				'user_balance_created_at' => date('Y-m-d H:i:s'),
 			]);
 		}
-		$this->db->where_in('order_id', $orderIDs)->update('orders', ['order_status' => 0]);
+		$approvedOrderIDs = array_values(array_diff($orderIDs, $fraudOrderIDs));
+		if (!empty($approvedOrderIDs)) {
+			$this->db->where_in('order_id', $approvedOrderIDs)->update('orders', ['order_status' => 0]);
+		}
+		if (!empty($fraudOrderIDs)) {
+			$this->db->where_in('order_id', $fraudOrderIDs)->update('orders', ['order_status' => 13]);
+		}
 		$this->db->trans_complete();
 
 		if ($this->db->trans_status() === false) {
@@ -1135,15 +1188,8 @@ class Payment extends MY_Controller
 			return json(['status' => 'error', 'message' => $this->lang->line('wallet_transaction_error') ?: 'Cüzdan işlemi oluşturulamadı.']);
 		}
 
-		$this->load->model('FraudModel', 'fraudModel');
-		foreach ($order['orders'] as $createdOrder) {
-			$fraudResult = $this->fraudModel->fraudCheck((int)$createdOrder['order_id']);
-			if (empty($fraudResult['status'])) {
-				$this->db->where('order_id', (int)$createdOrder['order_id'])
-					->where('order_status', 0)
-					->update('orders', ['order_status' => 13]);
-				log_message('warning', 'Paid wallet order moved to fraud review. Order: ' . (int)$createdOrder['order_id']);
-			}
+		foreach ($fraudOrderIDs as $fraudOrderID) {
+			log_message('warning', 'Paid wallet order moved to fraud review. Order: ' . $fraudOrderID);
 		}
 
 		$this->session->unset_userdata('checkout_cart');
