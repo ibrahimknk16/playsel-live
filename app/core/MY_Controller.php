@@ -63,6 +63,10 @@ class MY_Controller extends MX_Controller
 	public function __construct()
 	{
 		parent::__construct();
+
+		$this->output->set_header('X-Content-Type-Options: nosniff');
+		$this->output->set_header('X-Frame-Options: SAMEORIGIN');
+		$this->output->set_header('Referrer-Policy: strict-origin-when-cross-origin');
 		
 		if (!empty($_POST)) {
 			array_walk_recursive($_POST, function (&$value, $key) {
@@ -73,6 +77,25 @@ class MY_Controller extends MX_Controller
 					}
 				}
 			});
+		}
+
+		$skipGetSanitize = in_array($this->router->fetch_class(), array('callback', 'cron', 'cron2'), true);
+		if (!empty($_GET) && !$skipGetSanitize) {
+			array_walk_recursive($_GET, function (&$value) {
+				if (is_string($value)) {
+					$value = strip_tags(trim($value));
+				}
+			});
+		}
+
+		// Yönlendirme parametresi yalnızca site içi göreli yol olabilir
+		foreach (array('_POST', '_GET') as $superGlobal) {
+			if (isset($GLOBALS[$superGlobal]['redirect'])) {
+				$redirectValue = $GLOBALS[$superGlobal]['redirect'];
+				if (!is_string($redirectValue) || !preg_match('#^/?[A-Za-z0-9][A-Za-z0-9\-_/.%?=&]*$#', $redirectValue) || strpos($redirectValue, '..') !== false || strpos($redirectValue, '//') !== false) {
+					$GLOBALS[$superGlobal]['redirect'] = '';
+				}
+			}
 		}
 		
 		$this->userLogInsert();

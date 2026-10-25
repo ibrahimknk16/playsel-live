@@ -21,7 +21,7 @@ if (!empty($alert) && is_array($alert)):
                 <i class="<?= $toastIcon ?>"></i>
             </div>
             <div class="ps-toast-message">
-                <?= $alert['message']; ?>
+                <?= html_escape($alert['message']); ?>
             </div>
             <button type="button" class="ps-toast-close" onclick="this.parentElement.remove();" title="Kapat">
                 <i class="fa-solid fa-xmark"></i>

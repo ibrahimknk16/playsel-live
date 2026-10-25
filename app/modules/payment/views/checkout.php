@@ -272,14 +272,14 @@ $appliedCoupon = $this->session->userdata('applied_coupon');
       <div class="product-row">
         <div class="product-art" aria-hidden="true">
             <?php if(!empty($cartData['product_image'])): ?>
-                <img src="<?= getenv('CDN_URL') . $cartData['product_image'] ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
+                <img src="<?= html_escape(getenv('CDN_URL') . $cartData['product_image']) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
             <?php else: ?>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12v8H4v-8M2 7h20v5H2z"/><path d="M12 20V7m0 0H8.8a2.3 2.3 0 1 1 2.2-3c.7 1.2 1 3 1 3Zm0 0h3.2a2.3 2.3 0 1 0-2.2-3c-.7 1.2-1 3-1 3Z"/></svg>
             <?php endif; ?>
         </div>
         <div>
-            <div class="product-name"><?= $cartData['product_name'] ?? '' ?></div>
-            <div class="product-caption">Dijital teslimat · <?= $cartData['quantity'] ?? 1 ?> adet</div>
+            <div class="product-name"><?= html_escape($cartData['product_name'] ?? '') ?></div>
+            <div class="product-caption">Dijital teslimat · <?= (int)($cartData['quantity'] ?? 1) ?> adet</div>
         </div>
         <div class="product-price"><?= nFormat($cartPrice) ?> <?= $displayCurrency ?></div>
       </div>
@@ -311,7 +311,7 @@ $appliedCoupon = $this->session->userdata('applied_coupon');
             </div>
           <?php endif; ?>
         </div>
-        <div class="summary-product"><div><div class="summary-product-name"><?= $cartData['product_name'] ?? '' ?></div><div class="summary-product-detail"><?= $cartData['quantity'] ?? 1 ?> adet</div></div><span class="summary-product-price" id="summary-product-price"><?= nFormat($cartPrice) ?> <?= $displayCurrency ?></span></div>
+        <div class="summary-product"><div><div class="summary-product-name"><?= html_escape($cartData['product_name'] ?? '') ?></div><div class="summary-product-detail"><?= (int)($cartData['quantity'] ?? 1) ?> adet</div></div><span class="summary-product-price" id="summary-product-price"><?= nFormat($cartPrice) ?> <?= $displayCurrency ?></span></div>
         <div class="summary-row"><span>Sipariş toplamı</span><strong id="subtotal"><?= nFormat($cartPrice) ?> <?= $displayCurrency ?></strong></div>
         <?php if ((float)$couponDiscount > 0): ?>
           <div class="summary-row" id="summary-coupon-line"><span>Kupon indirimi</span><strong style="color:#79db91">-<?= nFormat($couponDiscount) ?> <?= $displayCurrency ?></strong></div>
@@ -685,7 +685,7 @@ $appliedCoupon = $this->session->userdata('applied_coupon');
   let phoneVerified = <?= !empty($user_details->user_phone_is_verified) ? 'true' : 'false' ?>;
   let phoneOtpSent = false;
   const citiesData = <?= !empty($cities_json) ? $cities_json : '{}' ?>;
-  const addressesList = <?= json_encode($addressList ?? []) ?>;
+  const addressesList = <?= json_encode($addressList ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   const addressesMap = {};
   if (Array.isArray(addressesList)) {
     addressesList.forEach(function(a) {
@@ -709,8 +709,8 @@ $appliedCoupon = $this->session->userdata('applied_coupon');
   const districtInput = document.querySelector("#bill-district");
   const foreignCityInput = document.querySelector("#bill-foreign-city");
   const foreignDistrictInput = document.querySelector("#bill-foreign-district");
-  const savedCity = <?= json_encode($user_details->user_bill_city ?? '') ?>;
-  const savedDistrict = <?= json_encode($user_details->user_bill_district ?? '') ?>;
+  const savedCity = <?= json_encode($user_details->user_bill_city ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+  const savedDistrict = <?= json_encode($user_details->user_bill_district ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
   function getDistrictsForCity(city) {
     if (!city || typeof citiesData !== 'object') return [];
@@ -990,7 +990,7 @@ $appliedCoupon = $this->session->userdata('applied_coupon');
     document.getElementById('bill-address').value = addr.user_addresses_address || '';
     const billPhone = document.getElementById('bill-phone');
     if (billPhone) {
-      billPhone.value = addr.user_addresses_phone || <?= json_encode($valPhone) ?>;
+      billPhone.value = addr.user_addresses_phone || <?= json_encode($valPhone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     }
 
     const billCountry = document.getElementById('bill-country');
@@ -1048,7 +1048,7 @@ $appliedCoupon = $this->session->userdata('applied_coupon');
     const compRadio = document.querySelector('input[name="is_turkish_company"][value="1"]');
     if (compRadio) compRadio.checked = true;
 
-    const userFullName = <?= json_encode($billName) ?>;
+    const userFullName = <?= json_encode($billName, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     document.getElementById('bill-name').value = userFullName || '';
     document.getElementById('bill-tax-number').value = '';
     document.getElementById('bill-tax-office').value = '';
@@ -1056,7 +1056,7 @@ $appliedCoupon = $this->session->userdata('applied_coupon');
     document.getElementById('bill-address').value = '';
     const billPhoneNew = document.getElementById('bill-phone');
     if (billPhoneNew) {
-      billPhoneNew.value = <?= json_encode($valPhone) ?>;
+      billPhoneNew.value = <?= json_encode($valPhone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     }
 
     const billCountry = document.getElementById('bill-country');

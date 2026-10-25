@@ -22,8 +22,8 @@ class Feeds extends MY_Controller
 			$lang = 'en';
 			$country = 'US';
 		} else {
-			$lang = $uri[0];
-			$country = $uri[1];
+			$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
+						$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
 		}
 
 		$this->data['lang'] = $lang;

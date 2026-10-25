@@ -174,7 +174,7 @@
 
                     <form action="<?= topupcenter() . $this->uri->segment(1) . '/auth/forgotPassword' ?>" method="POST" id="loginform">
                         <?php if (!empty($this->input->get('redirect'))): ?>
-                            <input type="hidden" name="redirect" value="<?= htmlspecialchars($this->input->get('redirect')) ?>">
+                            <input type="hidden" name="redirect" value="<?= html_escape($this->input->get('redirect')) ?>">
                         <?php endif; ?>
                         
                         <div class="form-group-custom">

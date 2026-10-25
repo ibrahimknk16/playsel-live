@@ -1157,7 +1157,7 @@ if (!function_exists('format_category_seo_tables')) {
                 <h1 class="product-info-title">                <?= htmlspecialchars(!empty($h1_tag) ? $h1_tag : $category->category_title) ?></h1>
               </div>
 
-                              <p class="product-info-desc" id="product-desc-text"><?= ($description) ?></p>
+                              <p class="product-info-desc" id="product-desc-text"><?= html_escape($description) ?></p>
 
               <div class="product-info-meta-group">
                 <div class="meta">
@@ -1421,6 +1421,7 @@ if (!function_exists('format_category_seo_tables')) {
           );
           $categoryDescriptionHtml = preg_replace('/<h2\b[^>]*>\s*<\/h2>/i', '', (string) $categoryDescriptionHtml);
           $categoryDescriptionHtml = news_content_clean_html($categoryDescriptionHtml);
+          $categoryDescriptionHtml = safe_rich_html($categoryDescriptionHtml);
           $categoryDescriptionHtml = format_category_seo_tables($categoryDescriptionHtml);
         ?>
         <section class="category-detail-section cd-seo-box cd-enhanced cd-fade-in" id="category-detail-section">
@@ -1517,7 +1518,7 @@ if (!function_exists('format_category_seo_tables')) {
               <div class="review-header">
                 <div class="review-avatar">
                   <div class="review-avatar-text" style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
-                    <?= strtoupper(mb_substr($reviewerName, 0, 1)) ?>
+                    <?= html_escape(strtoupper(mb_substr($reviewerName, 0, 1))) ?>
                   </div>
                 </div>
                 <div class="review-user-info">
@@ -1574,7 +1575,7 @@ if (!function_exists('format_category_seo_tables')) {
       <div class="seo-box">
         <?php 
           $seoHtml = preg_replace('/<h2\b[^>]*>\s*<\/h2>/i', '', (string)$category->category_content);
-          $seoHtml = format_category_seo_tables($seoHtml);
+          $seoHtml = format_category_seo_tables(safe_rich_html($seoHtml));
         ?>
         <?= $seoHtml ?>
       </div>
@@ -1827,6 +1828,12 @@ if (!function_exists('format_category_seo_tables')) {
     const mlbbAccountTitle = document.getElementById('mlbb-account-title');
     const mlbbAccountDesc = document.getElementById('mlbb-account-desc');
 
+    function escapeHtmlText(value) {
+      return String(value == null ? '' : value).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
+
     function focusMlbbInputs() {
       if (!isMlbb) return;
       const target = (!$userInput || !$userInput.value.trim()) ? $userInput :
@@ -1898,7 +1905,7 @@ if (!function_exists('format_category_seo_tables')) {
         if (mlbbAccountDesc) mlbbAccountDesc.textContent = desc || 'Moonton sunucularından oyuncu bilgisi alınıyor...';
       } else if (state === 'ready') {
         if (mlbbAccountIcon) mlbbAccountIcon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
-        if (mlbbAccountTitle) mlbbAccountTitle.innerHTML = (title || 'Doğrulanmış Hesap') + ' <span class="badge" style="background:#50cd89; color:#0b1d13; font-size:11px; padding:3px 7px; border-radius:4px; font-weight:700;">ONAYLANDI</span>';
+        if (mlbbAccountTitle) mlbbAccountTitle.innerHTML = escapeHtmlText(title || 'Doğrulanmış Hesap') + ' <span class="badge" style="background:#50cd89; color:#0b1d13; font-size:11px; padding:3px 7px; border-radius:4px; font-weight:700;">ONAYLANDI</span>';
         if (mlbbAccountDesc) mlbbAccountDesc.innerHTML = desc || '';
       } else if (state === 'error') {
         if (mlbbAccountIcon) mlbbAccountIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
@@ -1967,11 +1974,12 @@ if (!function_exists('format_category_seo_tables')) {
               $serverField.setAttribute('aria-invalid', 'false');
               $serverField.classList.add('is-verified');
             }
-            const country = (response.register_country || (response.data && response.data.register_country) || '').toLowerCase();
+            const rawCountry = String(response.register_country || (response.data && response.data.register_country) || '').toLowerCase();
+            const country = /^[a-z]{2}$/.test(rawCountry) ? rawCountry : '';
             const flagHtml = country 
               ? `<img src="https://flagcdn.com/20x15/${country}.png" alt="${country.toUpperCase()}" style="width: 17px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.4);" />` 
               : '';
-            const desc = `${flagHtml}ID: ${u} · Sunucu: (${s}) · Oyuncu Adı Onaylandı`;
+            const desc = `${flagHtml}ID: ${escapeHtmlText(u)} · Sunucu: (${escapeHtmlText(s)}) · Oyuncu Adı Onaylandı`;
             setMlbbCardState('ready', response.name, desc);
             updateMlbbButtonStates('ready');
           } else {

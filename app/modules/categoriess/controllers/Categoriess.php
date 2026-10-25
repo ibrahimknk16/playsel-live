@@ -13,8 +13,8 @@ class Categoriess extends MY_Controller
 			$lang = 'en'; // Default language if not specified
 			$country = 'US'; // Default country if not specified
 		} else {
-			$country = $uri[1];
-			$lang = $uri[0];
+			$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
+						$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
 		}
 		$this->lang->load('custom', $lang);
 		$this->data['currentLocale'] = $this->db
@@ -295,6 +295,9 @@ class Categoriess extends MY_Controller
 		if ($userId === '' || $serverId === '') {
 			return json(['status' => 'error', 'message' => 'Lütfen Oyuncu ID ve Sunucu ID giriniz.'], 400);
 		}
+		if (!preg_match('/^\d{4,20}$/', $userId) || !preg_match('/^\d{1,10}$/', $serverId)) {
+			return json(['status' => 'error', 'message' => 'Oyuncu ID ve Sunucu ID yalnızca rakamlardan oluşmalıdır.'], 422);
+		}
 
 		$this->load->library('Dijipin');
 		$dijipinAPI = new Dijipin();
@@ -309,12 +312,15 @@ class Categoriess extends MY_Controller
 
 		$userData = $request['data']['user_data'] ?? [];
 		if (!empty($request['status']) && !empty($userData['user_name'])) {
+			$safeName = trim(strip_tags((string)$userData['user_name']));
+			$safeName = mb_substr($safeName, 0, 64);
+			$safeCountry = preg_match('/^[A-Za-z]{2}$/', (string)($userData['register_country'] ?? '')) ? (string)$userData['register_country'] : '';
 			return json([
 				'status'           => 'success',
-				'name'             => $userData['user_name'],
-				'user_name'        => $userData['user_name'],
-				'register_country' => $userData['register_country'] ?? '',
-				'data'             => $userData
+				'name'             => $safeName,
+				'user_name'        => $safeName,
+				'register_country' => $safeCountry,
+				'data'             => ['user_name' => $safeName, 'register_country' => $safeCountry]
 			]);
 		}
 

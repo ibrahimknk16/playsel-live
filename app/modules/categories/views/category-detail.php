@@ -718,7 +718,17 @@ if (!empty($category->category_requires)) {
                     success: function(response) {
                         const mlbbUserDiv = document.getElementById('mlbb-user');
                         if (response && response.name) {
-                            mlbbUserDiv.innerHTML = `<span class="fs-5">${response.name} / ${response.register_country} <img src="https://flagsapi.com/${response.register_country}/flat/24.png" alt="Country Flag"></span>`;
+                            const span = document.createElement('span');
+                            span.className = 'fs-5';
+                            span.appendChild(document.createTextNode(response.name + ' / ' + response.register_country + ' '));
+                            const cc = String(response.register_country || '');
+                            if (/^[A-Za-z]{2}$/.test(cc)) {
+                                const img = document.createElement('img');
+                                img.src = 'https://flagsapi.com/' + cc + '/flat/24.png';
+                                img.alt = 'Country Flag';
+                                span.appendChild(img);
+                            }
+                            mlbbUserDiv.replaceChildren(span);
                             mlbbUserDiv.classList.remove('d-none');
                         } else {
                             mlbbUserDiv.innerHTML = '';

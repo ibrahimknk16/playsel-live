@@ -1159,6 +1159,8 @@ if (!empty($user->user_reference_id)) {
                 <div class="cd-panel">
                     <ul class="nav cd-subtabs" role="tablist">
                         <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#cd_pay_current" role="tab">Güncel Ödemeler</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_spending" role="tab">Güncel Harcamalar (<?= count($spendingMovements ?? []) ?>)</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_pending_orders" role="tab">Ödeme Bekleniyor (<?= count($pendingPaymentOrders ?? []) ?>)</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_legacy" role="tab">Legacy Ödemeler</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_moves" role="tab">Legacy Bakiye Hareketleri</a></li>
                     </ul>
@@ -1222,6 +1224,87 @@ if (!empty($user->user_reference_id)) {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="cd_pay_spending" role="tabpanel">
+                        <div class="cd-table-wrap">
+                            <table class="table align-middle cd-pay-table">
+                                <thead>
+                                    <tr>
+                                        <th>Harcama No</th>
+                                        <th>Tarih</th>
+                                        <th>Sipariş No</th>
+                                        <th>Bakiye Türü</th>
+                                        <th>Tutar</th>
+                                        <th>Açıklama</th>
+                                        <th>İşlemi Yapan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($spendingMovements)): ?>
+                                        <?php foreach ($spendingMovements as $spending): ?>
+                                            <?php
+                                            $spendingNote = json_decode((string)$spending->user_balance_note, true);
+                                            $spendingNoteText = is_array($spendingNote) ? (string)($spendingNote['message'] ?? '') : (string)$spending->user_balance_note;
+                                            $spendingDate = $spending->user_balance_payment_date ?: $spending->user_balance_created_at;
+                                            ?>
+                                            <tr>
+                                                <td class="cd-ref">#<?= (int)$spending->user_balance_id ?></td>
+                                                <td><?= html_escape($spendingDate) ?></td>
+                                                <td><?= !empty($spending->user_balance_order_id) ? '#' . (int)$spending->user_balance_order_id : '—' ?></td>
+                                                <td><?= (int)$spending->user_balance_type === 1 ? 'Çekilebilir' : 'Harcanabilir' ?></td>
+                                                <td class="cd-money neg">−<?= number_format((float)$spending->user_balance_amount, 2, ',', '.') ?> TL</td>
+                                                <td class="cd-note-cell"><?= html_escape($spendingNoteText) ?: '—' ?></td>
+                                                <td><?= html_escape($spending->admin_name ?? '') ?: '—' ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="7" class="text-center text-muted py-8">Harcama kaydı bulunamadı.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php if (count($spendingMovements ?? []) >= 300): ?>
+                            <div class="text-muted fs-7 px-4 pb-4">En son 300 harcama kaydı gösteriliyor.</div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="tab-pane fade" id="cd_pay_pending_orders" role="tabpanel">
+                        <div class="cd-table-wrap">
+                            <table class="table align-middle cd-pay-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sipariş No</th>
+                                        <th>Tarih</th>
+                                        <th>Ürün</th>
+                                        <th>Ödeme Yöntemi</th>
+                                        <th>Tutar</th>
+                                        <th>Durum</th>
+                                        <th class="text-end">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($pendingPaymentOrders)): ?>
+                                        <?php foreach ($pendingPaymentOrders as $pendingOrder): ?>
+                                            <tr>
+                                                <td class="cd-ref">#<?= (int)$pendingOrder->order_id ?></td>
+                                                <td><?= html_escape($pendingOrder->order_created_at) ?></td>
+                                                <td><?= html_escape($pendingOrder->product_name ?: 'Ürün') ?> <span class="text-muted">x<?= (int)$pendingOrder->order_quantity ?></span></td>
+                                                <td><?= html_escape([2 => 'Cüzdan', 3 => 'Havale / EFT', 4 => 'Kredi Kartı', 5 => 'Mobil Ödeme'][(int)$pendingOrder->order_payment_type] ?? 'Bilinmiyor') ?></td>
+                                                <td class="cd-money"><?= number_format((float)$pendingOrder->order_sale_price, 2, ',', '.') ?> <?= html_escape($pendingOrder->order_sale_price_currency ?: 'TL') ?></td>
+                                                <td><span class="cd-mv-pill wait">Ödeme Bekleniyor</span></td>
+                                                <td class="text-end"><a class="cd-table-btn" href="<?= base_url('orders/orderInvoice/' . (int)$pendingOrder->order_id) ?>" target="_blank" rel="noopener">Sipariş Detayı</a></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="7" class="text-center text-muted py-8">Ödeme bekleyen sipariş bulunamadı.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php if (count($pendingPaymentOrders ?? []) >= 300): ?>
+                            <div class="text-muted fs-7 px-4 pb-4">En son 300 ödeme bekleyen sipariş gösteriliyor.</div>
+                        <?php endif; ?>
                     </div>
 
                     <div class="tab-pane fade" id="cd_pay_legacy" role="tabpanel">

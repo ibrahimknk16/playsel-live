@@ -674,7 +674,7 @@
 
     // Fatura Bilgileri ve Adres Yönetimi
     const citiesData = <?= !empty($cities_json) ? $cities_json : '{}' ?>;
-    const userAddressesList = <?= json_encode($addressList) ?>;
+    const userAddressesList = <?= json_encode($addressList, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const addressesMap = {};
     if (Array.isArray(userAddressesList)) {
         userAddressesList.forEach(function(a) {
@@ -682,8 +682,8 @@
         });
     }
 
-    let savedBillingCity = <?= json_encode($valCity) ?>;
-    let savedBillingDistrict = <?= json_encode($valDistrict) ?>;
+    let savedBillingCity = <?= json_encode($valCity, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    let savedBillingDistrict = <?= json_encode($valDistrict, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     let isProgrammaticChange = false;
 
     function getDistrictsForCity(city) {
@@ -984,13 +984,13 @@
         setRadioValue('user_addresses_is_turkish_citizen', '1');
         setRadioValue('user_addresses_is_turkish_company', '1');
 
-        document.getElementById('invoice-fullname').value = <?= json_encode($valFullName) ?>;
+        document.getElementById('invoice-fullname').value = <?= json_encode($valFullName, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         document.getElementById('invoice-companyname').value = '';
         document.getElementById('invoice-taxnumber').value = '';
         document.getElementById('invoice-taxoffice').value = '';
         document.getElementById('invoice-address').value = '';
         document.getElementById('invoice-postal-code').value = '';
-        document.getElementById('invoice-phone').value = <?= json_encode($valPhone) ?>;
+        document.getElementById('invoice-phone').value = <?= json_encode($valPhone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         document.getElementById('invoice-country').value = '';
         document.getElementById('invoice-foreign-city').value = '';
         document.getElementById('invoice-foreign-district').value = '';
@@ -1042,7 +1042,7 @@
         document.getElementById('invoice-einvoice').value = addr.user_addresses_is_e_invoice_taxpayer || 0;
         document.getElementById('invoice-address').value = addr.user_addresses_address || '';
         document.getElementById('invoice-postal-code').value = addr.user_addresses_postal_code || '';
-        document.getElementById('invoice-phone').value = addr.user_addresses_phone || <?= json_encode($valPhone) ?>;
+        document.getElementById('invoice-phone').value = addr.user_addresses_phone || <?= json_encode($valPhone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         document.getElementById('invoice-country').value = addr.user_addresses_country || '';
         document.getElementById('invoice-foreign-city').value = addr.user_addresses_city || '';
         document.getElementById('invoice-foreign-district').value = addr.user_addresses_district || '';

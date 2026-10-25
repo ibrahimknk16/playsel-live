@@ -234,7 +234,7 @@
                     </div>
 
                     <form action="<?= base_url('auth/loginRequest') ?>" method="POST" id="loginForm">
-                        <input type="hidden" name="redirect" value="<?= !empty($this->input->get('redirect')) ? htmlspecialchars($this->input->get('redirect')) : '' ?>">
+                        <input type="hidden" name="redirect" value="<?= !empty($this->input->get('redirect')) ? html_escape($this->input->get('redirect')) : '' ?>">
                         <a href="<?= base_url('auth/googleLogin') . '?locale=' . rawurlencode($uri) . (!empty($this->input->get('redirect')) ? '&redirect=' . rawurlencode($this->input->get('redirect')) : '') ?>" class="btn-login-submit" style="text-decoration:none;background:#fff;color:#222;margin-bottom:18px;">
                             <span>Google ile giriş yap</span>
                         </a>

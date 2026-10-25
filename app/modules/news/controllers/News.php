@@ -14,8 +14,8 @@ class News extends MY_Controller
             $lang = 'tr'; 
             $country = 'TR'; 
         } else {
-            $country = $uri[1];
-            $lang = $uri[0];
+            $country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
+                        $lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
         }
         $this->lang->load('custom', $lang);
         $this->data['currentLocale'] = $this->db->get_where('locales', ['locale_lang_code' => $lang, 'locale_code' => $country])->row();

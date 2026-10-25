@@ -13,8 +13,8 @@ class Categories extends MY_Controller
 			$lang = 'en'; // Default language if not specified
 			$country = 'US'; // Default country if not specified
 		} else {
-			$country = $uri[1];
-			$lang = $uri[0];
+			$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
+						$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
 		}
 		$this->lang->load('custom', $lang);
 		$this->data['currentLocale'] = $this->db->get_where('locales', ['locale_lang_code' => $lang, 'locale_code' => $country])->row();
@@ -178,6 +178,9 @@ public function categoryDetail($slug)
 		}
 
 		$post = $this->input->post();
+		if (!preg_match('/^\d{4,20}$/', (string)($post['user_id'] ?? '')) || !preg_match('/^\d{1,10}$/', (string)($post['server_id'] ?? ''))) {
+			return json(['error' => 'Invalid user or server id'], 422);
+		}
 		$config = [
 			'default_country'  => 'TR',
 			'default_language' => 'TR',

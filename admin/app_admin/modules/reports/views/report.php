@@ -49,7 +49,7 @@
                     <option value="">Tümü</option>
                     <?php foreach ($resellers as $reseller): ?>
                         <option value="<?= $reseller['user_id'] ?>" <?= ($resellerID == $reseller['user_id']) ? 'selected' : '' ?>>
-                            <?= $reseller['user_name'] ?>
+                            <?= html_escape($reseller['user_name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

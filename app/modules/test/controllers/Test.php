@@ -15,8 +15,8 @@ class Test extends MY_Controller
 			$lang = 'en'; // Default language if not specified
 			$country = 'US'; // Default country if not specified
 		} else {
-			$country = $uri[1];
-			$lang = $uri[0];
+			$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
+						$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
 		}
 		$this->lang->load('custom', $lang);
 		$this->data['currentLocale'] = $this->db->get_where('locales', ['locale_lang_code' => $lang, 'locale_code' => $country])->row();

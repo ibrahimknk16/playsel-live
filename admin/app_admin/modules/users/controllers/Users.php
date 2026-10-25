@@ -547,6 +547,21 @@ class Users extends MY_Controller
 			->join('banks b', 'b.bank_id = ub.user_balance_bank_id', 'left')
 			->where('ub.user_balance_user_id', (int)$userID)
 			->order_by('ub.user_balance_id', 'DESC')->limit(300)->get()->result();
+		$data['spendingMovements'] = $this->db->select('ub.*, a.admin_name')
+			->from('user_balance ub')
+			->join('admins a', 'a.admin_id = ub.user_balance_admin_id', 'left')
+			->where('ub.user_balance_user_id', (int)$userID)
+			->where('ub.user_balance_status', 3)
+			->order_by('ub.user_balance_id', 'DESC')->limit(300)->get()->result();
+		$data['pendingPaymentOrders'] = $this->db
+			->select('o.order_id, o.order_created_at, o.order_payment_type, o.order_sale_price, o.order_sale_price_currency, o.order_quantity, p.product_name')
+			->from('orders o')
+			->join('products p', 'p.product_id = o.order_product_id', 'left')
+			->where('o.order_reseller_id', (int)$userID)
+			->where('o.order_status', 11)
+			->order_by('o.order_id', 'DESC')
+			->limit(300)
+			->get()->result();
 		$data['movementSums'] = $this->db->select("COALESCE(SUM(CASE WHEN user_balance_status = 1 THEN user_balance_amount ELSE 0 END), 0) AS inflow, COALESCE(SUM(CASE WHEN user_balance_status = 3 THEN user_balance_amount ELSE 0 END), 0) AS outflow, COUNT(*) AS cnt", false)
 			->where('user_balance_user_id', (int)$userID)->get('user_balance')->row();
 		$registerLog = $this->db->select('user_logs_user_ip')

@@ -139,7 +139,7 @@
                             <td>
                                 <h4>Customer:</h4>
                                 <?= html_escape(trim(($order->user_name ?? '') . ' ' . ($order->user_surname ?? '')) ?: $order->user_name) ?><br />
-                                <?= $order->user_email ?>
+                                <?= html_escape($order->user_email) ?>
                             </td>
                             <td>
                                 Invoice #: <?= $order->order_id ?><br />

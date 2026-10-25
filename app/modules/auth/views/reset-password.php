@@ -162,8 +162,8 @@
                         <p><?= $this->lang->line('reset_password_description') ?></p>
                     </div>
 
-                    <form action="<?= topupcenter() . $this->uri->segment(1) . '/auth/resetPassword?token=' . $token ?>" method="POST" id="resetform">
-                        <input type="hidden" name="token" value="<?= $token ?>">
+                    <form action="<?= topupcenter() . $this->uri->                    segment(1) . '/auth/resetPassword?token=' . rawurlencode((string)$token) ?>" method="POST" id="resetform">
+                                            <input type="hidden" name="token" value="<?= html_escape($token) ?>">
                         
                         <div class="form-group-custom">
                             <label for="reset-pass"><?= $this->lang->line('password_label') ?> *</label>

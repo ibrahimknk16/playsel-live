@@ -15,8 +15,8 @@ class Auth extends MY_Controller
 			$lang = 'tr';
 			$country = 'TR';
 		} else {
-			$lang = $uri[0];
-			$country = $uri[1];
+			$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
+						$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
 		}
 
 		$langClean = strtolower($lang); // Örn: 'tr'
@@ -399,6 +399,15 @@ class Auth extends MY_Controller
 			$this->session->set_flashdata('alert', [
 				'type' => 'error',
 				'message' => $this->lang->line('turnstile_error')
+			]);
+			redirect($_SERVER['HTTP_REFERER']);
+		}
+
+		$post['email'] = strtolower(trim((string)($post['email'] ?? '')));
+		if (!filter_var($post['email'], FILTER_VALIDATE_EMAIL) || strlen($post['email']) > 190) {
+			$this->session->set_flashdata('alert', [
+				'type' => 'error',
+				'message' => $this->lang->line('wrong_email')
 			]);
 			redirect($_SERVER['HTTP_REFERER']);
 		}

@@ -17,8 +17,8 @@ class Profile extends MY_Controller
 			$lang = 'en'; // Default language if not specified
 			$country = 'US'; // Default country if not specified
 		} else {
-			$country = $uri[1];
-			$lang = $uri[0];
+			$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
+						$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
 		}
 		$this->lang->load('custom', $lang);
 		$this->data['currentLocale'] = $this->db->get_where('locales', ['locale_lang_code' => $lang, 'locale_code' => $country])->row();
@@ -1501,7 +1501,7 @@ class Profile extends MY_Controller
 
 		// Filtreleme Parametreleri
 		$status_param = $this->input->get('status');
-		$search_query = $this->input->get('search');
+		$search_query = (string)$this->input->get('search');
 		$dateFilter = $this->input->get('date');
 		$dateRange = $this->input->get('date_range');
 
@@ -1544,12 +1544,22 @@ class Profile extends MY_Controller
 			} elseif ($dateFilter == '3months') {
 				$this->db->where('o.order_created_at >=', date('Y-m-d H:i:s', strtotime('-3 months')));
 			}
-		} elseif (!empty($dateRange)) {
+		} elseif (!empty($dateRange) && is_string($dateRange)) {
 			$dates = explode(' to ', $dateRange);
+			$dateValid = true;
+			foreach ($dates as $dateItem) {
+				$parsed = DateTime::createFromFormat('Y-m-d', $dateItem);
+				if (!$parsed || $parsed->format('Y-m-d') !== $dateItem) {
+					$dateValid = false;
+				}
+			}
+			if (!$dateValid || count($dates) > 2) {
+				$dates = [];
+			}
 			if (count($dates) == 2) {
 				$this->db->where('o.order_created_at >=', $dates[0] . ' 00:00:00');
 				$this->db->where('o.order_created_at <=', $dates[1] . ' 23:59:59');
-			} else {
+			} elseif (count($dates) == 1) {
 				$this->db->where('o.order_created_at >=', $dates[0] . ' 00:00:00');
 				$this->db->where('o.order_created_at <=', $dates[0] . ' 23:59:59');
 			}

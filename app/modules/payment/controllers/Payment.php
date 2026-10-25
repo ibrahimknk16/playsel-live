@@ -137,8 +137,8 @@ class Payment extends MY_Controller
 			$lang = 'en'; // Default language if not specified
 			$country = 'US'; // Default country if not specified
 		} else {
-			$country = $uri[1];
-			$lang = $uri[0];
+			$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
+						$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
 		}
 		$this->lang->load('custom', $lang);
 		$this->data['currentLocale'] = $this->db->get_where('locales', ['locale_lang_code' => $lang, 'locale_code' => $country])->row();
@@ -866,8 +866,12 @@ class Payment extends MY_Controller
 			return json(['status' => 'error', 'message' => 'Bu ürün şu anda stokta bulunmuyor.']);
 		}
 
-		$uid = !empty($post['uid']) ? trim($post['uid']) : null;
-		$sid = !empty($post['sid']) ? trim($post['sid']) : null;
+		$uid = !empty($post['uid']) ? trim((string)$post['uid']) : null;
+		$sid = !empty($post['sid']) ? trim((string)$post['sid']) : null;
+		$gameIdPattern = '/^[\p{L}\p{N} _.\-#@:]{1,100}$/u';
+		if (($uid !== null && !preg_match($gameIdPattern, $uid)) || ($sid !== null && !preg_match($gameIdPattern, $sid))) {
+			return json(['status' => 'error', 'message' => 'Oyuncu ID veya Sunucu ID geçersiz karakterler içeriyor.']);
+		}
 
 		if ((int)$getProduct->product_is_require_user_id === 1 && empty($uid)) {
 			return json(['status' => 'error', 'message' => 'Bu ürün için Oyuncu ID (User ID) girilmesi zorunludur.']);
@@ -991,7 +995,7 @@ class Payment extends MY_Controller
 			return json(['status' => 'error', 'message' => $restriction->restriction_customer_reason], 403);
 		}
 		$post          = $this->input->post();
-		$paymentMethod = !empty($post['payment_method']) ? trim($post['payment_method']) : null;
+		$paymentMethod = !empty($post['payment_method']) && is_string($post['payment_method']) ? trim($post['payment_method']) : null;
 		$paymentMethod = strtolower((string)$paymentMethod);
 		$paymentMethodAliases = [
 			'card' => 'credit',
@@ -1203,11 +1207,17 @@ class Payment extends MY_Controller
 
 	private function payEFT($userID, $netTotal, $cartData, $post)
 	{
-		$eftBankID  = !empty($post['eft_bank_id']) ? trim($post['eft_bank_id']) : null;
-		$eftRefCode = !empty($post['eft_ref_code']) ? trim($post['eft_ref_code']) : null;
+		$eftBankID  = !empty($post['eft_bank_id']) ? trim((string)$post['eft_bank_id']) : null;
+		$eftRefCode = !empty($post['eft_ref_code']) ? trim((string)$post['eft_ref_code']) : null;
 
 		if (empty($eftBankID)) {
 			return json(['status' => 'error', 'message' => 'Lütfen havale yapacağınız bankayı seçin.']);
+		}
+		if (!ctype_digit($eftBankID)) {
+			return json(['status' => 'error', 'message' => 'Seçilen banka geçersiz.']);
+		}
+		if ($eftRefCode !== null && !preg_match('/^[A-Za-z0-9]{4,16}$/', $eftRefCode)) {
+			return json(['status' => 'error', 'message' => 'Havale referans kodu geçersiz, lütfen sayfayı yenileyip tekrar deneyin.']);
 		}
 		$bank = $this->db->select('bank_id')->where('bank_id', (int)$eftBankID)->where('bank_status', 1)->get('banks')->row();
 		if (!$bank) {
