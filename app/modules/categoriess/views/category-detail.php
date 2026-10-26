@@ -1795,9 +1795,11 @@ if (!function_exists('format_category_seo_tables')) {
     }
 
     // Update Bottom Price Cards
+    const IS_EPIN = <?= ((int)($category->category_type ?? 0) === 3) ? 'true' : 'false' ?>;
     const MAX_QTY = 10;
 
     (function injectQtyControls() {
+      if (!IS_EPIN) return;
       const style = document.createElement('style');
       style.textContent = '.product-item{position:relative}' +
         '.cd-qty{position:absolute;right:12px;bottom:10px;display:inline-flex;align-items:center;gap:8px}' +

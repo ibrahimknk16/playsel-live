@@ -880,7 +880,18 @@ class Payment extends MY_Controller
 			return json(['status' => 'error', 'message' => 'Bu ürün için Sunucu ID (Server ID) seçilmesi zorunludur.']);
 		}
 
-		$qty = ((int)$getProduct->product_is_bundle === 1) ? 1 : max(1, min(10, (int)($post['qty'] ?? 1)));
+		$qty = 1;
+		if ((int)$getProduct->product_is_bundle !== 1) {
+			$productCategory = $this->db->select('category_type, category_parent_category_id')->get_where('categories', ['category_id' => $getProduct->product_category_id])->row();
+			$categoryType = (int)($productCategory->category_type ?? 0);
+			if (!empty($productCategory->category_parent_category_id)) {
+				$parentCategory = $this->db->select('category_type')->get_where('categories', ['category_id' => $productCategory->category_parent_category_id])->row();
+				$categoryType = (int)($parentCategory->category_type ?? $categoryType);
+			}
+			if ($categoryType === 3) {
+				$qty = max(1, min(10, (int)($post['qty'] ?? 1)));
+			}
+		}
 
 		$cartData = [
 			'product_id'        => $getProduct->product_id,
