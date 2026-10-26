@@ -13,8 +13,8 @@ class Categoriess extends MY_Controller
 			$lang = 'en'; // Default language if not specified
 			$country = 'US'; // Default country if not specified
 		} else {
-			$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
-						$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
+			$country = preg_replace('/[^A-Za-z]/', '', (string) $uri[1]);
+			$lang = preg_replace('/[^A-Za-z]/', '', (string) $uri[0]);
 		}
 		$this->lang->load('custom', $lang);
 		$this->data['currentLocale'] = $this->db
@@ -101,7 +101,8 @@ class Categoriess extends MY_Controller
 		if (!empty($currentCategory->category_parent_category_id) && $currentCategory->category_parent_category_id > 0) {
 			$activeSubCatId = $currentCategory->category_id;
 			$mainCategory = $this->db->get_where('categories', ['category_id' => $currentCategory->category_parent_category_id, 'category_status' => 1])->row();
-			if (empty($mainCategory)) show_404();
+			if (empty($mainCategory))
+				show_404();
 
 			// Kardeş alt kategorileri menüde göstermek için çek (sort_id'ye göre sıralı)
 			$subCategories = $this->db->where('category_parent_category_id', $mainCategory->category_id)
@@ -146,11 +147,11 @@ class Categoriess extends MY_Controller
 				->group_start();
 			if (!empty($subCategories)) {
 				$this->db
-					->where('products.product_sub_category_id', (int)$activeSubCatId)
-					->or_where('products.product_category_id', (int)$activeSubCatId);
+					->where('products.product_sub_category_id', (int) $activeSubCatId)
+					->or_where('products.product_category_id', (int) $activeSubCatId);
 			} else {
 				$this->db
-					->where('products.product_category_id', (int)$mainCategory->category_id)
+					->where('products.product_category_id', (int) $mainCategory->category_id)
 					->where('products.product_sub_category_id', 0);
 			}
 			$products = $this->db
@@ -168,14 +169,15 @@ class Categoriess extends MY_Controller
 			foreach ($products as $prod) {
 				$subId = $prod->product_sub_category_id
 					? $prod->product_sub_category_id
-					: (!empty($subCategories) && (int)$prod->product_category_id === (int)$activeSubCatId ? $activeSubCatId : 0);
+					: (!empty($subCategories) && (int) $prod->product_category_id === (int) $activeSubCatId ? $activeSubCatId : 0);
 				$groupedProducts[$subId][] = $prod;
 			}
 			$data['groupedProducts'] = $groupedProducts;
 			$data['seoProducts'] = !empty($subCategories)
 				? ($groupedProducts[$activeSubCatId] ?? [])
 				: ($groupedProducts[0] ?? []);
-			$data['pageRobots'] = !empty($data['seoProducts']) ? 'index,follow' : 'noindex,follow';
+			// $data['pageRobots'] = !empty($data['seoProducts']) ? 'index,follow' : 'noindex,follow';
+			$data['pageRobots'] = 'index,follow';
 		}
 
 		// 4. Sunucuları ve Gereksinimleri Çek
@@ -232,7 +234,7 @@ class Categoriess extends MY_Controller
 			->get()
 			->result();
 
-			$this->template->content->view('category-detail', $data);
+		$this->template->content->view('category-detail', $data);
 		$this->template->publish();
 	}
 
@@ -279,18 +281,18 @@ class Categoriess extends MY_Controller
 	public function checkUser()
 	{
 		// Bu istek sadece ana domainden gelsin
-		$mainDomain = strtolower((string)parse_url(topupcenter(), PHP_URL_HOST));
-		$currentDomain = strtolower((string)parse_url(base_url(), PHP_URL_HOST));
-		$source = (string)$this->input->server('HTTP_ORIGIN');
+		$mainDomain = strtolower((string) parse_url(topupcenter(), PHP_URL_HOST));
+		$currentDomain = strtolower((string) parse_url(base_url(), PHP_URL_HOST));
+		$source = (string) $this->input->server('HTTP_ORIGIN');
 		if ($source === '') {
-			$source = (string)$this->input->server('HTTP_REFERER');
+			$source = (string) $this->input->server('HTTP_REFERER');
 		}
-		$referrer = strtolower((string)parse_url($source, PHP_URL_HOST));
+		$referrer = strtolower((string) parse_url($source, PHP_URL_HOST));
 		if ($referrer === '' || ($mainDomain !== $referrer && $currentDomain !== $referrer)) {
 			return json(['status' => 'error', 'message' => 'Unauthorized request'], 403);
 		}
-		$userId = trim((string)$this->input->post('user_id'));
-		$serverId = trim((string)$this->input->post('server_id'));
+		$userId = trim((string) $this->input->post('user_id'));
+		$serverId = trim((string) $this->input->post('server_id'));
 
 		if ($userId === '' || $serverId === '') {
 			return json(['status' => 'error', 'message' => 'Lütfen Oyuncu ID ve Sunucu ID giriniz.'], 400);
@@ -305,27 +307,27 @@ class Categoriess extends MY_Controller
 
 		if ($request === false) {
 			return json([
-				'status'  => 'error',
+				'status' => 'error',
 				'message' => 'Sorgulama servisine şu anda ulaşılamıyor. Lütfen bilgilerinizi kontrol edip tekrar deneyin.'
 			], 500);
 		}
 
 		$userData = $request['data']['user_data'] ?? [];
 		if (!empty($request['status']) && !empty($userData['user_name'])) {
-			$safeName = trim(strip_tags((string)$userData['user_name']));
+			$safeName = trim(strip_tags((string) $userData['user_name']));
 			$safeName = mb_substr($safeName, 0, 64);
-			$safeCountry = preg_match('/^[A-Za-z]{2}$/', (string)($userData['register_country'] ?? '')) ? (string)$userData['register_country'] : '';
+			$safeCountry = preg_match('/^[A-Za-z]{2}$/', (string) ($userData['register_country'] ?? '')) ? (string) $userData['register_country'] : '';
 			return json([
-				'status'           => 'success',
-				'name'             => $safeName,
-				'user_name'        => $safeName,
+				'status' => 'success',
+				'name' => $safeName,
+				'user_name' => $safeName,
 				'register_country' => $safeCountry,
-				'data'             => ['user_name' => $safeName, 'register_country' => $safeCountry]
+				'data' => ['user_name' => $safeName, 'register_country' => $safeCountry]
 			]);
 		}
 
 		return json([
-			'status'  => 'error',
+			'status' => 'error',
 			'message' => 'Hesap bulunamadı veya ID/Sunucu bilgileri hatalı.'
 		], 422);
 	}

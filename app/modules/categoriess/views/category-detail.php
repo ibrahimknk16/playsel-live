@@ -487,7 +487,7 @@ if (!function_exists('format_category_seo_tables')) {
     box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.8);
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: space-evenly;
     align-items: center;
     gap: 15px;
   }
@@ -1242,14 +1242,20 @@ if (!function_exists('format_category_seo_tables')) {
                   <label style="margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #a7a2b3;">
                     <?= htmlspecialchars($req->inputPlaceholder ?? $req->inputName) ?>
                   </label>
-                  <input type="<?= ($req->inputName ?? '') === 'user_id' ? 'text' : htmlspecialchars($req->inputType ?? 'text') ?>"
+                  <?php
+                    $isNumber = ($req->inputType ?? '') === 'number';
+                    $inputRealType = $isNumber ? 'text' : htmlspecialchars($req->inputType ?? 'text');
+                    $inputMode = $isNumber ? 'inputmode="numeric"' : '';
+                    $pattern = !empty($req->inputPattern) ? $req->inputPattern : ($isNumber ? '[0-9]*' : '');
+                  ?>
+                  <input type="<?= $inputRealType ?>"
                     name="<?= htmlspecialchars($req->inputName) ?>" id="<?= htmlspecialchars($req->inputName) ?>"
                     class="id-field player-field" placeholder="<?= htmlspecialchars($req->inputPlaceholder ?? '') ?>"
-                    <?= ($req->inputName ?? '') === 'user_id' ? 'inputmode="numeric" pattern="[0-9]{4,13}" maxlength="13"' : '' ?>
+                    <?= $inputMode ?>
                     <?= !empty($req->inputMaxLength) ? 'maxlength="' . (int) $req->inputMaxLength . '"' : '' ?>
                     <?= !empty($req->inputMinLength) ? 'minlength="' . (int) $req->inputMinLength . '"' : '' ?>
-                    <?= !empty($req->inputPattern) ? 'pattern="' . htmlspecialchars($req->inputPattern) . '"' : '' ?>
-                    <?= !empty($req->inputPatternError) ? 'title="' . htmlspecialchars($req->inputPatternError) . '"' : '' ?>
+                    <?= !empty($pattern) ? 'pattern="' . htmlspecialchars($pattern) . '"' : '' ?>
+                    <?= !empty($req->inputPatternError) ? 'title="' . htmlspecialchars($req->inputPatternError) . '"' : ($isNumber ? 'title="Sadece rakam girebilirsiniz."' : '') ?>
                     <?= !empty($req->inputRequired) ? 'required' : '' ?>>
 
                   <?php if (($req->inputName ?? '') === 'user_id' && !empty($uniqueUserIds)): ?>
@@ -1696,6 +1702,13 @@ if (!function_exists('format_category_seo_tables')) {
     const $totalTransfers = document.querySelectorAll('.total-transfer-text');
     const $btnSubmitOrders = document.querySelectorAll('.btn-submit-order-class');
 
+    // Numeric input alanlarında sadece rakam girilmesini sağla
+    document.querySelectorAll('#id-input-section .id-field[inputmode="numeric"]').forEach(input => {
+      input.addEventListener('input', function () {
+        this.value = this.value.replace(/[^0-9]/g, '');
+      });
+    });
+
     // Intersection Observer for static payment section & bar visibility
     const staticSection = document.querySelector('.payment-section-static');
     const fixedSection = document.getElementById('payment-section-fixed');
@@ -2126,16 +2139,14 @@ if (!function_exists('format_category_seo_tables')) {
           }
 
           // Eğer input alanları dom üzerinde varsa tarayıcının yerel validasyon metodlarını tetikliyoruz
-          if ($userInput && !$userInput.checkValidity()) {
-            $userInput.focus();
-            $userInput.reportValidity();
-            return;
-          }
-
-          if ($serverField && !$serverField.checkValidity()) {
-            $serverField.focus();
-            $serverField.reportValidity();
-            return;
+          const idInputs = document.querySelectorAll('#id-input-section .id-field');
+          for (let i = 0; i < idInputs.length; i++) {
+            const field = idInputs[i];
+            if (!field.checkValidity()) {
+              field.focus();
+              field.reportValidity();
+              return;
+            }
           }
 
           // Seçili ürün kontrolü
