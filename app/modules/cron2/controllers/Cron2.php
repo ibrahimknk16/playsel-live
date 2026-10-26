@@ -290,6 +290,14 @@ class Cron2 extends MY_Controller
 				]);
 			}
 		}
+
+		// Analytics/Meta olayları sipariş durumundan sunucu tarafında üretilir; hata cron akışını etkilemez.
+		try {
+			$this->load->library('analytics_tracker');
+			$this->analytics_tracker->processPending();
+		} catch (Throwable $e) {
+			log_message('error', 'Analytics tracker failed: ' . $e->getMessage());
+		}
 	}
 
 	public function vomsisAutoApproveProcess() // Cron Job: Vomsis ile Bekleyen Cüzdan Yüklemelerini ve Siparişleri Tek Elden Yönet

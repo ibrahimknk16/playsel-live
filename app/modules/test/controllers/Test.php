@@ -362,6 +362,60 @@ class Test extends MY_Controller
 			->set_output(json_encode($payload, JSON_UNESCAPED_UNICODE));
 	}
 
+	// 2025 başından beri legacy_orders'ta alışverişi olan müşteriler. ?since=YYYY-MM-DD ile değiştirilebilir.
+	public function legacyCustomers()
+	{
+		if (!$this->db->table_exists('legacy_orders')) {
+			return $this->legacyBanRespond(['status' => 'error', 'message' => 'legacy_orders tablosu yok'], 409);
+		}
+
+		$since = (string)$this->input->get('since');
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $since)) {
+			$since = '2025-01-01';
+		}
+
+		$rows = $this->db		->select('o.target_user_id, u.user_email, u.user_phone, COUNT(*) AS order_count, SUM(o.total_amount) AS total_spent, MIN(o.order_date) AS first_order_date, MAX(o.order_date) AS last_order_date, MAX(o.currency) AS currency', false)
+			->from('legacy_orders o')
+			->join('users u', 'u.user_id = o.target_user_id', 'left')
+			->where('o.order_date >=', $since . ' 00:00:00')
+			->where('o.target_user_id IS NOT NULL', null, false)
+			->where("TRIM(IFNULL(u.user_phone, '')) <>", '')
+			->group_by('o.target_user_id, u.user_email, u.user_phone')
+			->order_by('last_order_date', 'DESC')
+			->get()->result();
+
+		$customers = [];
+		$invalidPhones = 0;
+		foreach ($rows as $r) {
+			// Geçerli: +905XXXXXXXXX, 905XXXXXXXXX veya 05XXXXXXXXX (boşluk/tire vb. temizlenir).
+			$phone = trim((string)$r->user_phone);
+			$digits = preg_replace('/\D+/', '', $phone);
+			$valid = (bool)preg_match('/^(?:90|0)5\d{9}$/', $digits);
+			if (!$valid) {
+				$invalidPhones++;
+				continue;
+			}
+			$customers[] = [
+				'user_id' => (int)$r->target_user_id,
+				'email' => $r->user_email,
+				'phone' => $phone,
+				'order_count' => (int)$r->order_count,
+				'total_spent' => round((float)$r->total_spent, 2),
+				'currency' => $r->currency,
+				'first_order_date' => $r->first_order_date,
+				'last_order_date' => $r->last_order_date,
+			];
+		}
+		echo count($customers);die;
+		return $this->legacyBanRespond([
+			'status' => 'success',
+			'since' => $since,
+			'count' => count($customers),
+			'skipped_invalid_phone' => $invalidPhones,
+			'customers' => $customers,
+		], 200);
+	}
+
 	public function adfdfd()
 	{
 		echo "This is someFunction";

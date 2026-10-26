@@ -188,13 +188,6 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
     const productImage = document.getElementById('resultProductImage');
     const productParts = document.getElementById('resultProductParts');
     const faqQuestions = document.querySelectorAll('.payment-faq-question');
-    const analyticsNames = <?= json_encode(array_combine(['purchase', 'cancel', 'refund'], array_map(function ($name, $fallback) {
-        return preg_match('/^[A-Za-z][A-Za-z0-9_]{0,39}$/', (string)$name) ? (string)$name : $fallback;
-    }, [
-        site_setting('analytics_purchase_event_name', 'purchase'),
-        site_setting('analytics_cancel_event_name', 'cancel'),
-        site_setting('analytics_refund_event_name', 'refund'),
-    ], ['purchase', 'cancel', 'refund'])), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     let attempts = 0;
 
     function applyEntity(entity) {
@@ -224,36 +217,19 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
 
     });
 
-    function trackConversion(eventName, data) {
-        if (type !== 'order' || !eventName || !data || !data.id) return;
-        const storageKey = 'ps_conversion_' + eventName + '_' + data.id;
-        try {
-            if (window.localStorage.getItem(storageKey) === '1') return;
-            window.localStorage.setItem(storageKey, '1');
-        } catch (error) {
-            // Tracking must not block the payment result page when storage is unavailable.
-        }
-
+    // Asıl satın alma/iptal/iade olayları sunucudan gider (Analytics_tracker); burada yalnızca
+    // Meta Pixel tarafı için, sunucudaki event_id ile aynı olduğundan tekilleştirilen Purchase gönderilir.
+    function trackMetaPurchase(data) {
+        if (type !== 'order' || typeof window.fbq !== 'function' || !data || !data.id) return;
+        if (Number(data.part_count || 1) !== 1 || (data.currency || 'TRY') !== 'TRY') return;
         const value = Number(String(data.amount || '0').replace(/\./g, '').replace(',', '.')) || 0;
-        const currency = data.currency || 'TRY';
-        const items = Array.isArray(data.items) ? data.items.map(function (item) {
-            return { item_name: item.name || 'Dijital Ürün', price: Number(String(item.amount || '0').replace(/\./g, '').replace(',', '.')) || 0 };
-        }) : [];
-        if (typeof window.gtag === 'function') {
-            window.gtag('event', eventName, {
-                transaction_id: String(data.id),
-                value: value,
-                currency: currency,
-                items: items
-            });
-        }
-        if (typeof window.fbq === 'function') {
-            window.fbq('trackCustom', eventName, {
-                order_id: String(data.id),
-                value: value,
-                currency: currency
-            });
-        }
+        window.fbq('track', 'Purchase', {
+            value: value,
+            currency: 'TRY',
+            order_id: String(data.id),
+            content_type: 'product',
+            num_items: 1
+        }, { eventID: 'purchase_' + String(data.id) });
     }
 
     function showLookupError(message) {
@@ -329,7 +305,7 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
         }
 
         if (isSuccess) {
-            trackConversion(analyticsNames.purchase, data);
+            trackMetaPurchase(data);
             eyebrow.textContent = type === 'order' ? 'SİPARİŞ TAMAMLANDI' : 'BAKİYE YÜKLEME TAMAMLANDI';
             title.textContent = type === 'order' ? (data.has_voucher ? 'Ürününüz Teslim Edildi' : 'Siparişiniz Tamamlandı') : 'Bakiyeniz Yüklendi';
             description.textContent = type === 'order' ? (data.has_voucher ? 'Dijital kodunuz sipariş detayında görüntülenebilir.' : 'Siparişiniz tedarikçi tarafından başarıyla teslim edildi.') : 'Onaylanan tutar harcanabilir bakiyenize eklendi.';
@@ -350,8 +326,6 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
         }
 
         if (isCancelled) {
-            trackConversion(analyticsNames.cancel, data);
-            trackConversion(analyticsNames.refund, data);
             eyebrow.textContent = 'SİPARİŞ SONUCU';
             title.textContent = 'Sipariş İptal Edildi';
             description.textContent = 'Siparişiniz iptal edildi ve teslimat yapılmayacaktır.';

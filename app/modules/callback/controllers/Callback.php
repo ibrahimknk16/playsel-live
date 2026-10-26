@@ -802,7 +802,6 @@ class Callback extends MY_Controller
 			if ($this->db->trans_status() === false) {
 				return json(['status' => 'error', 'message' => 'Ödeme sonucu siparişlere işlenemedi.'], 500);
 			}
-			$this->send_ga4_purchase_event((string)$paymentID, 'SUCCESS', $orderSaleTotal);
 			return json(['status' => 'success', 'message' => 'Ödeme başarılı, tüm siparişler işleme alındı.']);
 		}
 
@@ -823,69 +822,6 @@ class Callback extends MY_Controller
 		}
 
 		return json(['status' => 'pending', 'message' => 'Ödeme sonucu bekleniyor.'], 200);
-	}
-
-	public function send_ga4_purchase_event($orderId, $status, $amount)
-	{
-		// GA4 Measurement Protocol bilgilerinizi buraya girin:
-		$measurementId = getenv('GA4_MEASUREMENT_ID');
-		$apiSecret     = getenv('GA4_API_SECRET');
-		if (empty($measurementId) || empty($apiSecret)) {
-			log_message('warning', 'GA4 credentials are not configured; purchase event skipped.');
-			return;
-		}
-
-		$url = "https://www.google-analytics.com/mp/collect"
-			. "?measurement_id={$measurementId}"
-			. "&api_secret={$apiSecret}";
-
-		// Benzersiz client_id (sunucu-taraflı tracking)
-		$clientId = bin2hex(random_bytes(8)) . '.' . time();
-
-		$payload = [
-			'client_id' => $clientId,
-			'events'    => [[
-				'name'   => 'purchase',
-				'params' => [
-					'transaction_id' => (string)$orderId,
-					'value'          => (float)$amount,
-					'currency'       => 'TRY',
-					'payment_status' => strtolower($status),
-					'engagement_time_msec' => 1, // Zorunlu alan, 1 milisaniye olarak ayarlandı
-				],
-			]],
-		];
-		$ch = curl_init($url);
-		curl_setopt_array($ch, [
-			CURLOPT_POST           => true,
-			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_HEADER         => true,            // include headers in output
-			CURLOPT_HTTPHEADER     => ['Content-Type: application/json; charset=UTF-8'],
-			CURLOPT_POSTFIELDS     => json_encode($payload),
-			CURLOPT_TIMEOUT        => 10,
-		]);
-
-		$response = curl_exec($ch);
-		if ($response === false) {
-			$err = curl_error($ch);
-			log_message('error', 'GA4 cURL error: ' . $err);
-		} else {
-			// separate header and body
-			$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-			$header      = substr($response, 0, $header_size);
-			$body        = substr($response, $header_size);
-			$httpCode    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-			log_message('info', "GA4 HTTP code: {$httpCode}");
-			log_message('info', "GA4 response headers:\n{$header}");
-			log_message('info', "GA4 response body:\n{$body}");
-
-			if ($httpCode !== 204) {
-				// 204 No Content is expected success
-				log_message('error', "GA4 unexpected HTTP code {$httpCode}, body: {$body}");
-			}
-		}
-		curl_close($ch);
 	}
 
 	public function dijipinAPI()
@@ -1174,13 +1110,6 @@ class Callback extends MY_Controller
 				'order_status'       => $orderStatus,
 				'order_payment_info' => $paymentInfoJson,
 			]);
-
-			// GA4 Event Tetikleme
-			$this->send_ga4_purchase_event(
-				$orderID,
-				$paymentData['response_summary'] ?? 'Approved',
-				$order->order_sale_price ?? $incomingAmount
-			);
 		} elseif ($eventType === 'payment_declined') {
 			$status = 'Başarısız';
 

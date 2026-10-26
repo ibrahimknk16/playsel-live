@@ -326,6 +326,12 @@ if (!empty($user->user_reference_id)) {
                 </div>
 
                 <div class="cd-actions">
+                    <?php if (!empty($canImpersonate)): ?>
+                        <form method="post" target="_blank" action="<?= base_url('users/impersonate/' . (int)$user->user_id) ?>" onsubmit="return confirm('Bu kullanıcı hesabına parola ve iki aşamalı doğrulama adımları olmadan geçilecek. Devam edilsin mi?')">
+                            <input type="hidden" name="impersonation_csrf" value="<?= html_escape($impersonationCsrfToken) ?>">
+                            <button type="submit" class="cd-button"><?= $cdIcon('user') ?> Bu Kullanıcı Olarak Oturum Aç</button>
+                        </form>
+                    <?php endif; ?>
                     <button type="button" class="cd-button" onclick="showAddBalanceModal(<?= (int)$user->user_id ?>)"><?= $cdIcon('plus') ?> Bakiye Ekle</button>
                     <button type="button" class="cd-button danger" onclick="showRemoveBalanceModal(<?= (int)$user->user_id ?>)"><?= $cdIcon('minus') ?> Bakiye Çıkar</button>
                     <button type="button" class="cd-button" data-bs-toggle="modal" data-bs-target="#cdResetPasswordModal"><?= $cdIcon('shield') ?> Şifre Sıfırla</button>
@@ -1638,6 +1644,20 @@ if (!empty($user->user_reference_id)) {
                 $refMax = max(1, max($refMonths));
                 $refLast = $refTotal ? date('d.m.Y', strtotime($referredUsers[0]->user_created_at)) : '—';
                 ?>
+                <?php $refLink = !empty($user->user_nickname) ? rtrim((string)topupcenter(), '/') . '/register?ref=' . rawurlencode($user->user_nickname) : ''; ?>
+                <div class="cd-panel mb-5">
+                    <div class="cd-panel-head"><div><h3>Referans Linki</h3><p>Bu müşterinin kayıt davet linki</p></div></div>
+                    <div class="p-5">
+                        <?php if ($refLink && !empty($user->user_ref_permission)): ?>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="cd_ref_link" value="<?= html_escape($refLink) ?>" readonly>
+                                <button type="button" class="btn btn-warning" onclick="var i=document.getElementById('cd_ref_link');i.select();navigator.clipboard?navigator.clipboard.writeText(i.value):document.execCommand('copy');this.textContent='Kopyalandı';">Kopyala</button>
+                            </div>
+                        <?php else: ?>
+                            <span class="text-muted"><?= $refLink ? 'Kullanıcıya referans olma izni verilmemiş; link çalışmaz.' : 'Kullanıcının kullanıcı adı (nickname) yok.' ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
                 <div class="cd-pay-kpis">
                     <div><small>Toplam Referans</small><strong><?= $refTotal ?></strong><span>Kayıtlı müşteri</span></div>
                     <div><small>Bu Ay</small><strong class="up"><?= $refThisMonth ?></strong><span>Yeni referans kaydı</span></div>

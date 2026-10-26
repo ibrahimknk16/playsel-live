@@ -652,8 +652,112 @@ class Users extends MY_Controller
 			  ->order_by('user_addresses_id', 'DESC')
 			  ->get('user_addresses')->result();
 		}
+		$admin = $this->session->userdata('admin');
+		$data['canImpersonate'] = isset($admin['admin_power']) && (int)$admin['admin_power'] === 2;
+		if ($data['canImpersonate']) {
+			$csrfToken = bin2hex(random_bytes(32));
+			$this->session->set_userdata('admin_impersonation_csrf', [
+				'token' => $csrfToken,
+				'created_at' => time(),
+			]);
+			$data['impersonationCsrfToken'] = $csrfToken;
+		}
 		$this->template->content->view('detail', $data);
 		$this->template->publish();
+	}
+
+	public function impersonate($userID = null)
+	{
+		$userID = (int)$userID;
+		$admin = $this->session->userdata('admin');
+		$csrf = $this->session->userdata('admin_impersonation_csrf');
+
+		if ($this->input->method(TRUE) !== 'POST' || !isset($admin['admin_power']) || (int)$admin['admin_power'] !== 2) {
+			show_error('Bu işlem için yetkiniz bulunmuyor.', 403);
+		}
+
+		$postToken = (string)$this->input->post('impersonation_csrf');
+		if (
+			!is_array($csrf)
+			|| empty($csrf['token'])
+			|| !isset($csrf['created_at'])
+			|| time() - (int)$csrf['created_at'] > 600
+			|| !hash_equals((string)$csrf['token'], $postToken)
+		) {
+			$this->session->unset_userdata('admin_impersonation_csrf');
+			$this->session->set_flashdata('alert', [
+				'type' => 'error',
+				'title' => 'İşlem doğrulanamadı',
+				'message' => 'Sayfayı yenileyip tekrar deneyin.',
+			]);
+			redirect(base_url('users/detail/' . $userID));
+		}
+
+		if ($userID <= 0) {
+			$this->session->set_flashdata('alert', [
+				'type' => 'error',
+				'title' => 'Oturum açılamadı',
+				'message' => 'Geçersiz kullanıcı.',
+			]);
+			redirect(base_url('users'));
+		}
+
+		$user = $this->db->where('user_id', $userID)->get('users')->row();
+		$restriction = null;
+		if ($user && $this->db->table_exists('customer_restrictions')) {
+			$now = date('Y-m-d H:i:s');
+			$restriction = $this->db->where('restriction_user_id', $userID)
+				->where('restriction_status', 1)
+				->where('restriction_starts_at <=', $now)
+				->group_start()
+					->where('restriction_expires_at IS NULL', null, false)
+					->or_where('restriction_expires_at >', $now)
+				->group_end()
+				->where('restriction_scope', 'all')
+				->order_by('restriction_id', 'DESC')
+				->get('customer_restrictions')
+				->row();
+		}
+		if (!$user || (int)$user->user_status !== 1 || empty($user->user_terms_accepted) || $restriction) {
+			$this->session->set_flashdata('alert', [
+				'type' => 'error',
+				'title' => 'Oturum açılamadı',
+				'message' => 'Yalnızca aktif, koşulları kabul edilmiş ve kısıtlanmamış kullanıcı hesapları için oturum açılabilir.',
+			]);
+			redirect(base_url('users/detail/' . $userID));
+		}
+
+		if (empty($user->user_nickname)) {
+			$user->user_nickname = generate_unique_nickname($user->user_name ?? 'user', $user->user_surname ?? '');
+			$this->db->where('user_id', $userID)->update('users', ['user_nickname' => $user->user_nickname]);
+		}
+		$userSession = [
+			'user_id' => $user->user_id,
+			'user_name' => $user->user_name,
+			'user_surname' => $user->user_surname ?? '',
+			'user_nickname' => $user->user_nickname ?? '',
+			'user_email' => $user->user_email,
+			'user_bill_address' => $user->user_bill_address ?? '',
+			'user_bill_tax_number' => $user->user_bill_tax_number ?? '',
+			'user_phone' => $user->user_phone ?? '',
+			'user_status' => $user->user_status,
+			'user_session_version' => (int)($user->user_session_version ?? 1),
+			'user_type' => $user->user_type,
+			'user_tier' => $user->user_tier,
+			'user_lang' => $user->user_lang,
+			'user_country' => $user->user_country,
+			'user_email_is_verified' => $user->user_email_is_verified,
+			'user_phone_is_verified' => $user->user_phone_is_verified,
+			'user_bank_referance_number' => $user->user_bank_referance_number,
+			'user_created_at' => $user->user_created_at,
+			'user_terms_accepted' => $user->user_terms_accepted,
+			'user_last_login_ip' => getIp(),
+		];
+
+		$this->session->set_userdata('user', $userSession);
+
+		log_message('info', 'Admin impersonation started: admin_id=' . (int)$admin['admin_id'] . ', user_id=' . $userID);
+		redirect(rtrim(topupcenter(), '/') . '/tr-TR');
 	}
 
 	public function uploadFraudDocument()

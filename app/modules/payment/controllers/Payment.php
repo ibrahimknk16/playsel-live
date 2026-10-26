@@ -880,6 +880,8 @@ class Payment extends MY_Controller
 			return json(['status' => 'error', 'message' => 'Bu ürün için Sunucu ID (Server ID) seçilmesi zorunludur.']);
 		}
 
+		$qty = ((int)$getProduct->product_is_bundle === 1) ? 1 : max(1, min(10, (int)($post['qty'] ?? 1)));
+
 		$cartData = [
 			'product_id'        => $getProduct->product_id,
 			'product_name'      => $getProduct->product_name,
@@ -887,13 +889,15 @@ class Payment extends MY_Controller
 			'sub_category_id'   => $getProduct->product_sub_category_id,
 			'product_image'     => $getProduct->product_image,
 			'product_icon'      => $getProduct->product_icon,
-			'price'             => $userPrice,
+			'price'             => round((float)$userPrice * $qty, 2),
+			'unit_price'        => $userPrice,
 			'user_id'           => $uid,
 			'server_id'         => $sid,
 			'provider_id'       => $getProduct->product_provider_id,
 			'product_type'      => $getProduct->product_type,
 			'is_bundle'         => $getProduct->product_is_bundle,
-			'qty'               => 1,
+			'qty'               => $qty,
+			'quantity'          => $qty,
 			'created_at'        => date('Y-m-d H:i:s'),
 		];
 
@@ -1455,12 +1459,6 @@ class Payment extends MY_Controller
 				'order_sale_price' => $paymentPrice,
 				'order_sale_price_currency' => $paymentCurrency,
 			]);
-
-			$this->send_ga4_purchase_event(
-				$orderID,
-				$response->data->paymentStatus,
-				$response->data->price ?? 0
-			);
 		}
 		if (!empty($response->data->paymentStatus) && $response->data->paymentStatus == 'FAILURE') {
 			$status = 'Başarısız';
@@ -1468,69 +1466,6 @@ class Payment extends MY_Controller
 			$this->db->update('orders', ['order_status' => 12]);
 		}
 		echo $orderID . ' numaralı Sipariş ' . $status . ' olarak işleme tamamlandı.';
-	}
-
-	public function send_ga4_purchase_event($orderId, $status, $amount)
-	{
-		// GA4 Measurement Protocol bilgilerinizi buraya girin:
-		$measurementId = getenv('GA4_MEASUREMENT_ID');
-		$apiSecret     = getenv('GA4_API_SECRET');
-		if (empty($measurementId) || empty($apiSecret)) {
-			log_message('warning', 'GA4 credentials are not configured; purchase event skipped.');
-			return;
-		}
-
-		$url = "https://www.google-analytics.com/mp/collect"
-			. "?measurement_id={$measurementId}"
-			. "&api_secret={$apiSecret}";
-
-		// Benzersiz client_id (sunucu-taraflı tracking)
-		$clientId = bin2hex(random_bytes(8)) . '.' . time();
-
-		$payload = [
-			'client_id' => $clientId,
-			'events'    => [[
-				'name'   => 'purchase',
-				'params' => [
-					'transaction_id' => (string)$orderId,
-					'value'          => (float)$amount,
-					'currency'       => 'TRY',
-					'payment_status' => strtolower($status),
-					'engagement_time_msec' => 1, // Zorunlu alan, 1 milisaniye olarak ayarlandı
-				],
-			]],
-		];
-		$ch = curl_init($url);
-		curl_setopt_array($ch, [
-			CURLOPT_POST           => true,
-			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_HEADER         => true,            // include headers in output
-			CURLOPT_HTTPHEADER     => ['Content-Type: application/json; charset=UTF-8'],
-			CURLOPT_POSTFIELDS     => json_encode($payload),
-			CURLOPT_TIMEOUT        => 10,
-		]);
-
-		$response = curl_exec($ch);
-		if ($response === false) {
-			$err = curl_error($ch);
-			log_message('error', 'GA4 cURL error: ' . $err);
-		} else {
-			// separate header and body
-			$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-			$header      = substr($response, 0, $header_size);
-			$body        = substr($response, $header_size);
-			$httpCode    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-			log_message('info', "GA4 HTTP code: {$httpCode}");
-			log_message('info', "GA4 response headers:<br>{$header}");
-			log_message('info', "GA4 response body:<br>{$body}");
-
-			if ($httpCode !== 204) {
-				// 204 No Content is expected success
-				log_message('error', "GA4 unexpected HTTP code {$httpCode}, body: {$body}");
-			}
-		}
-		curl_close($ch);
 	}
 
 	public function dijigate3dInit($paymentReference, $totalAmount, $cardInfo = [], $type = 'order', $orderItems = [], $redirectUrl = null)
@@ -2035,6 +1970,13 @@ class Payment extends MY_Controller
 			$totalListPrice += $price;
 		}
 
+		// Bundle dışı ürünlerde her adet için ayrı sipariş satırı oluşturulur (her biri kendi teslimatını alır).
+		$orderQty = ((int)$parentProduct->product_is_bundle === 1) ? 1 : max(1, min(10, (int)($cartData['qty'] ?? 1)));
+		if ($orderQty > 1) {
+			$productIDs = array_fill(0, $orderQty, $pid);
+			$totalListPrice *= $orderQty;
+		}
+
 		$couponDiscount = max(0.0, (float)(isset($post['_coupon_discount']) ? $post['_coupon_discount'] : ($appliedCoupon['discount'] ?? 0)));
 		$bundleSalePrice = isset($cartData['price']) ? (float)$cartData['price'] : $totalListPrice;
 		$couponDiscount = min($couponDiscount, $bundleSalePrice);
@@ -2161,6 +2103,8 @@ class Payment extends MY_Controller
 			}
 			// Keep local grouping metadata separate from supplier response data.
 			$insertArray['order_data'] = null;
+			$this->load->library('analytics_tracker');
+			$insertArray['order_tracking'] = $this->analytics_tracker->captureTracking();
 			$insertArray['order_payment_info'] = json_encode([
 				'pricing_snapshot' => $pricingSnapshot,
 				'client_ip' => getIp(),

@@ -118,6 +118,8 @@ class Users_model extends MY_Model
             'user_2fa_method',
             'user_status',
             'user_birthday',
+            'user_reference_id',
+            'user_ref_permission',
         ];
 
         $data = [];
