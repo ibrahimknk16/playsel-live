@@ -21,13 +21,16 @@ function generate_unique_nickname($name, $surname = '')
 	$base = preg_replace('/[^a-z0-9]+/', '_', $base);
 	$base = trim($base, '_');
 	$base = substr($base ?: 'user', 0, 35);
+	if (!preg_match('/^[a-z]/', $base)) {
+		$base = 'user_' . substr($base, 0, 30);
+	}
 	$nickname = $base;
-	$counter = 1;
+	$counter = 2;
 
-	while ($ci->db->where('user_nickname', $nickname)->count_all_results('users') > 0) {
-		$counter++;
+	while ($ci->db->where('LOWER(user_nickname) = ' . $ci->db->escape($nickname), null, false)->count_all_results('users') > 0) {
 		$suffix = '_' . $counter;
 		$nickname = substr($base, 0, 50 - strlen($suffix)) . $suffix;
+		$counter++;
 	}
 
 	return $nickname;

@@ -3,6 +3,8 @@
 class Cron extends MY_Controller
 {
 	public $data = array();
+	private const PAYMENT_QUERY_COOLDOWN_SECONDS = 60;
+	private const PENDING_PAYMENT_QUERY_MAX_AGE_MINUTES = 15;
 
 	private function orderDataWithMessage($orderData, $message)
 	{
@@ -91,62 +93,99 @@ class Cron extends MY_Controller
 
 	public function syncPendingPayments()
 	{
-		$orders = $this->db->select('order_id, order_payment_token, order_status')
-			->where('order_payment_type', 4)
-			->where('order_status', 11)
-			->where('order_payment_token >', 0)
-			->get('orders')->result();
-		$balances = $this->db->select('user_balance_id, user_balance_note')
-			->where('user_balance_status', 0)
-			->get('user_balance')->result();
-
-		$paymentReferences = [];
-		foreach ($orders as $order) {
-			$paymentReferences[(int)$order->order_payment_token] = [
-				'type' => 'order',
-				'id' => (int)$order->order_id,
-			];
+		$lockName = 'playsel_sync_pending_payments';
+		$lock = $this->db->query('SELECT GET_LOCK(?, 0) AS acquired', [$lockName])->row();
+		if (!$lock || (int)$lock->acquired !== 1) {
+			return json(['status' => 'success', 'checked' => 0, 'failed' => 0, 'skipped' => 'already_running']);
 		}
-		foreach ($balances as $balance) {
-			$note = json_decode((string)$balance->user_balance_note, true);
-			if (is_array($note) && strtolower((string)($note['payment_method'] ?? '')) === 'cc') {
-				$paymentId = (int)($note['provider_payment_id'] ?? 0);
-				if ($paymentId > 0) {
-					$paymentReferences[$paymentId] = [
-						'type' => 'wallet',
-						'id' => (int)$balance->user_balance_id,
-					];
+		$db = $this->db;
+		register_shutdown_function(static function () use ($db, $lockName) {
+			$db->query('SELECT RELEASE_LOCK(?)', [$lockName]);
+		});
+
+		try {
+			$recentPaymentCutoff = date('Y-m-d H:i:s', time() - self::PENDING_PAYMENT_QUERY_MAX_AGE_MINUTES * 60);
+			$orders = $this->db->select('order_id, order_payment_token')
+				->where('order_payment_type', 4)
+				->where('order_status', 11)
+				->where('order_payment_token >', 0)
+				->where('order_created_at >=', $recentPaymentCutoff)
+				->get('orders')->result();
+			$balances = $this->db->select('user_balance_id, user_balance_note')
+				->where('user_balance_status', 0)
+				->where('user_balance_created_at >=', $recentPaymentCutoff)
+				->get('user_balance')->result();
+
+			$paymentReferences = [];
+			foreach ($orders as $order) {
+				$paymentReferences[(int)$order->order_payment_token] = [
+					'type' => 'order',
+					'id' => (int)$order->order_id,
+				];
+			}
+			foreach ($balances as $balance) {
+				$note = json_decode((string)$balance->user_balance_note, true);
+				if (is_array($note) && strtolower((string)($note['payment_method'] ?? '')) === 'cc') {
+					$paymentId = (int)($note['provider_payment_id'] ?? 0);
+					if ($paymentId > 0) {
+						$paymentReferences[$paymentId] = [
+							'type' => 'wallet',
+							'id' => (int)$balance->user_balance_id,
+						];
+					}
 				}
 			}
-		}
-		if (empty($paymentReferences)) {
-			return json(['status' => 'success', 'checked' => 0, 'failed' => 0]);
-		}
 
-		$this->load->library('Magicpay');
-		$magicpay = new Magicpay();
-		$responses = $magicpay->query3dPaymentsMulti(array_keys($paymentReferences));
-		$failed = 0;
-		foreach ($paymentReferences as $paymentId => $reference) {
-			$response = is_array($responses[$paymentId] ?? null) ? $responses[$paymentId] : [];
-			$this->orderApiLog(
-				$reference['type'] === 'order' ? $reference['id'] : 0,
-				'payment.query.cron',
-				'outgoing',
-				['paymentId' => (int)$paymentId],
-				$response,
-				['provider' => 'digigate', 'reference_type' => $reference['type'], 'reference_id' => $reference['id']]
-			);
-			// The provider reports FAILURE (isFinal=true) while the customer is still
-			// in 3D Secure, so a failed/unknown query never decides the payment.
-			// Only a strict SUCCESS/AUTH for a still-open card order is recovered
-			// here, for the case where the OTP_SUCCESS callback never reached us.
-			if ($reference['type'] === 'order') {
-				$this->recoverCardOrder((int)$reference['id'], (int)$paymentId, $response, $magicpay);
+			if (empty($paymentReferences)) {
+				return json(['status' => 'success', 'checked' => 0, 'failed' => 0]);
 			}
-		}
 
-		return json(['status' => 'success', 'checked' => count($paymentReferences), 'failed' => $failed]);
+			$recentCutoff = date('Y-m-d H:i:s', time() - self::PAYMENT_QUERY_COOLDOWN_SECONDS);
+			$recentLogs = $this->db->select('log_message')
+				->from('logs')
+				->where('log_controller', 'order.api')
+				->where('log_created_at >=', $recentCutoff)
+				->like('log_message', '"phase":"payment.query.cron"')
+				->get()->result();
+			$recentlyQueriedPaymentIds = [];
+			foreach ($recentLogs as $log) {
+				$payload = json_decode((string)$log->log_message, true);
+				$paymentId = (int)($payload['request']['paymentId'] ?? 0);
+				if ($paymentId > 0) {
+					$recentlyQueriedPaymentIds[$paymentId] = true;
+				}
+			}
+			$paymentReferences = array_diff_key($paymentReferences, $recentlyQueriedPaymentIds);
+			if (empty($paymentReferences)) {
+				return json(['status' => 'success', 'checked' => 0, 'failed' => 0, 'skipped' => 'cooldown']);
+			}
+
+			$this->load->library('Magicpay');
+			$magicpay = new Magicpay();
+			$responses = $magicpay->query3dPaymentsMulti(array_keys($paymentReferences));
+			$failed = 0;
+			foreach ($paymentReferences as $paymentId => $reference) {
+				$response = is_array($responses[$paymentId] ?? null) ? $responses[$paymentId] : [];
+				$this->orderApiLog(
+					$reference['type'] === 'order' ? $reference['id'] : 0,
+					'payment.query.cron',
+					'outgoing',
+					['paymentId' => (int)$paymentId],
+					$response,
+					['provider' => 'digigate', 'reference_type' => $reference['type'], 'reference_id' => $reference['id']]
+				);
+				// The provider reports FAILURE (isFinal=true) while the customer is still
+				// in 3D Secure, so a failed/unknown query never decides the payment.
+				// Only a strict SUCCESS/AUTH for a still-open card order is recovered
+				// here, for the case where the OTP_SUCCESS callback never reached us.
+				if ($reference['type'] === 'order') {
+					$this->recoverCardOrder((int)$reference['id'], (int)$paymentId, $response, $magicpay);
+				}
+			}
+			return json(['status' => 'success', 'checked' => count($paymentReferences), 'failed' => $failed]);
+		} finally {
+			$this->db->query('SELECT RELEASE_LOCK(?)', [$lockName]);
+		}
 	}
 
 	private function recoverCardOrder($orderId, $paymentId, array $query, $magicpay)

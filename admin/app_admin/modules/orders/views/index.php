@@ -10,6 +10,8 @@ $statusOptions = [
     '4' => 'Satıcı Onayladı',
     '5' => 'Satıcı Onaylamadı',
     '9' => 'Cron İşlemi',
+    '11' => 'Ödeme Bekleniyor',
+    '12' => 'Ödeme Başarısız',
     '13' => 'Fraud Kontrolü',
     '14' => 'Tedarikçi Değiştir',
     '15' => 'Yükleme Bekliyor',
@@ -1599,6 +1601,8 @@ $statusOptions = [
                         4: 'processing',
                         5: 'processing',
                         9: 'processing',
+                        11: 'waiting',
+                        12: 'cancelled',
                         13: 'fraud',
                         14: 'waiting',
                         15: 'processing'
@@ -1984,7 +1988,7 @@ $statusOptions = [
                         odRow('Telefon', data.customer_phone, 'phone') +
                         odRow('Sipariş IP Adresi', data.order_user_ip, 'globe') +
                         '</div>' +
-                        ((data.islemeAl || data.pinTeslim || statusCode !== 1 && statusCode !== 2) ? '<div class="od-actions">' + (statusCode !== 1 && statusCode !== 2 ? '<button onClick="changeStatus(' + Number(orderID) + ')" class="btn btn-success m-3">Durum Değiştir</button>' : '') + (data.islemeAl || '') + (data.pinTeslim || '') + '</div>' : '');
+                        ((data.islemeAl || data.pinTeslim) ? '<div class="od-actions">' + (data.islemeAl || '') + (data.pinTeslim || '') + '</div>' : '');
 
                     const paneContracts = '<h4 class="od-heading">' + odIcon('file-contract') + 'Sözleşmeler</h4>' +
                         '<a class="od-doc" target="_blank" rel="noopener" href="<?= base_url('orders/orderContract/') ?>' + orderId + '/distance-sales-agreement"><span>Mesafeli Satış Sözleşmesi</span><em>Görüntüle</em></a>' +

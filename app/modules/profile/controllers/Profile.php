@@ -78,34 +78,61 @@ class Profile extends MY_Controller
 	public function requestNicknameChange()
 	{
 		$userID = (int) $this->data['user']['user_id'];
+		$returnPage = $this->input->post('nickname_return_to') === 'referral' ? 'referral' : 'settings';
+		$redirectTo = base_url($this->uri->segment(1) . '/profile/' . $returnPage);
 		if (!$this->db->table_exists('nickname_change_requests')) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Nickname talep sistemi henüz etkinleştirilmedi.']);
-			redirect(base_url($this->uri->segment(1) . '/profile/settings'));
+			redirect($redirectTo);
 		}
 		$nickname = strtolower(trim((string) $this->input->post('user_nickname', true)));
-		$nickname = preg_replace('/[^a-z0-9_]/', '', $nickname);
 
 		if (!preg_match('/^[a-z][a-z0-9_]{2,49}$/', $nickname)) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Nickname 3-50 karakter olmalı, harfle başlamalı ve sadece harf, rakam veya alt çizgi içermelidir.']);
-			redirect(base_url($this->uri->segment(1) . '/profile/settings'));
+			redirect($redirectTo);
 		}
-		if ($this->db->where('user_nickname', $nickname)->where('user_id !=', $userID)->count_all_results('users') > 0) {
+
+		$currentUser = $this->db->select('user_nickname')->where('user_id', $userID)->get('users')->row();
+		if (!$currentUser) {
+			show_error('Kullanıcı bulunamadı.', 404);
+		}
+		if (strtolower((string) $currentUser->user_nickname) === $nickname) {
+			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Bu nickname zaten hesabınızda kullanılıyor.']);
+			redirect($redirectTo);
+		}
+
+		$nicknameInUse = $this->db->where('LOWER(user_nickname) = ' . $this->db->escape($nickname), null, false)
+			->where('user_id !=', $userID)
+			->count_all_results('users');
+		if ($nicknameInUse > 0) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Bu nickname zaten kullanılıyor.']);
-			redirect(base_url($this->uri->segment(1) . '/profile/settings'));
+			redirect($redirectTo);
+		}
+		$pendingNicknameInUse = $this->db->where('LOWER(nickname_request_value) = ' . $this->db->escape($nickname), null, false)
+			->where('nickname_request_status', 2)
+			->where('nickname_request_user_id !=', $userID)
+			->count_all_results('nickname_change_requests');
+		if ($pendingNicknameInUse > 0) {
+			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Bu nickname için bekleyen başka bir talep var.']);
+			redirect($redirectTo);
 		}
 		if ($this->db->where(['nickname_request_user_id' => $userID, 'nickname_request_status' => 2])->count_all_results('nickname_change_requests') > 0) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Bekleyen bir nickname değişiklik talebiniz zaten var.']);
-			redirect(base_url($this->uri->segment(1) . '/profile/settings'));
+			redirect($redirectTo);
 		}
 
-		$this->db->insert('nickname_change_requests', [
+		$inserted = $this->db->insert('nickname_change_requests', [
 			'nickname_request_user_id' => $userID,
 			'nickname_request_value' => $nickname,
 			'nickname_request_status' => 2,
 			'nickname_request_created_at' => date('Y-m-d H:i:s'),
 		]);
+		if (!$inserted) {
+			log_message('error', 'Nickname change request insert failed for user ' . $userID . ': ' . json_encode($this->db->error()));
+			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Nickname talebiniz kaydedilemedi. Lütfen tekrar deneyin.']);
+			redirect($redirectTo);
+		}
 		$this->session->set_flashdata('alert', ['type' => 'success', 'message' => 'Nickname değişiklik talebiniz incelemeye gönderildi.']);
-		redirect(base_url($this->uri->segment(1) . '/profile/settings'));
+		redirect($redirectTo);
 	}
 
 	public function updateContact()
@@ -668,9 +695,15 @@ class Profile extends MY_Controller
 		$post = $this->input->post(NULL, TRUE);
 		$userID = $this->data['user']['user_id'];
 		
-		$newRefNickname = strip_tags(trim($post['new_reference_nickname'] ?? ''));
-		
-		$refUser = $this->db->get_where('users', ['user_nickname' => $newRefNickname, 'user_ref_permission' => 1])->row();
+		$newRefNickname = strtolower(strip_tags(trim($post['new_reference_nickname'] ?? '')));
+		if (!preg_match('/^[a-z][a-z0-9_]{2,49}$/', $newRefNickname)) {
+			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Geçersiz nickname formatı.']);
+			redirect($_SERVER['HTTP_REFERER']);
+		}
+
+		$refUser = $this->db->where('LOWER(user_nickname) = ' . $this->db->escape($newRefNickname), null, false)
+			->where('user_ref_permission', 1)
+			->get('users')->row();
 		
 		if (!$refUser) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Geçersiz veya yetkisiz referans kodu.']);
@@ -726,37 +759,7 @@ class Profile extends MY_Controller
 
 	public function updateNickname()
 	{
-		$post = $this->input->post(NULL, TRUE);
-		$userID = $this->data['user']['user_id'];
-		
-		$user_details = $this->db->get_where('users', ['user_id' => $userID])->row();
-		if (!$user_details || $user_details->user_ref_permission != 1) {
-			show_404();
-		}
-
-		$nickname = strip_tags(trim($post['user_nickname'] ?? ''));
-		
-		if (empty($nickname)) {
-			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Nickname boş olamaz.']);
-			redirect($_SERVER['HTTP_REFERER']);
-		}
-
-		if (!preg_match('/^[a-zA-Z0-9_]+$/', $nickname)) {
-			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Nickname sadece harf, rakam ve alt çizgi içerebilir.']);
-			redirect($_SERVER['HTTP_REFERER']);
-		}
-		
-		$existing = $this->db->get_where('users', ['user_nickname' => $nickname, 'user_id !=' => $userID])->row();
-		if ($existing) {
-			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Bu nickname zaten kullanılıyor.']);
-			redirect($_SERVER['HTTP_REFERER']);
-		}
-		
-		$this->db->where('user_id', $userID);
-		$this->db->update('users', ['user_nickname' => $nickname]);
-		
-		$this->session->set_flashdata('alert', ['type' => 'success', 'message' => 'Nickname güncellendi.']);
-		redirect($_SERVER['HTTP_REFERER']);
+		$this->requestNicknameChange();
 	}
 
 	public function index()

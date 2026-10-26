@@ -903,15 +903,14 @@ class Auth extends MY_Controller
 
 	private function getReferralUser()
 	{
-		$nickname = trim((string)$this->session->userdata('referral_nickname'));
+		$nickname = strtolower(trim((string)$this->session->userdata('referral_nickname')));
 		if ($nickname === '' || !preg_match('/^[a-zA-Z0-9_]+$/', $nickname)) {
 			return null;
 		}
 
-		return $this->db->get_where('users', [
-			'user_nickname' => $nickname,
-			'user_ref_permission' => 1
-		])->row();
+		return $this->db->where('LOWER(user_nickname) = ' . $this->db->escape($nickname), null, false)
+			->where('user_ref_permission', 1)
+			->get('users')->row();
 	}
 
 	private function ensure_default_billing_address($user)

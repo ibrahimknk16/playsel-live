@@ -69,9 +69,10 @@
                   <p class="subtle">Bekleyen talep: <strong><?= html_escape($nickname_request->nickname_request_value) ?></strong></p>
               <?php else: ?>
                   <form action="<?= base_url($this->uri->segment(1) . '/profile/requestNicknameChange') ?>" method="POST" class="form-grid">
+                      <input type="hidden" name="nickname_return_to" value="settings">
                       <div class="field">
                           <label for="user-nickname">Yeni nickname</label>
-                          <input id="user-nickname" name="user_nickname" minlength="3" maxlength="50" pattern="[a-z][a-z0-9_]{2,49}" required>
+                          <input id="user-nickname" name="user_nickname" minlength="3" maxlength="50" pattern="[a-z][a-z0-9_]{2,49}" autocomplete="off" required>
                       </div>
                       <div class="form-actions">
                           <button class="primary-button" type="submit">Değişiklik talep et</button>

@@ -242,14 +242,44 @@ class Users extends MY_Controller
 		public function approveNicknameRequest()
 		{
 			$id = (int) $this->input->post('request_id');
+			$this->db->trans_begin();
 			$request = $this->db->get_where('nickname_change_requests', ['nickname_request_id' => $id, 'nickname_request_status' => 2])->row();
-			if (!$request || $this->db->where('user_nickname', $request->nickname_request_value)->count_all_results('users') > 0) {
+			if (!$request) {
+				$this->db->trans_rollback();
 				return json(['status' => 'error', 'message' => 'Talep geçersiz veya nickname artık kullanılıyor.'], 400);
 			}
-			$this->db->trans_start();
-			$this->db->where('user_id', $request->nickname_request_user_id)->update('users', ['user_nickname' => $request->nickname_request_value]);
-			$this->db->where('nickname_request_id', $id)->update('nickname_change_requests', ['nickname_request_status' => 1, 'nickname_request_updated_at' => date('Y-m-d H:i:s')]);
-			$this->db->trans_complete();
+
+			$nickname = strtolower(trim((string) $request->nickname_request_value));
+			if (!preg_match('/^[a-z][a-z0-9_]{2,49}$/', $nickname)) {
+				$this->db->trans_rollback();
+				return json(['status' => 'error', 'message' => 'Talepte geçersiz nickname var.'], 400);
+			}
+			$nicknameInUse = $this->db->where('LOWER(user_nickname) = ' . $this->db->escape($nickname), null, false)
+				->where('user_id !=', (int) $request->nickname_request_user_id)
+				->count_all_results('users');
+			if ($nicknameInUse > 0) {
+				$this->db->trans_rollback();
+				return json(['status' => 'error', 'message' => 'Nickname talep oluşturulduktan sonra kullanıma alınmış.'], 409);
+			}
+
+			$targetUser = $this->db->get_where('users', ['user_id' => $request->nickname_request_user_id])->row();
+			if (!$targetUser) {
+				$this->db->trans_rollback();
+				return json(['status' => 'error', 'message' => 'Talep sahibi bulunamadı.'], 404);
+			}
+			$this->db->where(['nickname_request_id' => $id, 'nickname_request_status' => 2])
+				->update('nickname_change_requests', ['nickname_request_status' => 1, 'nickname_request_updated_at' => date('Y-m-d H:i:s')]);
+			if ($this->db->affected_rows() !== 1) {
+				$this->db->trans_rollback();
+				return json(['status' => 'error', 'message' => 'Talep başka bir işlem tarafından güncellendi.'], 409);
+			}
+			$this->db->where('user_id', $request->nickname_request_user_id)->update('users', ['user_nickname' => $nickname]);
+			if ($this->db->trans_status() === false) {
+				$this->db->trans_rollback();
+				log_message('error', 'Nickname request approval failed for request ' . $id . ': ' . json_encode($this->db->error()));
+				return json(['status' => 'error', 'message' => 'Nickname güncellenemedi. Lütfen tekrar deneyin.'], 500);
+			}
+			$this->db->trans_commit();
 			return json(['status' => 'success', 'message' => 'Nickname güncellendi.']);
 		}
 

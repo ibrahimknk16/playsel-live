@@ -17,16 +17,22 @@
           </div>
           <div class="panel-body">
             
-            <form action="<?= base_url($this->uri->segment(1) . '/profile/updateNickname') ?>" method="POST" class="form-grid" style="max-width:500px;">
-              <div class="field full">
-                  <label>Referans Nickname</label>
-                  <p class="subtle" style="font-size:13px; margin-bottom:12px; margin-top:-4px;"><?= $this->lang->line('profile_ref_nickname_desc') ?></p>
-                  <input type="text" name="user_nickname" value="<?= html_escape($user_details->user_nickname ?? '') ?>" placeholder="Sadece harf, rakam ve alt çizgi" required>
-              </div>
-              <div class="form-actions" style="margin-top:8px;">
-                  <button type="submit" class="primary-button"><svg class="icon"><use href="#i-save"/></svg>Kaydet</button>
-              </div>
-            </form>
+            <p class="subtle" style="font-size:13px; margin-bottom:12px; margin-top:-4px;"><?= $this->lang->line('profile_ref_nickname_desc') ?></p>
+            <p>Nickname: <strong><?= html_escape($user_details->user_nickname ?? '') ?></strong></p>
+            <?php if (!empty($nickname_request)): ?>
+                <p class="subtle">Bekleyen değişiklik talebi: <strong><?= html_escape($nickname_request->nickname_request_value) ?></strong></p>
+            <?php else: ?>
+                <form action="<?= base_url($this->uri->segment(1) . '/profile/requestNicknameChange') ?>" method="POST" class="form-grid" style="max-width:500px;">
+                  <input type="hidden" name="nickname_return_to" value="referral">
+                  <div class="field full">
+                      <label for="referral-nickname">Yeni nickname</label>
+                      <input id="referral-nickname" type="text" name="user_nickname" minlength="3" maxlength="50" pattern="[a-z][a-z0-9_]{2,49}" autocomplete="off" placeholder="Sadece küçük harf, rakam ve alt çizgi" required>
+                  </div>
+                  <div class="form-actions" style="margin-top:8px;">
+                      <button type="submit" class="primary-button"><svg class="icon"><use href="#i-save"/></svg>Değişiklik talep et</button>
+                  </div>
+                </form>
+            <?php endif; ?>
 
             <?php if (!empty($user_details->user_nickname)): ?>
             <div style="margin-top:32px; padding-top:24px; border-top:1px solid rgba(255,255,255,0.05);">

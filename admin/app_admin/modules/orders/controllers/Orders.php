@@ -136,6 +136,7 @@ class Orders extends MY_Controller
 	public function getOrders()
 	{
 		$uriSegment = (int)$this->uri->segment(3);
+		$allowStatusChange = $uriSegment === 2;
 		$statusArray = $this->resolveStatusArray($uriSegment);
 
 		$draw = (int)$this->input->post('draw');
@@ -194,8 +195,9 @@ class Orders extends MY_Controller
 			$cost = $this->resolveOrderCostTry($order);
 			$statusMeta = isset($statusMap[$orderStatusCode]) ? $statusMap[$orderStatusCode] : null;
 
-			$statusColor = !empty($statusMeta->order_status_color) ? preg_replace('/[^a-z0-9_-]/i', '', $statusMeta->order_status_color) : 'secondary';
-			$statusName = !empty($statusMeta->order_status_name) ? html_escape($statusMeta->order_status_name) : 'Bilinmiyor';
+			$paymentFallback = [11 => ['Ödeme Bekleniyor', 'warning'], 12 => ['Ödeme Başarısız', 'danger']];
+			$statusColor = !empty($statusMeta->order_status_color) ? preg_replace('/[^a-z0-9_-]/i', '', $statusMeta->order_status_color) : ($paymentFallback[$orderStatusCode][1] ?? 'secondary');
+			$statusName = !empty($statusMeta->order_status_name) ? html_escape($statusMeta->order_status_name) : ($paymentFallback[$orderStatusCode][0] ?? 'Bilinmiyor');
 			$productLink = base_url('products/edit/' . (int)$order->order_product_id);
 			$resellerLink = base_url('users/detail/' . (int)$order->order_reseller_id);
 			$supplierLink = base_url('users/detail/' . (int)$order->order_supplier_id);
@@ -223,7 +225,7 @@ class Orders extends MY_Controller
 				(int)$order->order_site_id === 3 ? '<span class="badge badge-success order-channel order-channel-dijipin">Dijipin</span>' : '<span class="badge badge-info order-channel order-channel-api">API</span>',
 				'<small>' . $this->formatDateTime($order->order_created_at) . '</small>',
 				$this->buildAdminActionBadge($order, $currentAdminId),
-				'<span ' . (!in_array($orderStatusCode, [1, 2], true) ? 'onClick="changeStatus(' . $orderId . ')" style="cursor:pointer" ' : '') . 'class="change-status badge badge-' . $statusColor . '" data-order-status="' . $orderStatusCode . '">' . $statusName . '</span>',
+				'<span ' . ($allowStatusChange && !in_array($orderStatusCode, [1, 2], true) ? 'onClick="changeStatus(' . $orderId . ')" style="cursor:pointer" ' : '') . 'class="change-status badge badge-' . $statusColor . '" data-order-status="' . $orderStatusCode . '">' . $statusName . '</span>',
 				'<button class="btn btn-light btn-xs btn-rounded m-1 p-1 fs-14" onclick="orderDetail(' . $orderId . ')"><i class="fa-solid fa-magnifying-glass"></i> Detay</button> '
 					. (!in_array($orderStatusCode, [1, 2], true) ? '<button class="btn btn-danger btn-xs btn-rounded m-1 p-1 fs-14" onclick="openOrderCancelModal(' . $orderId . ')"><i class="fa-solid fa-ban"></i> İptal / İade</button> ' : '')
 					. ($orderStatusCode === 13 ? '<button class="btn btn-success btn-xs btn-rounded m-1 p-1 fs-14" onclick="approveFraudOrder(' . $orderId . ')"><i class="fa-solid fa-shield-check"></i> Fraud Onayla</button> ' : '')
@@ -1000,7 +1002,7 @@ class Orders extends MY_Controller
 			return [0, 3, 4, 5, 9, 13, 14, 15];
 		}
 
-		return [0, 1, 2, 3, 4, 5, 9, 13, 14, 15];
+		return [0, 1, 2, 3, 4, 5, 9, 11, 12, 13, 14, 15];
 	}
 
 	private function normalizeDate($date)  //--
