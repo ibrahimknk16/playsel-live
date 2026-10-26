@@ -146,7 +146,10 @@ class Magicpay
                 ?? null;
         }
 
-        return (array)$decodedResponse;
+        $decodedResponse = (array)$decodedResponse;
+        $decodedResponse['http_code'] = $httpCode;
+
+        return $decodedResponse;
     }
 
     /**

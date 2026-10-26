@@ -16,7 +16,7 @@ class Test extends MY_Controller
 			$country = 'US'; // Default country if not specified
 		} else {
 			$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
-						$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
+			$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
 		}
 		$this->lang->load('custom', $lang);
 		$this->data['currentLocale'] = $this->db->get_where('locales', ['locale_lang_code' => $lang, 'locale_code' => $country])->row();
@@ -241,8 +241,8 @@ class Test extends MY_Controller
 		// Taşındı: cron2/sendOrders. Test modülünde sipariş gönderilmez.
 		return false;
 	}
-  
-  public function legacyBan()
+
+	public function legacyBan()
 	{
 		$apply = (string)$this->input->get('apply') === '1';
 
@@ -374,7 +374,7 @@ class Test extends MY_Controller
 			$since = '2025-01-01';
 		}
 
-		$rows = $this->db		->select('o.target_user_id, u.user_email, u.user_phone, COUNT(*) AS order_count, SUM(o.total_amount) AS total_spent, MIN(o.order_date) AS first_order_date, MAX(o.order_date) AS last_order_date, MAX(o.currency) AS currency', false)
+		$rows = $this->db->select('o.target_user_id, u.user_email, u.user_phone, COUNT(*) AS order_count, SUM(o.total_amount) AS total_spent, MIN(o.order_date) AS first_order_date, MAX(o.order_date) AS last_order_date, MAX(o.currency) AS currency', false)
 			->from('legacy_orders o')
 			->join('users u', 'u.user_id = o.target_user_id', 'left')
 			->where('o.order_date >=', $since . ' 00:00:00')
@@ -406,7 +406,8 @@ class Test extends MY_Controller
 				'last_order_date' => $r->last_order_date,
 			];
 		}
-		echo count($customers);die;
+		echo count($customers);
+		die;
 		return $this->legacyBanRespond([
 			'status' => 'success',
 			'since' => $since,
@@ -416,9 +417,26 @@ class Test extends MY_Controller
 		], 200);
 	}
 
-	public function adfdfd()
+	public function userCheck()
 	{
-		echo "This is someFunction";
-	}
+		$userID = trim((string) $this->input->get('user_id'));
+		$serverID = trim((string) $this->input->get('server_id'));
 
+		if ($userID === '' || $serverID === '') {
+			return json(['status' => 'error', 'message' => 'Lütfen Oyuncu ID ve Sunucu ID giriniz.'], 400);
+		}
+		if (!preg_match('/^\d{4,20}$/', $userID) || !preg_match('/^\d{1,10}$/', $serverID)) {
+			return json(['status' => 'error', 'message' => 'Oyuncu ID ve Sunucu ID yalnızca rakamlardan oluşmalıdır.'], 422);
+		}
+
+		$this->load->library('Dijipin');
+		$djpn = new Dijipin();
+		$userCheck = $djpn->mlbbUserCheck($userID, $serverID);
+
+		if ($userCheck === false) {
+			return json(['status' => 'error', 'message' => 'Sorgulama servisine şu anda ulaşılamıyor.'], 500);
+		}
+
+		return json($userCheck);
+	}
 }

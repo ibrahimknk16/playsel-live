@@ -880,19 +880,6 @@ class Payment extends MY_Controller
 			return json(['status' => 'error', 'message' => 'Bu ürün için Sunucu ID (Server ID) seçilmesi zorunludur.']);
 		}
 
-		$qty = 1;
-		if ((int)$getProduct->product_is_bundle !== 1) {
-			$productCategory = $this->db->select('category_type, category_parent_category_id')->get_where('categories', ['category_id' => $getProduct->product_category_id])->row();
-			$categoryType = (int)($productCategory->category_type ?? 0);
-			if (!empty($productCategory->category_parent_category_id)) {
-				$parentCategory = $this->db->select('category_type')->get_where('categories', ['category_id' => $productCategory->category_parent_category_id])->row();
-				$categoryType = (int)($parentCategory->category_type ?? $categoryType);
-			}
-			if ($categoryType === 3) {
-				$qty = max(1, min(10, (int)($post['qty'] ?? 1)));
-			}
-		}
-
 		$cartData = [
 			'product_id'        => $getProduct->product_id,
 			'product_name'      => $getProduct->product_name,
@@ -900,15 +887,13 @@ class Payment extends MY_Controller
 			'sub_category_id'   => $getProduct->product_sub_category_id,
 			'product_image'     => $getProduct->product_image,
 			'product_icon'      => $getProduct->product_icon,
-			'price'             => round((float)$userPrice * $qty, 2),
-			'unit_price'        => $userPrice,
+			'price'             => $userPrice,
 			'user_id'           => $uid,
 			'server_id'         => $sid,
 			'provider_id'       => $getProduct->product_provider_id,
 			'product_type'      => $getProduct->product_type,
 			'is_bundle'         => $getProduct->product_is_bundle,
-			'qty'               => $qty,
-			'quantity'          => $qty,
+			'qty'               => 1,
 			'created_at'        => date('Y-m-d H:i:s'),
 		];
 
@@ -1482,8 +1467,10 @@ class Payment extends MY_Controller
 	public function dijigate3dInit($paymentReference, $totalAmount, $cardInfo = [], $type = 'order', $orderItems = [], $redirectUrl = null)
 	{
 		$ccExplode = explode('/', $cardInfo['cc_expiry'] ?? '');
-		$cardInfo['cc_month'] = $ccExplode[0] ?? null;
-		$cardInfo['cc_year'] = $ccExplode[1] ?? null;
+		$cardInfo['cc_month'] = isset($ccExplode[0]) ? str_pad(trim($ccExplode[0]), 2, '0', STR_PAD_LEFT) : null;
+		$ccYear = isset($ccExplode[1]) ? trim($ccExplode[1]) : null;
+		// Dijigate dokümanı expireYear için 4 haneli yıl (örn. 2030) kullanıyor
+		$cardInfo['cc_year'] = ($ccYear !== null && preg_match('/^\d{2}$/', $ccYear)) ? '20' . $ccYear : $ccYear;
 
 		$magicPay = new Magicpay();
 		$paymentData = $this->buildDijigatePaymentData($paymentReference, $totalAmount, $cardInfo, $type, $orderItems, $redirectUrl);
@@ -1543,6 +1530,7 @@ class Payment extends MY_Controller
 				'cvc'            => $cardInfo['cc_cvv'] ?? null,
 			]
 		];
+
 		//pre($paymentData);die;
 
 		return $paymentData;
@@ -1793,6 +1781,24 @@ class Payment extends MY_Controller
 
 				if ($providerPaymentID <= 0 || empty($html_content)) {
 					$this->db->where('user_balance_reference_no', $paymentReference)->update('user_balance', ['user_balance_status' => 2]);
+					$this->db->insert('logs', [
+						'log_controller' => 'magicpayWalletInitFailed',
+						'log_message' => json_encode([
+							'reference' => $paymentReference,
+							'user_id' => (int)$user['user_id'],
+							'amount' => $total_amount,
+							'client_ip' => getIp(),
+							'card' => $this->safeCardInfo($cardInfo),
+							'phone_sent' => (function () use ($user) {
+								$row = $this->checkoutPhoneUser((int)$user['user_id']);
+								$sent = normalizePhoneE164($this->normalizeMobilePhoneNumber((string)($row->user_phone ?? '')));
+								return ['raw_db' => (string)($row->user_phone ?? ''), 'sent' => $sent];
+							})(),
+							'error_detail' => $paymentResponse['errors']['error_message_detail'] ?? null,
+							'response' => $paymentResponse,
+						], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+						'log_error_code' => '987644876',
+					]);
 					return json([
 						'status' => 'error',
 						'message' => $paymentResponse['message'] ?? $paymentResponse['errorMessage'] ?? '3D Secure ödeme başlatılamadı.'
@@ -1979,13 +1985,6 @@ class Payment extends MY_Controller
 			}
 			$originalPrices[$productID] = $price;
 			$totalListPrice += $price;
-		}
-
-		// Bundle dışı ürünlerde her adet için ayrı sipariş satırı oluşturulur (her biri kendi teslimatını alır).
-		$orderQty = ((int)$parentProduct->product_is_bundle === 1) ? 1 : max(1, min(10, (int)($cartData['qty'] ?? 1)));
-		if ($orderQty > 1) {
-			$productIDs = array_fill(0, $orderQty, $pid);
-			$totalListPrice *= $orderQty;
 		}
 
 		$couponDiscount = max(0.0, (float)(isset($post['_coupon_discount']) ? $post['_coupon_discount'] : ($appliedCoupon['discount'] ?? 0)));

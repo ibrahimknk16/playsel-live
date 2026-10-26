@@ -314,8 +314,12 @@ class Categoriess extends MY_Controller
 
 		$userData = $request['data']['user_data'] ?? [];
 		if (!empty($request['status']) && !empty($userData['user_name'])) {
-			$safeName = trim(strip_tags((string) $userData['user_name']));
-			$safeName = mb_substr($safeName, 0, 64);
+			// strip_tags "<<<Jarule>>>" gibi adları boşalttığı için kullanılmıyor; çıktı frontend'de escape ediliyor
+			$safeName = preg_replace('/[\x00-\x1F\x7F]/u', '', (string) $userData['user_name']);
+			$safeName = mb_substr(trim((string) $safeName), 0, 64);
+			if ($safeName === '') {
+				$safeName = (string) $userId;
+			}
 			$safeCountry = preg_match('/^[A-Za-z]{2}$/', (string) ($userData['register_country'] ?? '')) ? (string) $userData['register_country'] : '';
 			return json([
 				'status' => 'success',
