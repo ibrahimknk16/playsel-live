@@ -44,9 +44,9 @@ $route['contact-us'] = 'home/contactUs';
     $route["{$lang}/about-us"] = "homee/staticPages";
     $route["{$lang}/contact"] = "homee/contactUs"; 
     
-    $route["{$lang}/terms-conditions"] = "home/staticPages";
+    // $route["{$lang}/terms-conditions"] = "home/staticPages";
     $route["{$lang}/check-user"] = "categoriess/checkUser";
-    $route["{$lang}/faq"] = "home/staticPages";
+    // $route["{$lang}/faq"] = "home/staticPages";
     $route["{$lang}/login"] = "auth/login";
     $route["{$lang}/login/google"] = "auth/googleLogin";
     $route["{$lang}/login/google/callback"] = "auth/googleCallback";
