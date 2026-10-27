@@ -215,6 +215,7 @@ class Orders extends MY_Controller
 					. '<span class="order-product-cat">' . html_escape((string)$order->category_title) . '</span>'
 					. '<a href="' . $productLink . '" target="_blank" rel="noopener"><strong>' . html_escape((string)$order->product_name) . '#' . (int)$order->order_product_id . '</strong></a>'
 					. '<span class="order-product-qty">' . (int)$order->order_quantity . ' Adet</span>'
+					. $this->buildQuantityGroupBadge($order)
 					. '</div>'
 					. '</div>',
 				'<small>' . $this->buildRequireDataHtml($requireData) . '</small>',
@@ -242,6 +243,63 @@ class Orders extends MY_Controller
 		);
 
 		return json($output);
+	}
+
+	private function orderGroupSnapshot($paymentInfo)
+	{
+		$info = is_string($paymentInfo) ? json_decode($paymentInfo, true) : (is_array($paymentInfo) ? $paymentInfo : null);
+		$snapshot = is_array($info) && isset($info['pricing_snapshot']) && is_array($info['pricing_snapshot']) ? $info['pricing_snapshot'] : [];
+		return !empty($snapshot['bundle_reference']) ? $snapshot : [];
+	}
+
+	private function buildQuantityGroupBadge($order)
+	{
+		$snapshot = $this->orderGroupSnapshot($order->order_payment_info ?? null);
+		if (empty($snapshot['is_quantity_group'])) {
+			return '';
+		}
+		return '<span class="badge badge-warning" title="Adetli siparişin alt siparişi">' . (int)($snapshot['quantity'] ?? 0) . ' adetli sipariş</span>';
+	}
+
+	private function buildOrderGroup($order, $paymentInfo)
+	{
+		$snapshot = $this->orderGroupSnapshot($paymentInfo);
+		if (empty($snapshot)) {
+			return null;
+		}
+		$reference = (string)$snapshot['bundle_reference'];
+		$rows = $this->db->select('o.order_id, o.order_status, o.order_sale_price, o.order_payment_info, os.order_status_name')
+			->from('orders as o')
+			->join('order_status as os', 'os.order_status_code = o.order_status', 'left')
+			->where('o.order_reseller_id', (int)$order->order_reseller_id)
+			->like('o.order_payment_info', $reference)
+			->order_by('o.order_id', 'ASC')
+			->get()->result();
+		$items = [];
+		$total = 0.0;
+		foreach ($rows as $row) {
+			$rowSnapshot = $this->orderGroupSnapshot($row->order_payment_info);
+			if (($rowSnapshot['bundle_reference'] ?? '') !== $reference) {
+				continue;
+			}
+			$total += (float)$row->order_sale_price;
+			$items[] = [
+				'order_id' => (int)$row->order_id,
+				'order_status' => (int)$row->order_status,
+				'status_name' => (string)($row->order_status_name ?: 'Bilinmiyor'),
+				'sale_price' => (float)$row->order_sale_price,
+			];
+		}
+		if (count($items) < 2) {
+			return null;
+		}
+		return [
+			'is_quantity_group' => !empty($snapshot['is_quantity_group']),
+			'product_name' => (string)($snapshot['bundle_product_name'] ?? ''),
+			'count' => count($items),
+			'total_sale_price' => round($total, 2),
+			'items' => $items,
+		];
 	}
 
 	public function orderDetail()
@@ -301,6 +359,7 @@ class Orders extends MY_Controller
 		$order->order_readed_at = $this->formatDateTime($order->order_readed_at);
 		$order->order_answered_at = $this->formatDateTime($order->order_answered_at);
 		$order->order_sended_at = $this->formatDateTime($order->order_sended_at);
+		$order->order_group = $this->buildOrderGroup($order, $order->order_payment_info);
 		$order->order_payment_info = !empty($order->order_payment_info) ? json_decode($order->order_payment_info) : null;
 		$order->order_status_name = !empty($order->order_status_name) ? $order->order_status_name : 'Bilinmiyor';
 		$order->islemeAl = $islemeAl;

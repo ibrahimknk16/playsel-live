@@ -619,6 +619,34 @@ class Payment extends MY_Controller
 		return $hasDone ? 1 : 2;
 	}
 
+	// Outbox aktarımı: oturumdaki müşterinin tarayıcıya bildirilmemiş satışlarını döndürür.
+	public function pendingAnalytics()
+	{
+		$userID = (int)($this->data['user']['user_id'] ?? 0);
+		if (!$userID) {
+			return json(['status' => 'success', 'data' => []]);
+		}
+		$this->load->library('analytics_tracker');
+		// waiting: son 2 saatte oluşan ve henüz sonuçlanmamış sipariş var; tarayıcı kısa aralıklarla yeniden sorar.
+		$waiting = $this->db->where('order_reseller_id', $userID)
+			->where('order_type', 3)
+			->where_in('order_status', [0, 3, 4, 9, 13, 14, 15])
+			->where('order_created_at >=', date('Y-m-d H:i:s', time() - 7200))
+			->limit(1)->get('orders')->num_rows() > 0;
+		return json(['status' => 'success', 'data' => $this->analytics_tracker->pendingWebPurchases($userID), 'waiting' => $waiting]);
+	}
+
+	public function ackAnalytics()
+	{
+		$userID = (int)($this->data['user']['user_id'] ?? 0);
+		$tx = (int)$this->input->post('transaction_id');
+		if (!$userID || $tx <= 0) {
+			return json(['status' => 'error'], 400);
+		}
+		$this->load->library('analytics_tracker');
+		return json(['status' => $this->analytics_tracker->ackWebPurchase($userID, $tx) ? 'success' : 'error']);
+	}
+
 	public function resultStatus()
 	{
 		$tokenData = $this->readResultToken($this->input->get('token'));
@@ -641,7 +669,7 @@ class Payment extends MY_Controller
 		}
 
 		if ($type === 'order') {
-			$row = $this->db->select('o.order_id, o.order_status, o.order_payment_type, o.order_eft_id, o.order_eft_bank_id, o.order_payment_token, o.order_reseller_order_id, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_data, o.order_payment_info, o.order_require_data, o.order_created_at, o.order_sended_at, o.order_answered_at, o.order_supplier_answer, p.product_name, p.product_icon')
+			$row = $this->db->select('o.order_id, o.order_product_id, o.order_sale_price_tl, o.order_status, o.order_payment_type, o.order_eft_id, o.order_eft_bank_id, o.order_payment_token, o.order_reseller_order_id, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_data, o.order_payment_info, o.order_require_data, o.order_created_at, o.order_sended_at, o.order_answered_at, o.order_supplier_answer, p.product_name, p.product_icon')
 				->from('orders as o')
 				->join('products as p', 'p.product_id = o.order_product_id', 'left')
 				->where('o.order_id', $id)
@@ -693,7 +721,7 @@ class Payment extends MY_Controller
 			$firstSnapshot = is_array($firstPaymentInfo) ? ($firstPaymentInfo['pricing_snapshot'] ?? []) : [];
 			$bundleReference = trim((string)($firstSnapshot['bundle_reference'] ?? ''));
 			if ($bundleReference !== '') {
-				$bundleOrders = $this->db->select('o.order_id, o.order_product_id, o.order_status, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_payment_info, o.order_data, o.order_created_at, p.product_name')
+				$bundleOrders = $this->db->select('o.order_id, o.order_product_id, o.order_sale_price_tl, o.order_status, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_payment_info, o.order_data, o.order_created_at, p.product_name')
 					->from('orders as o')
 					->join('products as p', 'p.product_id = o.order_product_id', 'left')
 					->where('o.order_reseller_id', $userID)
@@ -784,6 +812,35 @@ class Payment extends MY_Controller
 			$isQuantityGroup = !empty($firstSnapshot['is_quantity_group']);
 			$groupStatus = count($orderGroup) > 1 ? $this->groupAggregateStatus($groupStatuses) : (int)$row->order_status;
 
+			// Tarayıcı satın alma olayı: tüm satırlar teslim edildiyse; işlem kimliği sunucu olayıyla aynıdır (en küçük sipariş no).
+			$analytics = null;
+			if (!in_array(false, array_map(function ($s) {
+				return $s === 1;
+			}, $groupStatuses), true)) {
+				$analyticsItems = [];
+				$analyticsValue = 0.0;
+				$analyticsIds = [];
+				foreach ($orderGroup as $groupOrder) {
+					$analyticsIds[] = (int)$groupOrder->order_id;
+					$price = round((float)$groupOrder->order_sale_price_tl, 2);
+					$analyticsValue += $price;
+					$key = (string)$groupOrder->order_product_id;
+					if (!isset($analyticsItems[$key])) {
+						$analyticsItems[$key] = ['item_id' => $key, 'item_name' => (string)($groupOrder->product_name ?? 'Dijital Ürün'), 'quantity' => 0, 'total' => 0.0];
+					}
+					$analyticsItems[$key]['quantity']++;
+					$analyticsItems[$key]['total'] += $price;
+				}
+				$analytics = [
+					'transaction_id' => (string)min($analyticsIds),
+					'value' => round($analyticsValue, 2),
+					'currency' => 'TRY',
+					'items' => array_values(array_map(function ($i) {
+						return ['item_id' => $i['item_id'], 'item_name' => $i['item_name'], 'quantity' => $i['quantity'], 'price' => round($i['total'] / $i['quantity'], 2)];
+					}, $analyticsItems)),
+				];
+			}
+
 			return json([
 				'status' => 'success',
 				'entity' => 'order',
@@ -802,6 +859,7 @@ class Payment extends MY_Controller
 					'product_name' => $displayName,
 					'product_icon' => $displayIcon,
 					'has_voucher' => $groupHasVoucher,
+					'analytics' => $analytics,
 					'payment_method_label' => $orderPaymentMethodLabels[(int)$row->order_payment_type] ?? 'Ödeme',
 				], $transferInfo),
 			]);
@@ -1128,6 +1186,7 @@ class Payment extends MY_Controller
 			(int)($cartData['product_id'] ?? 0),
 			(string)($cartData['user_id'] ?? ''),
 			(string)($cartData['server_id'] ?? ''),
+			max(1, (int)($cartData['qty'] ?? 1)),
 			(int)($appliedCoupon['coupon_id'] ?? 0),
 			$paymentMethod,
 		]));

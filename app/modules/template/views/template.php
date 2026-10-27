@@ -112,6 +112,7 @@ foreach ($versionedAssets as $assetPath) {
   <link rel="canonical" href="<?= html_escape($canonicalUrl) ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google-site-verification" content="VcsosXYa-RX_cD9arX-EYrDVkwYX6kc7upy73vxiGTQ" />
+  <meta name="yandex-verification" content="eefaf3c438b3c371" />
   <!-- 1. GOOGLE FONTS ASENKRON YÜKLEME -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -689,6 +690,45 @@ foreach ($versionedAssets as $assetPath) {
             banner.style.display = 'none';
           });
         }());
+    </script>
+  <?php endif; ?>
+  <?php if (!empty($this->session->userdata('user'))): ?>
+    <script>
+      // Outbox aktarımı: sonuç sayfasında kalmayan müşterilerin teslim edilmiş satışları sonraki ziyarette gönderilir.
+      (function () {
+        var base = <?= json_encode(topupcenter() . $templateLocale . '/payment/') ?>;
+        function send(a) {
+          var sent = false;
+          if (typeof window.gtag === 'function') {
+            window.gtag('event', <?= json_encode(site_setting('analytics_purchase_event_name', 'purchase') ?: 'purchase') ?>, { transaction_id: a.transaction_id, value: a.value, currency: a.currency, items: a.items });
+            sent = true;
+          }
+          if (typeof window.fbq === 'function') {
+            window.fbq('track', 'Purchase', {
+              value: a.value, currency: a.currency, content_type: 'product',
+              content_ids: a.items.map(function (i) { return i.item_id; }),
+              contents: a.items.map(function (i) { return { id: i.item_id, quantity: i.quantity, item_price: i.price }; }),
+              num_items: a.items.reduce(function (n, i) { return n + i.quantity; }, 0)
+            }, { eventID: 'purchase_' + a.transaction_id });
+            sent = true;
+          }
+          if (sent) {
+            fetch(base + 'ackAnalytics', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'transaction_id=' + encodeURIComponent(a.transaction_id) }).catch(function () {});
+          }
+        }
+        var polls = 0;
+        function check() {
+          polls++;
+          fetch(base + 'pendingAnalytics', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : { data: [] }; })
+            .then(function (p) {
+              (p.data || []).forEach(send);
+              if (p.waiting && polls < 40) setTimeout(check, 20000);
+            })
+            .catch(function () {});
+        }
+        setTimeout(check, 2500);
+      }());
     </script>
   <?php endif; ?>
 </body>

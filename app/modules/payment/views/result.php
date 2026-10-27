@@ -236,6 +236,42 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
         primary.querySelector('span').textContent = type === 'order' ? 'Siparişlerime Git' : 'Cüzdanıma Git';
     }
 
+    // Tarayıcı satın alma olayı: sunucu olayıyla aynı transaction_id / eventID kullanılır, GA4 ve Meta tekilleştirir.
+    function trackPurchase(a) {
+        const storageKey = 'ps_purchase_' + a.transaction_id;
+        try { if (localStorage.getItem(storageKey)) return; } catch (e) {}
+        let sent = false;
+        if (typeof window.gtag === 'function') {
+            window.gtag('event', <?= json_encode(site_setting('analytics_purchase_event_name', 'purchase') ?: 'purchase') ?>, {
+                transaction_id: a.transaction_id,
+                value: a.value,
+                currency: a.currency,
+                items: a.items
+            });
+            sent = true;
+        }
+        if (typeof window.fbq === 'function') {
+            window.fbq('track', 'Purchase', {
+                value: a.value,
+                currency: a.currency,
+                content_type: 'product',
+                content_ids: a.items.map(function (i) { return i.item_id; }),
+                contents: a.items.map(function (i) { return { id: i.item_id, quantity: i.quantity, item_price: i.price }; }),
+                num_items: a.items.reduce(function (n, i) { return n + i.quantity; }, 0)
+            }, { eventID: 'purchase_' + a.transaction_id });
+            sent = true;
+        }
+        if (sent) {
+            try { localStorage.setItem(storageKey, '1'); } catch (e) {}
+            fetch(statusUrl.replace('resultStatus', 'ackAnalytics'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'transaction_id=' + encodeURIComponent(a.transaction_id)
+            }).catch(function () {});
+        }
+    }
+
     function setState(kind, data) {
         const orderStatus = Number(data.order_status);
         const balanceStatus = Number(data.balance_status);
@@ -245,6 +281,10 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
         const isPaymentApproved = type === 'order' && orderStatus === 0;
         const isCancelled = type === 'order' && [2, 5].includes(orderStatus);
         const isError = type === 'order' ? orderStatus === 12 : balanceStatus === 2;
+
+        if (type === 'order' && isSuccess && data.analytics && data.analytics.transaction_id) {
+            trackPurchase(data.analytics);
+        }
 
         icon.className = 'payment-result-icon ' + (isSuccess ? 'is-success' : (isCancelled || isError) ? 'is-error' : 'is-processing');
         icon.innerHTML = '<i class="fa-solid ' + (isSuccess ? 'fa-check' : (isCancelled || isError) ? 'fa-xmark' : isPartial ? 'fa-circle-exclamation' : 'fa-spinner') + '"></i>';

@@ -279,6 +279,12 @@ class Test extends MY_Controller
 		$this->load->library('analytics_tracker');
 		$result['channels_configured'] = $this->analytics_tracker->channelStatus();
 
+		if ((string)$this->input->get('status') === '1') {
+			$result['mode'] = 'status';
+			$result['status_report'] = $this->analytics_tracker->status();
+			return $this->legacyBanRespond($result, 200);
+		}
+
 		if ((string)$this->input->get('live') === '1') {
 			$result['mode'] = 'live_ping';
 			$result['live_ping'] = $this->analytics_tracker->livePing();

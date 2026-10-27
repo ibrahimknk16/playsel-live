@@ -59,6 +59,7 @@ class Orders_model extends MY_Model
 			o.order_created_at,
 			o.order_status,
 			o.order_require_data,
+			o.order_payment_info,
 			o.order_supplier_order_id,
 			o.order_operator_admin,
 			products.product_name,

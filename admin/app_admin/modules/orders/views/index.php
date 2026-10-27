@@ -1968,6 +1968,10 @@ $statusOptions = [
                         '<div class="od-product-main"><strong>' + escapeHtml(odValue(data.product_name)) + '</strong>' +
                         '<small>' + escapeHtml(odValue(data.category_title)) + ' · ' + (isEpinProduct ? 'E-Pin kod teslimatı' : 'UID / Server ID top-up') + ' · ' + escapeHtml(odValue(data.order_quantity)) + ' adet</small></div>' +
                         '<span class="od-status ' + statusTag + '">' + statusLabel + '</span>' + (statusCode === 13 ? '<span class="od-status wait" style="margin-left:6px">FRAUD</span>' : '') + '</section>' +
+                        (data.order_group ? '<h4 class="od-heading">' + odIcon('layer-group') + 'Adetli Sipariş (' + Number(data.order_group.count) + ' adet · ' + escapeHtml(Number(data.order_group.total_sale_price).toFixed(2)) + ' TL)</h4><div class="od-fields">' +
+                            data.order_group.items.map(function(item, idx) {
+                                return odRow('#' + (idx + 1) + ' · Sipariş ' + item.order_id + (Number(item.order_id) === orderId ? ' (bu sipariş)' : ''), item.status_name + ' · ' + Number(item.sale_price).toFixed(2) + ' TL', 'cube');
+                            }).join('') + '</div>' : '') +
                         (playerTiles ? '<h4 class="od-heading">' + odIcon('gamepad') + 'Oyuncu Bilgileri</h4><div class="od-player">' + playerTiles + '</div>' : '') +
                         '<h4 class="od-heading">' + odIcon('receipt') + 'Sipariş Bilgileri</h4><div class="od-fields">' +
                         odRow('Sipariş No', '#' + data.order_id, 'hashtag') +
