@@ -64,7 +64,7 @@ class Orders_model extends MY_Model
 			products.product_name,
 			products.product_image,
 			categories.category_title,
-			u.user_name as reseller_name,
+			CONCAT_WS(' ', NULLIF(TRIM(u.user_name), ''), NULLIF(TRIM(u.user_surname), '')) as reseller_name,
 			uu.user_name as supplier_name
 		");
 		$this->db->from('orders as o');
