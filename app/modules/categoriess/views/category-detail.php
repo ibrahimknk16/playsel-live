@@ -1361,6 +1361,7 @@ if (!function_exists('format_category_seo_tables')) {
                   class="product-item <?= !$isInStock ? 'product-out-of-stock' : (($this->input->get('p') !== null && $this->input->get('p') == $product->product_id) || ($this->input->get('p') === null && (int)$product->product_id === $firstAvailableProductId) ? 'selected' : '') ?>"
                   data-product="<?= htmlspecialchars($product->product_id) ?>"
                   data-price="<?= htmlspecialchars($product->user_price) ?>"
+                  data-epin="<?= ((int)($product->product_type ?? 0) === 3 && empty($product->product_is_bundle)) ? '1' : '0' ?>"
                   data-name="<?= htmlspecialchars($product->product_name) ?>">
 
                   <div class="product-item-icon">
@@ -1795,9 +1796,53 @@ if (!function_exists('format_category_seo_tables')) {
     }
 
     // Update Bottom Price Cards
+    const IS_EPIN = <?= ((int)($category->category_type ?? 0) === 3) ? 'true' : 'false' ?>;
+    const MAX_QTY = 10;
+
+    (function injectQtyControls() {
+      const style = document.createElement('style');
+      style.textContent = '.product-item{position:relative}' +
+        '.cd-qty{position:absolute;right:12px;bottom:10px;display:inline-flex;align-items:center;gap:8px}' +
+        '.cd-qty button{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:inherit;font-size:15px;line-height:1;cursor:pointer;padding:0}' +
+        '.cd-qty button:disabled{opacity:.35;cursor:not-allowed}' +
+        '.cd-qty .cd-qty-val{min-width:18px;text-align:center;font-weight:600;font-size:14px}';
+      document.head.appendChild(style);
+      document.querySelectorAll('.product-item[data-epin="1"]:not(.product-out-of-stock)').forEach(item => {
+        item.dataset.qty = '1';
+        const box = document.createElement('span');
+        box.className = 'cd-qty';
+        box.innerHTML = '<button type="button" class="cd-qty-minus" aria-label="Azalt" disabled>-</button>' +
+          '<span class="cd-qty-val">1</span>' +
+          '<button type="button" class="cd-qty-plus" aria-label="Arttır">+</button>';
+        box.addEventListener('click', e => e.stopPropagation());
+        box.addEventListener('keydown', e => e.stopPropagation());
+        box.querySelector('.cd-qty-minus').addEventListener('click', () => setQty(item, parseInt(item.dataset.qty) - 1));
+        box.querySelector('.cd-qty-plus').addEventListener('click', () => setQty(item, parseInt(item.dataset.qty) + 1));
+        item.appendChild(box);
+      });
+    })();
+
+    function setQty(item, n) {
+      const q = Math.min(MAX_QTY, Math.max(1, n));
+      item.dataset.qty = q;
+      item.querySelector('.cd-qty-val').textContent = q;
+      item.querySelector('.cd-qty-minus').disabled = q <= 1;
+      item.querySelector('.cd-qty-plus').disabled = q >= MAX_QTY;
+      document.querySelectorAll('.product-item').forEach(p => p.classList.remove('selected'));
+      item.classList.add('selected');
+      updateTotalPrice();
+      updateBarsVisibility();
+    }
+
+    function selectedQty() {
+      const s = document.querySelector('.product-item.selected');
+      return s ? (parseInt(s.dataset.qty) || 1) : 1;
+    }
+
     function updateTotalPrice() {
       const selected = document.querySelector('.product-item.selected');
-      const text = selected ? formatPrice(parseFloat(selected.dataset.price)) : '0,00 <?= $displayCurrency ?>';
+      const unit = selected ? parseFloat(selected.dataset.price) : 0;
+      const text = selected ? formatPrice(unit * selectedQty()) : '0,00 <?= $displayCurrency ?>';
       $totalTransfers.forEach(el => el.textContent = text);
     }
 
@@ -2128,6 +2173,7 @@ if (!function_exists('format_category_seo_tables')) {
             data: {
               uid: $userInput ? $userInput.value : null,
               pid: selectedProduct.dataset.product,
+              qty: selectedProduct.dataset.epin === '1' ? (parseInt(selectedProduct.dataset.qty) || 1) : 1,
               sid: $serverField ? $serverField.value : null,
               csrf_token: '<?= html_escape($this->security->get_csrf_hash()) ?>'
             },

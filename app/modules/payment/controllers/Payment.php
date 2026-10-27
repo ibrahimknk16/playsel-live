@@ -597,6 +597,28 @@ class Payment extends MY_Controller
 		$this->template->publish();
 	}
 
+	private function groupAggregateStatus(array $statuses)
+	{
+		$statuses = array_values(array_unique(array_map('intval', $statuses)));
+		if (count($statuses) === 1) {
+			return $statuses[0];
+		}
+		$cancelled = [2, 5, 12];
+		$hasDone = in_array(1, $statuses, true);
+		$hasCancelled = (bool)array_intersect($cancelled, $statuses);
+		$open = array_values(array_diff($statuses, [1], $cancelled));
+		if ($hasCancelled && ($hasDone || !empty($open))) {
+			return 100;
+		}
+		if ($hasDone && !empty($open)) {
+			return 102;
+		}
+		if (!empty($open)) {
+			return $open[0];
+		}
+		return $hasDone ? 1 : 2;
+	}
+
 	public function resultStatus()
 	{
 		$tokenData = $this->readResultToken($this->input->get('token'));
@@ -675,7 +697,8 @@ class Payment extends MY_Controller
 					->from('orders as o')
 					->join('products as p', 'p.product_id = o.order_product_id', 'left')
 					->where('o.order_reseller_id', $userID)
-					->where('o.order_created_at', $row->order_created_at)
+					->like('o.order_payment_info', $bundleReference)
+					->order_by('o.order_id', 'ASC')
 					->get()->result();
 				$matchedOrders = [];
 				foreach ($bundleOrders as $bundleOrder) {
@@ -750,22 +773,35 @@ class Payment extends MY_Controller
 				$transferInfo = $this->transferResultInfo((int)$row->order_eft_bank_id, (string)$row->order_eft_id);
 			}
 
+			$groupHasVoucher = false;
+			$groupStatuses = [];
+			foreach ($orderGroup as $groupOrder) {
+				$groupStatuses[] = (int)$groupOrder->order_status;
+				if (!empty($groupOrder->order_voucher)) {
+					$groupHasVoucher = true;
+				}
+			}
+			$isQuantityGroup = !empty($firstSnapshot['is_quantity_group']);
+			$groupStatus = count($orderGroup) > 1 ? $this->groupAggregateStatus($groupStatuses) : (int)$row->order_status;
+
 			return json([
 				'status' => 'success',
 				'entity' => 'order',
 				'data' => array_merge([
 					'id' => (int)$row->order_id,
-					'order_status' => (int)$row->order_status,
+					'order_status' => $groupStatus,
 					'payment_type' => (int)$row->order_payment_type,
 					'amount' => number_format($bundleReference !== '' ? $groupSalePrice : (float)$row->order_sale_price, 2, ',', '.'),
 					'currency' => $row->order_sale_price_currency ?: 'TRY',
 					'part_count' => count($orderGroup),
+					'is_quantity_group' => $isQuantityGroup,
+					'quantity' => $isQuantityGroup ? count($orderGroup) : 1,
 					'items' => $items,
 					'cancellation_reason' => $cancellationReason,
 					'require_data' => $requireData,
 					'product_name' => $displayName,
 					'product_icon' => $displayIcon,
-					'has_voucher' => !empty($row->order_voucher),
+					'has_voucher' => $groupHasVoucher,
 					'payment_method_label' => $orderPaymentMethodLabels[(int)$row->order_payment_type] ?? 'Ödeme',
 				], $transferInfo),
 			]);
@@ -895,16 +931,8 @@ class Payment extends MY_Controller
 		}
 
 		$qty = 1;
-		if ((int)$getProduct->product_is_bundle !== 1) {
-			$productCategory = $this->db->select('category_type, category_parent_category_id')->get_where('categories', ['category_id' => $getProduct->product_category_id])->row();
-			$categoryType = (int)($productCategory->category_type ?? 0);
-			if (!empty($productCategory->category_parent_category_id)) {
-				$parentCategory = $this->db->select('category_type')->get_where('categories', ['category_id' => $productCategory->category_parent_category_id])->row();
-				$categoryType = (int)($parentCategory->category_type ?? $categoryType);
-			}
-			if ($categoryType === 3) {
-				$qty = max(1, min(self::MAX_ORDER_QTY, (int)($post['qty'] ?? 1)));
-			}
+		if ((int)$getProduct->product_is_bundle !== 1 && (int)$getProduct->product_type === 3) {
+			$qty = max(1, min(self::MAX_ORDER_QTY, (int)($post['qty'] ?? 1)));
 		}
 
 		$cartData = [

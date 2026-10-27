@@ -105,6 +105,12 @@ class Cron extends MY_Controller
 
 		try {
 			$recentPaymentCutoff = date('Y-m-d H:i:s', time() - self::PENDING_PAYMENT_QUERY_MAX_AGE_MINUTES * 60);
+			// Card top-ups still pending after the window are marked failed (2).
+			$this->db->where('user_balance_status', 0)
+				->where('user_balance_created_at <', $recentPaymentCutoff)
+				->like('user_balance_note', '"payment_method":"cc"')
+				->update('user_balance', ['user_balance_status' => 2]);
+
 			$orders = $this->db->select('order_id, order_payment_token')
 				->where('order_payment_type', 4)
 				->where('order_status', 11)

@@ -29,7 +29,7 @@
             $paymentTypeStr = 'Cüzdan (Bakiye)';
         }
 
-        if (($order->bundle_count ?? 1) > 1) {
+        if (($order->bundle_count ?? 1) > 1 && empty($order->is_quantity_group)) {
             $productTypeStr = 'Paket';
         } elseif (!empty($order->order_voucher)) {
             $productTypeStr = 'E-pin';
@@ -93,7 +93,7 @@
                 <div>
                     <strong style="display:block; color:#f5f6f7; font-size:15px; font-weight:750;">Ürün bilgileri</strong>
                     <span style="display:block; margin-top:4px; color:#8f9ba6; font-size:13px;">
-                        <?= html_escape($order->product_name) ?> · <?= ($order->bundle_count ?? 1) > 1 ? (int)$order->bundle_count . ' Parça' : (int)$order->order_quantity . ' adet' ?>
+                        <?= html_escape($order->product_name) ?> · <?= !empty($order->is_quantity_group) ? (int)$order->bundle_count . ' adet' : (($order->bundle_count ?? 1) > 1 ? (int)$order->bundle_count . ' Parça' : (int)$order->order_quantity . ' adet') ?>
                     </span>
                 </div>
             </div>
@@ -133,10 +133,10 @@
 
             <?php if (($order->bundle_count ?? 1) > 1 && !empty($order->bundle_parts)): ?>
             <div class="delivery-panel" style="margin-top:16px;">
-                <h3 class="delivery-heading">Paket Parçaları</h3>
+                <h3 class="delivery-heading"><?= !empty($order->is_quantity_group) ? 'Sipariş Kalemleri' : 'Paket Parçaları' ?></h3>
                 <?php $partLabels = [0 => 'Beklemede', 1 => 'Teslim Edildi', 2 => 'İptal Edildi', 3 => 'İşleniyor', 4 => 'İşleniyor', 5 => 'İptal Edildi', 9 => 'İşleniyor', 11 => 'Ödeme Bekleniyor', 12 => 'Ödeme Başarısız', 13 => 'İşleniyor', 14 => 'İşleniyor', 15 => 'Yükleme Bekliyor']; ?>
                 <div class="delivery-rows">
-                    <?php foreach ($order->bundle_parts as $part): ?>
+                    <?php $partIndex = 0; foreach ($order->bundle_parts as $part): $partIndex++; ?>
                         <?php
                         $partStatus = (int)$part->order_status;
                         $partCancelled = in_array($partStatus, [2, 5, 12], true);
@@ -161,7 +161,7 @@
                         }
                         ?>
                         <div class="delivery-row" style="flex-wrap:wrap;">
-                            <span class="delivery-label"><?= html_escape($part->product_name) ?> · <span style="color:<?= $partColor ?>;"><?= html_escape($partLabels[$partStatus] ?? 'İşleniyor') ?></span></span>
+                            <span class="delivery-label"><?= html_escape($part->product_name) ?><?= !empty($order->is_quantity_group) ? ' #' . (int)($partIndex ?? 0) : '' ?> · <span style="color:<?= $partColor ?>;"><?= html_escape($partLabels[$partStatus] ?? 'İşleniyor') ?></span></span>
                             <strong class="delivery-value"><?= number_format((float)$part->order_sale_price, 2, ',', '.') ?> <?= $part->order_sale_price_currency === 'TRY' ? '₺' : html_escape($part->order_sale_price_currency) ?></strong>
                             <span style="flex-basis:100%;font-size:11px;color:<?= $partColor ?>;margin-top:4px;"><?= html_escape($partNote) ?></span>
                         </div>
