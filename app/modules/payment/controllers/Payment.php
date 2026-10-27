@@ -114,6 +114,19 @@ class Payment extends MY_Controller
 	private const CREDIT_CARD_COMMISSION_RATE = 2.7;
 	private const MOBILE_COMMISSION_RATE = 60;
 
+	private function isCardExpiryInFuture($month, $year): bool
+	{
+		$month = (int)$month;
+		$year = (int)$year;
+		if ($year < 100) {
+			$year += 2000;
+		}
+		if ($month < 1 || $month > 12) {
+			return false;
+		}
+		return ($year * 100 + $month) >= (int)date('Ym');
+	}
+
 	private function safeCardInfo($cardInfo)
 	{
 		$number = preg_replace('/\D+/', '', (string)($cardInfo['cc_number'] ?? ''));
@@ -1264,6 +1277,9 @@ class Payment extends MY_Controller
 		if ((int)$ccExpireMonth < 1 || (int)$ccExpireMonth > 12) {
 			return json(['status' => 'error', 'message' => 'Kart son kullanma tarihi geçersiz.']);
 		}
+		if (!$this->isCardExpiryInFuture($ccExpireMonth, $ccExpireYear)) {
+			return json(['status' => 'error', 'message' => 'Kartınızın son kullanma tarihi geçmiş. Lütfen tarihi kontrol edin.']);
+		}
 
 		$totalAmount = round($netTotal * (1 + (self::CREDIT_CARD_COMMISSION_RATE / 100)), 2);
 
@@ -1486,6 +1502,20 @@ class Payment extends MY_Controller
 		return $response;
 	}
 
+	private function fraudBuyerParams(): array
+	{
+		$userID = (int)($this->data['user']['user_id'] ?? 0);
+		$row = $this->checkoutPhoneUser($userID);
+		$phone = $this->normalizeMobilePhoneNumber((string)($row->user_phone ?? ''));
+		$email = (string)($this->db->select('user_email')->where('user_id', $userID)->get('users')->row()->user_email ?? '');
+
+		return [
+			'buyerPhoneNumber' => $this->isValidMobilePhoneNumber($phone) ? $phone : '',
+			'buyerExternalId'  => (string)$userID,
+			'buyerEmail'       => $email,
+		];
+	}
+
 	private function buildDijigatePaymentData($paymentReference, $totalAmount, $cardInfo, $type = 'order', $orderItems = [], $redirectUrl = null)
 	{
 		$items = [];
@@ -1520,6 +1550,7 @@ class Payment extends MY_Controller
 			'paymentChannel'   => 'WEB',
 			'clientIp'         => getIp(),
 			'additionalParams' => 'optional_metadata',
+			'fraudParams'      => $this->fraudBuyerParams(),
 			'items'            => $items,
 			'card' => [
 				'cardAlias'      => 'New Card' ?? null,
@@ -1676,6 +1707,13 @@ class Payment extends MY_Controller
 			$errors = $this->form_validation->error_array();
 			$first_error = reset($errors);
 			return json(['status' => 'error', 'message' => $first_error]);
+		}
+
+		if ($method === 'cc') {
+			[$expMonth, $expYear] = array_pad(explode('/', (string)$post['cc_expiry']), 2, '');
+			if (!$this->isCardExpiryInFuture($expMonth, $expYear)) {
+				return json(['status' => 'error', 'message' => 'Kartınızın son kullanma tarihi geçmiş veya hatalı. Lütfen tarihi kontrol edin.']);
+			}
 		}
 
 		// Tutar Formatlama (Stabil decimal dönüşüm)
@@ -1931,11 +1969,11 @@ class Payment extends MY_Controller
 		}
 
 		if (str_starts_with($digits, '0')) {
-			return '9' . substr($digits, 1);
+			return '90' . substr($digits, 1);
 		}
 
 		if (strlen($digits) === 10 && str_starts_with($digits, '5')) {
-			return '9' . $digits;
+			return '90' . $digits;
 		}
 
 		if (strlen($digits) === 11 && str_starts_with($digits, '5')) {
