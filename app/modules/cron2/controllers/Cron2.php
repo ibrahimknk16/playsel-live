@@ -291,13 +291,17 @@ class Cron2 extends MY_Controller
 			}
 		}
 
-		// Analytics/Meta olayları sipariş durumundan sunucu tarafında üretilir; hata cron akışını etkilemez.
-		try {
-			$this->load->library('analytics_tracker');
-			$this->analytics_tracker->processPending();
-		} catch (Throwable $e) {
-			log_message('error', 'Analytics tracker failed: ' . $e->getMessage());
-		}
+		// Zaten çalışan bu cron'a bağlı: yeni teslim/iptal edilen siparişlerin olayları ayrı bir cron gerektirmeden gönderilir.
+		$this->analyticsEvents();
+	}
+
+	// Cron Job: teslim/iptal edilen siparişlerin GA4 + Meta olaylarını gönderir (her 5 dakikada bir önerilir).
+	// Idempotent: gönderilen olay analytics_events_sent kaydıyla tekrar gönderilmez; çakışan çalışmalar kilitle engellenir.
+	public function analyticsEvents()
+	{
+		$this->load->library('analytics_tracker');
+		$processed = $this->analytics_tracker->runLocked(50);
+		echo $processed === null ? 'Başka bir çalışma sürüyor.' : 'Analytics olayı işlenen sipariş: ' . $processed;
 	}
 
 	public function vomsisAutoApproveProcess() // Cron Job: Vomsis ile Bekleyen Cüzdan Yüklemelerini ve Siparişleri Tek Elden Yönet

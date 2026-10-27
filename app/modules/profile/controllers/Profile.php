@@ -1584,6 +1584,7 @@ class Profile extends MY_Controller
 				$order->bundle_count = 0;
 				$order->bundle_total = 0.0;
 				$order->bundle_product_name = $snapshot['bundle_product_name'] ?? $order->product_name;
+				$order->is_quantity_group = !empty($snapshot['is_quantity_group']);
 				$groupedOrders[$groupKey] = $order;
 			}
 
@@ -1904,6 +1905,24 @@ class Profile extends MY_Controller
 				$order->product_name = $snapshot['bundle_product_name'] ?? $order->product_name;
 				$order->order_quantity = $order->bundle_count;
 				$order->order_sale_price = $order->bundle_total;
+				$order->is_quantity_group = !empty($snapshot['is_quantity_group']);
+				if ($order->is_quantity_group) {
+					$mergedVouchers = [];
+					foreach ($order->bundle_parts as $part) {
+						if (empty($part->order_voucher)) {
+							continue;
+						}
+						$decodedVoucher = json_decode((string)$part->order_voucher, true);
+						if (is_array($decodedVoucher)) {
+							foreach ($decodedVoucher as $voucherKey => $voucherValue) {
+								$mergedVouchers[] = is_numeric($voucherKey) ? $voucherValue : [$voucherKey => $voucherValue];
+							}
+						} else {
+							$mergedVouchers[] = (string)$part->order_voucher;
+						}
+					}
+					$order->order_voucher = !empty($mergedVouchers) ? json_encode($mergedVouchers, JSON_UNESCAPED_UNICODE) : null;
+				}
 			}
 		} else {
 			$order->bundle_parts[] = $order;

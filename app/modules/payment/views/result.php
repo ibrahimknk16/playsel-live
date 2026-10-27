@@ -217,21 +217,6 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
 
     });
 
-    // Asıl satın alma/iptal/iade olayları sunucudan gider (Analytics_tracker); burada yalnızca
-    // Meta Pixel tarafı için, sunucudaki event_id ile aynı olduğundan tekilleştirilen Purchase gönderilir.
-    function trackMetaPurchase(data) {
-        if (type !== 'order' || typeof window.fbq !== 'function' || !data || !data.id) return;
-        if (Number(data.part_count || 1) !== 1 || (data.currency || 'TRY') !== 'TRY') return;
-        const value = Number(String(data.amount || '0').replace(/\./g, '').replace(',', '.')) || 0;
-        window.fbq('track', 'Purchase', {
-            value: value,
-            currency: 'TRY',
-            order_id: String(data.id),
-            content_type: 'product',
-            num_items: 1
-        }, { eventID: 'purchase_' + String(data.id) });
-    }
-
     function showLookupError(message) {
         icon.className = 'payment-result-icon is-error';
         icon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
@@ -251,20 +236,61 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
         primary.querySelector('span').textContent = type === 'order' ? 'Siparişlerime Git' : 'Cüzdanıma Git';
     }
 
+    // Tarayıcı satın alma olayı: sunucu olayıyla aynı transaction_id / eventID kullanılır, GA4 ve Meta tekilleştirir.
+    function trackPurchase(a) {
+        const storageKey = 'ps_purchase_' + a.transaction_id;
+        try { if (localStorage.getItem(storageKey)) return; } catch (e) {}
+        let sent = false;
+        if (typeof window.gtag === 'function') {
+            window.gtag('event', <?= json_encode(site_setting('analytics_purchase_event_name', 'purchase') ?: 'purchase') ?>, {
+                transaction_id: a.transaction_id,
+                value: a.value,
+                currency: a.currency,
+                items: a.items
+            });
+            sent = true;
+        }
+        if (typeof window.fbq === 'function') {
+            window.fbq('track', 'Purchase', {
+                value: a.value,
+                currency: a.currency,
+                content_type: 'product',
+                content_ids: a.items.map(function (i) { return i.item_id; }),
+                contents: a.items.map(function (i) { return { id: i.item_id, quantity: i.quantity, item_price: i.price }; }),
+                num_items: a.items.reduce(function (n, i) { return n + i.quantity; }, 0)
+            }, { eventID: 'purchase_' + a.transaction_id });
+            sent = true;
+        }
+        if (sent) {
+            try { localStorage.setItem(storageKey, '1'); } catch (e) {}
+            fetch(statusUrl.replace('resultStatus', 'ackAnalytics'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'transaction_id=' + encodeURIComponent(a.transaction_id)
+            }).catch(function () {});
+        }
+    }
+
     function setState(kind, data) {
         const orderStatus = Number(data.order_status);
         const balanceStatus = Number(data.balance_status);
-        const isPending = type === 'order' ? [0, 3, 4, 9, 11, 13, 14, 15].includes(orderStatus) : balanceStatus === 0;
+        const isPending = type === 'order' ? [0, 3, 4, 9, 11, 13, 14, 15, 102].includes(orderStatus) : balanceStatus === 0;
         const isSuccess = type === 'order' ? orderStatus === 1 : balanceStatus === 1;
+        const isPartial = type === 'order' && orderStatus === 100;
         const isPaymentApproved = type === 'order' && orderStatus === 0;
         const isCancelled = type === 'order' && [2, 5].includes(orderStatus);
         const isError = type === 'order' ? orderStatus === 12 : balanceStatus === 2;
 
+        if (type === 'order' && isSuccess && data.analytics && data.analytics.transaction_id) {
+            trackPurchase(data.analytics);
+        }
+
         icon.className = 'payment-result-icon ' + (isSuccess ? 'is-success' : (isCancelled || isError) ? 'is-error' : 'is-processing');
-        icon.innerHTML = '<i class="fa-solid ' + (isSuccess ? 'fa-check' : (isCancelled || isError) ? 'fa-xmark' : 'fa-spinner') + '"></i>';
-        resultStep.classList.toggle('is-result', isSuccess || isCancelled || isError);
+        icon.innerHTML = '<i class="fa-solid ' + (isSuccess ? 'fa-check' : (isCancelled || isError) ? 'fa-xmark' : isPartial ? 'fa-circle-exclamation' : 'fa-spinner') + '"></i>';
+        resultStep.classList.toggle('is-result', isSuccess || isCancelled || isError || isPartial);
         processingStep.classList.toggle('is-active', isPending);
-        statusText.textContent = isSuccess ? 'Teslim Edildi' : isPaymentApproved ? 'Ödeme Onaylandı - Teslimat Bekleniyor' : isCancelled ? 'Sipariş İptal Edildi' : isError ? 'Başarısız' : 'İşleniyor';
+        statusText.textContent = isSuccess ? 'Teslim Edildi' : isPartial ? 'Kısmen Tamamlandı' : orderStatus === 102 ? 'Kısmen Teslim Edildi' : isPaymentApproved ? 'Ödeme Onaylandı - Teslimat Bekleniyor' : isCancelled ? 'Sipariş İptal Edildi' : isError ? 'Başarısız' : 'İşleniyor';
         amount.textContent = data.amount ? data.amount + ' ' + (data.currency === 'TRY' ? 'TL' : (data.currency || 'TL')) : '-';
 
         if (type === 'order') {
@@ -273,13 +299,13 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
             showTransferInfo(data);
             product.hidden = false;
             product.style.display = '';
-            productName.textContent = data.product_name || 'Dijital Ürün';
+            productName.textContent = (data.product_name || 'Dijital Ürün') + (data.is_quantity_group ? ' × ' + Number(data.quantity) : '');
             const items = Array.isArray(data.items) ? data.items : [];
             productParts.hidden = items.length <= 1;
             productParts.replaceChildren();
             if (items.length > 1) {
                 const heading = document.createElement('strong');
-                heading.textContent = Number(data.part_count || items.length) + ' parçalı sipariş';
+                heading.textContent = data.is_quantity_group ? Number(data.quantity) + ' adet' : Number(data.part_count || items.length) + ' parçalı sipariş';
                 heading.style.cssText = 'display:block;margin-bottom:2px;';
                 productParts.appendChild(heading);
                 items.forEach(function (item) {
@@ -305,13 +331,22 @@ $paymentsUrl = topupcenter() . $uri . '/profile/payments';
         }
 
         if (isSuccess) {
-            trackMetaPurchase(data);
             eyebrow.textContent = type === 'order' ? 'SİPARİŞ TAMAMLANDI' : 'BAKİYE YÜKLEME TAMAMLANDI';
             title.textContent = type === 'order' ? (data.has_voucher ? 'Ürününüz Teslim Edildi' : 'Siparişiniz Tamamlandı') : 'Bakiyeniz Yüklendi';
             description.textContent = type === 'order' ? (data.has_voucher ? 'Dijital kodunuz sipariş detayında görüntülenebilir.' : 'Siparişiniz tedarikçi tarafından başarıyla teslim edildi.') : 'Onaylanan tutar harcanabilir bakiyenize eklendi.';
             primary.href = type === 'order' ? orderUrl.replace('/profile/orders', '/profile/order-detail/' + id) : walletUrl;
             primary.querySelector('span').textContent = type === 'order' ? 'Sipariş Detayına Git' : 'Cüzdanıma Git';
             alertBox.hidden = true;
+            return false;
+        }
+
+        if (isPartial) {
+            eyebrow.textContent = 'SİPARİŞ SONUCU';
+            title.textContent = 'Siparişiniz Kısmen Tamamlandı';
+            description.textContent = 'Bazı ürünler teslim edildi, bazıları iptal edildi. İptal edilen ürünlerin tutarı bakiyenize iade edilir.';
+            alertBox.hidden = true;
+            primary.href = orderUrl.replace('/profile/orders', '/profile/order-detail/' + id);
+            primary.querySelector('span').textContent = 'Sipariş Detayına Git';
             return false;
         }
 

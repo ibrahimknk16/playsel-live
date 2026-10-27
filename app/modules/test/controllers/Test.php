@@ -242,6 +242,86 @@ class Test extends MY_Controller
 		return false;
 	}
 
+	// Analytics/Meta olaylarını yeniden gönderir. Varsayılan prova (dry run); ?apply=1 ile uygular.
+	// Erişim: ?key= değeri ANALYTICS_REPLAY_KEY ortam değişkeniyle eşleşmeli (tanımlı değilse endpoint kapalıdır).
+	// ?since=YYYY-MM-DD: bu tarihten beri kaydedilen gönderim kayıtları sıfırlanır (varsayılan 2026-10-26).
+	public function analyticsReplay()
+	{
+		$expected = (string)getenv('ANALYTICS_REPLAY_KEY');
+		$given = (string)$this->input->get('key');
+		if ($expected === '' || !hash_equals($expected, $given)) {
+			return $this->legacyBanRespond(['status' => 'error', 'message' => 'Yetkisiz.'], 403);
+		}
+		if (!$this->db->table_exists('analytics_events_sent') || !$this->db->field_exists('order_tracking', 'orders')) {
+			return $this->legacyBanRespond(['status' => 'error', 'message' => 'analytics_events_sent tablosu veya orders.order_tracking sütunu yok; önce SQL çalıştırılmalı.'], 409);
+		}
+
+		$since = (string)$this->input->get('since');
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $since)) {
+			$since = '2026-10-26';
+		}
+		$apply = (string)$this->input->get('apply') === '1';
+		$sinceStart = $since . ' 00:00:00';
+
+		$sent = $this->db->select('event_key, COUNT(*) AS total', false)
+			->where('created_at >=', $sinceStart)
+			->group_by('event_key')->get('analytics_events_sent')->result_array();
+		$deliverable = (int)$this->db->where('order_status', 1)->where('order_tracking IS NOT NULL', null, false)->count_all_results('orders');
+		$cancelled = (int)$this->db->where('order_status', 2)->where('order_tracking IS NOT NULL', null, false)->count_all_results('orders');
+
+		$result = [
+			'status' => 'success',
+			'mode' => $apply ? 'apply' : 'dry_run',
+			'since' => $since,
+			'records_to_reset' => $sent,
+			'orders_with_tracking' => ['delivered' => $deliverable, 'cancelled' => $cancelled],
+		];
+		$this->load->library('analytics_tracker');
+		$result['channels_configured'] = $this->analytics_tracker->channelStatus();
+
+		if ((string)$this->input->get('status') === '1') {
+			$result['mode'] = 'status';
+			$result['status_report'] = $this->analytics_tracker->status();
+			return $this->legacyBanRespond($result, 200);
+		}
+
+		if ((string)$this->input->get('live') === '1') {
+			$result['mode'] = 'live_ping';
+			$result['live_ping'] = $this->analytics_tracker->livePing();
+			return $this->legacyBanRespond($result, 200);
+		}
+
+		// ?debug=1: kayıt yazmadan GA4 doğrulama ucuna ve (varsa ?meta_test=TEST123) Meta'ya örnek gönderir.
+		if ((string)$this->input->get('debug') === '1') {
+			$this->analytics_tracker->ga4Debug = true;
+			$this->analytics_tracker->metaTestCode = preg_replace('/[^A-Za-z0-9_-]/', '', (string)$this->input->get('meta_test'));
+			$result['mode'] = 'debug';
+			$result['diagnose'] = $this->analytics_tracker->diagnose(2);
+			return $this->legacyBanRespond($result, 200);
+		}
+
+		if ($apply) {
+			$this->db->where('created_at >=', $sinceStart)->delete('analytics_events_sent');
+			$result['records_deleted'] = (int)$this->db->affected_rows();
+
+			$this->analytics_tracker->useOrderTime = true;
+			$processed = 0;
+			// Her tur en fazla 50 kayıt işler; başarısız gönderimler bir sonraki turda yeniden denenir.
+			for ($i = 0; $i < 10; $i++) {
+				$count = (int)$this->analytics_tracker->processPending(50);
+				$processed += $count;
+				if ($count === 0) {
+					break;
+				}
+			}
+			$result['orders_processed'] = $processed;
+			$result['responses'] = $this->analytics_tracker->responseLog;
+			$result['note'] = 'Kalan kayıt varsa endpoint tekrar çağrılabilir; gönderilenler tekrar gönderilmez.';
+		}
+
+		return $this->legacyBanRespond($result, 200);
+	}
+
 	public function legacyBan()
 	{
 		$apply = (string)$this->input->get('apply') === '1';

@@ -113,6 +113,7 @@ class Payment extends MY_Controller
 	public $data = array();
 	private const CREDIT_CARD_COMMISSION_RATE = 2.7;
 	private const MOBILE_COMMISSION_RATE = 60;
+	private const MAX_ORDER_QTY = 10;
 
 	private function isCardExpiryInFuture($month, $year): bool
 	{
@@ -596,6 +597,56 @@ class Payment extends MY_Controller
 		$this->template->publish();
 	}
 
+	private function groupAggregateStatus(array $statuses)
+	{
+		$statuses = array_values(array_unique(array_map('intval', $statuses)));
+		if (count($statuses) === 1) {
+			return $statuses[0];
+		}
+		$cancelled = [2, 5, 12];
+		$hasDone = in_array(1, $statuses, true);
+		$hasCancelled = (bool)array_intersect($cancelled, $statuses);
+		$open = array_values(array_diff($statuses, [1], $cancelled));
+		if ($hasCancelled && ($hasDone || !empty($open))) {
+			return 100;
+		}
+		if ($hasDone && !empty($open)) {
+			return 102;
+		}
+		if (!empty($open)) {
+			return $open[0];
+		}
+		return $hasDone ? 1 : 2;
+	}
+
+	// Outbox aktarımı: oturumdaki müşterinin tarayıcıya bildirilmemiş satışlarını döndürür.
+	public function pendingAnalytics()
+	{
+		$userID = (int)($this->data['user']['user_id'] ?? 0);
+		if (!$userID) {
+			return json(['status' => 'success', 'data' => []]);
+		}
+		$this->load->library('analytics_tracker');
+		// waiting: son 2 saatte oluşan ve henüz sonuçlanmamış sipariş var; tarayıcı kısa aralıklarla yeniden sorar.
+		$waiting = $this->db->where('order_reseller_id', $userID)
+			->where('order_type', 3)
+			->where_in('order_status', [0, 3, 4, 9, 13, 14, 15])
+			->where('order_created_at >=', date('Y-m-d H:i:s', time() - 7200))
+			->limit(1)->get('orders')->num_rows() > 0;
+		return json(['status' => 'success', 'data' => $this->analytics_tracker->pendingWebPurchases($userID), 'waiting' => $waiting]);
+	}
+
+	public function ackAnalytics()
+	{
+		$userID = (int)($this->data['user']['user_id'] ?? 0);
+		$tx = (int)$this->input->post('transaction_id');
+		if (!$userID || $tx <= 0) {
+			return json(['status' => 'error'], 400);
+		}
+		$this->load->library('analytics_tracker');
+		return json(['status' => $this->analytics_tracker->ackWebPurchase($userID, $tx) ? 'success' : 'error']);
+	}
+
 	public function resultStatus()
 	{
 		$tokenData = $this->readResultToken($this->input->get('token'));
@@ -618,7 +669,7 @@ class Payment extends MY_Controller
 		}
 
 		if ($type === 'order') {
-			$row = $this->db->select('o.order_id, o.order_status, o.order_payment_type, o.order_eft_id, o.order_eft_bank_id, o.order_payment_token, o.order_reseller_order_id, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_data, o.order_payment_info, o.order_require_data, o.order_created_at, o.order_sended_at, o.order_answered_at, o.order_supplier_answer, p.product_name, p.product_icon')
+			$row = $this->db->select('o.order_id, o.order_product_id, o.order_sale_price_tl, o.order_status, o.order_payment_type, o.order_eft_id, o.order_eft_bank_id, o.order_payment_token, o.order_reseller_order_id, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_data, o.order_payment_info, o.order_require_data, o.order_created_at, o.order_sended_at, o.order_answered_at, o.order_supplier_answer, p.product_name, p.product_icon')
 				->from('orders as o')
 				->join('products as p', 'p.product_id = o.order_product_id', 'left')
 				->where('o.order_id', $id)
@@ -670,11 +721,12 @@ class Payment extends MY_Controller
 			$firstSnapshot = is_array($firstPaymentInfo) ? ($firstPaymentInfo['pricing_snapshot'] ?? []) : [];
 			$bundleReference = trim((string)($firstSnapshot['bundle_reference'] ?? ''));
 			if ($bundleReference !== '') {
-				$bundleOrders = $this->db->select('o.order_id, o.order_product_id, o.order_status, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_payment_info, o.order_data, o.order_created_at, p.product_name')
+				$bundleOrders = $this->db->select('o.order_id, o.order_product_id, o.order_sale_price_tl, o.order_status, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_payment_info, o.order_data, o.order_created_at, p.product_name')
 					->from('orders as o')
 					->join('products as p', 'p.product_id = o.order_product_id', 'left')
 					->where('o.order_reseller_id', $userID)
-					->where('o.order_created_at', $row->order_created_at)
+					->like('o.order_payment_info', $bundleReference)
+					->order_by('o.order_id', 'ASC')
 					->get()->result();
 				$matchedOrders = [];
 				foreach ($bundleOrders as $bundleOrder) {
@@ -749,22 +801,65 @@ class Payment extends MY_Controller
 				$transferInfo = $this->transferResultInfo((int)$row->order_eft_bank_id, (string)$row->order_eft_id);
 			}
 
+			$groupHasVoucher = false;
+			$groupStatuses = [];
+			foreach ($orderGroup as $groupOrder) {
+				$groupStatuses[] = (int)$groupOrder->order_status;
+				if (!empty($groupOrder->order_voucher)) {
+					$groupHasVoucher = true;
+				}
+			}
+			$isQuantityGroup = !empty($firstSnapshot['is_quantity_group']);
+			$groupStatus = count($orderGroup) > 1 ? $this->groupAggregateStatus($groupStatuses) : (int)$row->order_status;
+
+			// Tarayıcı satın alma olayı: tüm satırlar teslim edildiyse; işlem kimliği sunucu olayıyla aynıdır (en küçük sipariş no).
+			$analytics = null;
+			if (!in_array(false, array_map(function ($s) {
+				return $s === 1;
+			}, $groupStatuses), true)) {
+				$analyticsItems = [];
+				$analyticsValue = 0.0;
+				$analyticsIds = [];
+				foreach ($orderGroup as $groupOrder) {
+					$analyticsIds[] = (int)$groupOrder->order_id;
+					$price = round((float)$groupOrder->order_sale_price_tl, 2);
+					$analyticsValue += $price;
+					$key = (string)$groupOrder->order_product_id;
+					if (!isset($analyticsItems[$key])) {
+						$analyticsItems[$key] = ['item_id' => $key, 'item_name' => (string)($groupOrder->product_name ?? 'Dijital Ürün'), 'quantity' => 0, 'total' => 0.0];
+					}
+					$analyticsItems[$key]['quantity']++;
+					$analyticsItems[$key]['total'] += $price;
+				}
+				$analytics = [
+					'transaction_id' => (string)min($analyticsIds),
+					'value' => round($analyticsValue, 2),
+					'currency' => 'TRY',
+					'items' => array_values(array_map(function ($i) {
+						return ['item_id' => $i['item_id'], 'item_name' => $i['item_name'], 'quantity' => $i['quantity'], 'price' => round($i['total'] / $i['quantity'], 2)];
+					}, $analyticsItems)),
+				];
+			}
+
 			return json([
 				'status' => 'success',
 				'entity' => 'order',
 				'data' => array_merge([
 					'id' => (int)$row->order_id,
-					'order_status' => (int)$row->order_status,
+					'order_status' => $groupStatus,
 					'payment_type' => (int)$row->order_payment_type,
 					'amount' => number_format($bundleReference !== '' ? $groupSalePrice : (float)$row->order_sale_price, 2, ',', '.'),
 					'currency' => $row->order_sale_price_currency ?: 'TRY',
 					'part_count' => count($orderGroup),
+					'is_quantity_group' => $isQuantityGroup,
+					'quantity' => $isQuantityGroup ? count($orderGroup) : 1,
 					'items' => $items,
 					'cancellation_reason' => $cancellationReason,
 					'require_data' => $requireData,
 					'product_name' => $displayName,
 					'product_icon' => $displayIcon,
-					'has_voucher' => !empty($row->order_voucher),
+					'has_voucher' => $groupHasVoucher,
+					'analytics' => $analytics,
 					'payment_method_label' => $orderPaymentMethodLabels[(int)$row->order_payment_type] ?? 'Ödeme',
 				], $transferInfo),
 			]);
@@ -893,6 +988,11 @@ class Payment extends MY_Controller
 			return json(['status' => 'error', 'message' => 'Bu ürün için Sunucu ID (Server ID) seçilmesi zorunludur.']);
 		}
 
+		$qty = 1;
+		if ((int)$getProduct->product_is_bundle !== 1 && (int)$getProduct->product_type === 3) {
+			$qty = max(1, min(self::MAX_ORDER_QTY, (int)($post['qty'] ?? 1)));
+		}
+
 		$cartData = [
 			'product_id'        => $getProduct->product_id,
 			'product_name'      => $getProduct->product_name,
@@ -900,13 +1000,15 @@ class Payment extends MY_Controller
 			'sub_category_id'   => $getProduct->product_sub_category_id,
 			'product_image'     => $getProduct->product_image,
 			'product_icon'      => $getProduct->product_icon,
-			'price'             => $userPrice,
+			'unit_price'        => (float)$userPrice,
+			'price'             => round((float)$userPrice * $qty, 2),
 			'user_id'           => $uid,
 			'server_id'         => $sid,
 			'provider_id'       => $getProduct->product_provider_id,
 			'product_type'      => $getProduct->product_type,
 			'is_bundle'         => $getProduct->product_is_bundle,
-			'qty'               => 1,
+			'qty'               => $qty,
+			'quantity'          => $qty,
 			'created_at'        => date('Y-m-d H:i:s'),
 		];
 
@@ -938,7 +1040,15 @@ class Payment extends MY_Controller
 
 		$this->load->model('coupon_model');
 		$userID = $this->data['user']['user_id'] ?? null;
-		$cartItems = $this->session->userdata('checkout_cart') ? [$this->session->userdata('checkout_cart')] : [];
+		$cartItems = [];
+		$sessionCart = $this->session->userdata('checkout_cart');
+		if ($sessionCart) {
+			$cartQty = max(1, (int)($sessionCart['qty'] ?? 1));
+			$sessionCart['qty'] = $cartQty;
+			// Kupon modeli price * qty hesapladığı için birim fiyat verilir.
+			$sessionCart['price'] = isset($sessionCart['unit_price']) ? (float)$sessionCart['unit_price'] : round((float)$sessionCart['price'] / $cartQty, 2);
+			$cartItems = [$sessionCart];
+		}
 		$coupon = $this->coupon_model->validate_and_calculate($couponCode, $userID, $cartItems, $data['currentLocale']->locale_code);
 
 		if ($coupon['status'] === 'error') {
@@ -1076,6 +1186,7 @@ class Payment extends MY_Controller
 			(int)($cartData['product_id'] ?? 0),
 			(string)($cartData['user_id'] ?? ''),
 			(string)($cartData['server_id'] ?? ''),
+			max(1, (int)($cartData['qty'] ?? 1)),
 			(int)($appliedCoupon['coupon_id'] ?? 0),
 			$paymentMethod,
 		]));
@@ -2025,6 +2136,12 @@ class Payment extends MY_Controller
 			$totalListPrice += $price;
 		}
 
+		// Bundle dışı ürünlerde her adet ayrı sipariş satırıdır; satırlar bundle_reference ile gruplanır.
+		$orderQty = ((int)$parentProduct->product_is_bundle === 1) ? 1 : max(1, min(self::MAX_ORDER_QTY, (int)($cartData['qty'] ?? 1)));
+		if ($orderQty > 1) {
+			$productIDs = array_fill(0, $orderQty, $pid);
+			$totalListPrice = round($totalListPrice * $orderQty, 2);
+		}
 		$couponDiscount = max(0.0, (float)(isset($post['_coupon_discount']) ? $post['_coupon_discount'] : ($appliedCoupon['discount'] ?? 0)));
 		$bundleSalePrice = isset($cartData['price']) ? (float)$cartData['price'] : $totalListPrice;
 		$couponDiscount = min($couponDiscount, $bundleSalePrice);
@@ -2045,11 +2162,13 @@ class Payment extends MY_Controller
 		$allocatedSalePrice = 0.0;
 		$allocatedBundleSalePrice = 0.0;
 		$allocatedCouponDiscount = 0.0;
-		$bundleReference = (int)$parentProduct->product_is_bundle === 1
+		$bundleReference = ((int)$parentProduct->product_is_bundle === 1 || $orderQty > 1)
 			? 'bundle_' . date('YmdHis') . '_' . bin2hex(random_bytes(6))
 			: null;
 		$pricingSnapshot = [
-			'is_bundle' => $bundleReference !== null,
+			'is_bundle' => (int)$parentProduct->product_is_bundle === 1,
+			'is_quantity_group' => $orderQty > 1,
+			'quantity' => $orderQty,
 			'bundle_reference' => $bundleReference,
 			'bundle_product_id' => $bundleReference !== null ? $pid : null,
 			'bundle_product_name' => $bundleReference !== null ? (string)$cartData['product_name'] : null,

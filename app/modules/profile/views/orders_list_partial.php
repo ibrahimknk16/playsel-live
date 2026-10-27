@@ -46,7 +46,7 @@ usort($mergedOrders, function ($a, $b) { return $b['ts'] <=> $a['ts']; });
       </tr>
       <?php continue; endif; $order = $item['row']; ?>
       <tr>
-        <td data-label="Sipariş no"><span class="row-id">#<?= $order->order_id ?></span><?php if (($order->bundle_count ?? 1) > 1): ?><small style="display:block;color:var(--profile-gold);"><?= (int)$order->bundle_count ?> parçalı sipariş</small><?php endif; ?></td>
+        <td data-label="Sipariş no"><span class="row-id">#<?= $order->order_id ?></span><?php if (($order->bundle_count ?? 1) > 1 && empty($order->is_quantity_group)): ?><small style="display:block;color:var(--profile-gold);"><?= (int)$order->bundle_count ?> parçalı sipariş</small><?php endif; ?></td>
         <td data-label="Ürün">
             <span class="product-cell">
                 <?php if(!empty($order->product_icon)): ?>
@@ -54,10 +54,10 @@ usort($mergedOrders, function ($a, $b) { return $b['ts'] <=> $a['ts']; });
                 <?php else: ?>
                     <span class="product-thumb"><svg class="icon"><use href="#i-bag"/></svg></span>
                 <?php endif; ?>
-                <span class="product-name"><?= html_escape($order->bundle_product_name ?? $order->product_name) ?><?php if (($order->bundle_count ?? 1) > 1): ?><small style="display:block;color:var(--text-muted);"><?= (int)$order->bundle_count ?> ürün birlikte</small><?php endif; ?></span>
+                <span class="product-name"><?= html_escape($order->bundle_product_name ?? $order->product_name) ?><?php if (($order->bundle_count ?? 1) > 1 && empty($order->is_quantity_group)): ?><small style="display:block;color:var(--text-muted);"><?= (int)$order->bundle_count ?> ürün birlikte</small><?php endif; ?></span>
             </span>
         </td>
-        <td data-label="Adet"><span class="quantity"><?= ($order->bundle_count ?? 1) > 1 ? (int)$order->bundle_count . ' parça' : (int)$order->order_quantity . ' adet' ?></span></td>
+        <td data-label="Adet"><span class="quantity"><?= ($order->bundle_count ?? 1) > 1 ? (int)$order->bundle_count . (!empty($order->is_quantity_group) ? ' adet' : ' parça') : (int)$order->order_quantity . ' adet' ?></span></td>
         <td data-label="Tutar" class="money"><?= number_format(($order->bundle_count ?? 1) > 1 ? $order->bundle_total : $order->order_sale_price, 2, ',', '.') ?> <?= $order->order_sale_price_currency === 'TRY' ? 'TL' : html_escape($order->order_sale_price_currency) ?></td>
         <td data-label="Tarih" class="subtle"><?= date('d.m.Y · H:i', strtotime($order->order_created_at)) ?></td>
         <td data-label="Durum">
