@@ -53,7 +53,10 @@ foreach ($versionedAssets as $assetPath) {
     : ($pageRobots ?? site_setting('site_robots_meta', 'index,follow'));
   $googleAnalyticsId = trim((string) site_setting('google_analytics_id'));
   $googleTagManagerId = trim((string) site_setting('google_tag_manager_id'));
-  $metaPixelId = trim((string) site_setting('meta_pixel_id'));
+  $metaPixelId = trim((string) getenv('META_PIXEL_ID'));
+  if ($metaPixelId === '') {
+    $metaPixelId = trim((string) site_setting('meta_pixel_id'));
+  }
   $googleSiteVerification = trim((string) site_setting('google_site_verification'));
   $bingSiteVerification = trim((string) site_setting('bing_site_verification'));
   $customHeadCode = site_setting('custom_head_code');

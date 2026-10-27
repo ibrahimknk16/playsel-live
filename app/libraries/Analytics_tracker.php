@@ -7,6 +7,14 @@
 class Analytics_tracker
 {
 	private $CI;
+	// Yeniden gönderimde olaylara siparişin gerçek oluşturulma zamanı yazılır.
+	public $useOrderTime = false;
+	// Tanı: GA4 /debug/mp/collect ucuna gönderir (olay kaydedilmez, doğrulama mesajları döner).
+	public $ga4Debug = false;
+	// Tanı: Meta Test Events kodu; doluysa olaylar gerçek veri olarak sayılmaz.
+	public $metaTestCode = '';
+	// Tanı: her giden isteğin HTTP kodu ve yanıtı (secret içermez).
+	public $responseLog = [];
 
 	public function __construct()
 	{
@@ -44,11 +52,49 @@ class Analytics_tracker
 		return json_encode($tracking, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	}
 
+	// Kilitli çalıştırma: aynı anda tek işlem; cron'lar bunu çağırır. Kilit alınamazsa null döner.
+	public function runLocked($limit = 50)
+	{
+		$db = $this->CI->db;
+		$lock = $db->query("SELECT GET_LOCK('analytics_events_cron', 0) AS got")->row();
+		if (empty($lock) || (int)$lock->got !== 1) {
+			return null;
+		}
+
+		$processed = 0;
+		try {
+			$this->responseLog = [];
+			$processed = (int)$this->processPending($limit);
+			$failed = 0;
+			foreach ($this->responseLog as $r) {
+				if ((int)$r['http'] < 200 || (int)$r['http'] >= 300) {
+					$failed++;
+				}
+			}
+			if ($processed > 0) {
+				$db->insert('logs', [
+					'log_controller' => 'analyticsEvents',
+					'log_message' => 'İşlenen sipariş: ' . $processed . ' - Başarısız istek: ' . $failed,
+					'log_error_code' => $failed > 0 ? 'analytics_cron_failed' : 'analytics_cron_ok',
+				]);
+			}
+		} catch (Throwable $e) {
+			log_message('error', 'Analytics tracker failed: ' . $e->getMessage());
+			$db->insert('logs', [
+				'log_controller' => 'analyticsEvents',
+				'log_message' => substr($e->getMessage(), 0, 500),
+				'log_error_code' => 'analytics_cron_exception',
+			]);
+		}
+		$db->query("SELECT RELEASE_LOCK('analytics_events_cron')");
+		return $processed;
+	}
+
 	// Cron tarafından çağrılır: teslim edilen siparişlerde satın alma, sonradan iptal olanlarda iptal/iade gönderir.
 	public function processPending($limit = 50)
 	{
 		$db = $this->CI->db;
-		$select = 'o.order_id, o.order_reseller_id, o.order_product_id, o.order_status, o.order_sale_price_tl, o.order_voucher, o.order_tracking, p.product_name';
+		$select = 'o.order_id, o.order_reseller_id, o.order_product_id, o.order_status, o.order_sale_price_tl, o.order_voucher, o.order_tracking, o.order_created_at, p.product_name';
 
 		$purchases = $db->select($select)
 			->from('orders as o')
@@ -73,14 +119,14 @@ class Analytics_tracker
 		foreach ($cancelled as $order) {
 			$this->sendCancellation($order);
 		}
+
+		return count($purchases) + count($cancelled);
 	}
 
 	private function sendPurchase($order)
 	{
 		$names = $this->eventNames();
-		$specific = !empty($order->order_voucher) ? 'purchase_kod' : 'purchase_topup';
 		$this->dispatch($order, 'purchase', $names['purchase'], 'Purchase');
-		$this->dispatch($order, 'purchase_type', $specific, null);
 	}
 
 	private function sendCancellation($order)
@@ -115,23 +161,92 @@ class Analytics_tracker
 		$tracking = json_decode((string)$order->order_tracking, true);
 		$tracking = is_array($tracking) ? $tracking : [];
 		$value = round((float)$order->order_sale_price_tl, 2);
-		$ok = $this->sendGa4($order, $gaName, $value, $tracking);
-		if ($metaName !== null) {
-			$ok = $this->sendMeta($order, $metaName, $gaName, $eventKey, $value, $tracking) && $ok;
+		$eventTime = time();
+		if ($this->useOrderTime && !empty($order->order_created_at)) {
+			$eventTime = strtotime((string)$order->order_created_at) ?: $eventTime;
 		}
 
-		if (!$ok) {
+		// null: kanal yapılandırılmamış (atlanır), false: gönderim başarısız, true: gönderildi.
+		$results = [$this->sendGa4($order, $gaName, $value, $tracking, $eventTime)];
+		if ($metaName !== null) {
+			$results[] = $this->sendMeta($order, $metaName, $gaName, $eventKey, $value, $tracking, $eventTime);
+		}
+		$delivered = in_array(true, $results, true);
+		$failed = in_array(false, $results, true);
+
+		// Hiçbir kanala gönderilemediyse ya da biri başarısızsa kayıt silinir; sonraki çalışmada yeniden denenir.
+		if (!$delivered || $failed) {
 			$db->where(['order_id' => (int)$order->order_id, 'event_key' => $eventKey])->delete('analytics_events_sent');
 		}
 	}
 
-	private function sendGa4($order, $eventName, $value, array $tracking)
+	// Tanı: son teslim edilen siparişlerden örnek alıp kanallara gönderir; gönderim kaydı yazmaz/silmez.
+	public function diagnose($limit = 2)
+	{
+		$orders = $this->CI->db
+			->select('o.order_id, o.order_reseller_id, o.order_product_id, o.order_status, o.order_sale_price_tl, o.order_voucher, o.order_tracking, o.order_created_at, p.product_name')
+			->from('orders as o')
+			->join('products as p', 'p.product_id = o.order_product_id', 'left')
+			->where('o.order_status', 1)
+			->where('o.order_tracking IS NOT NULL', null, false)
+			->order_by('o.order_id', 'DESC')->limit((int)$limit)->get()->result();
+
+		$this->responseLog = [];
+		$names = $this->eventNames();
+		foreach ($orders as $order) {
+			$tracking = json_decode((string)$order->order_tracking, true);
+			$tracking = is_array($tracking) ? $tracking : [];
+			$value = round((float)$order->order_sale_price_tl, 2);
+			$this->sendGa4($order, $names['purchase'], $value, $tracking, time());
+			$this->sendMeta($order, 'Purchase', $names['purchase'], 'purchase', $value, $tracking, time());
+		}
+		return ['orders_sampled' => count($orders), 'responses' => $this->responseLog];
+	}
+
+	// Tanı: gerçek /mp/collect ucuna şu anki zamanla tek bir test olayı gönderir (Gerçek zamanlı raporda görünür).
+	public function livePing()
+	{
+		$this->responseLog = [];
+		$measurementId = getenv('GA4_MEASUREMENT_ID');
+		$apiSecret = getenv('GA4_API_SECRET');
+		if (empty($measurementId) || empty($apiSecret)) {
+			return ['sent' => false, 'reason' => 'GA4 env eksik'];
+		}
+		$payload = [
+			'client_id' => '1234567890.' . time(),
+			'events' => [['name' => 'server_ping_test', 'params' => ['engagement_time_msec' => 1, 'session_id' => (string)time()]]],
+		];
+		$url = 'https://www.google-analytics.com/mp/collect?measurement_id=' . rawurlencode($measurementId) . '&api_secret=' . rawurlencode($apiSecret);
+		$ok = $this->postJson($url, $payload, 'GA4');
+		return ['sent' => $ok, 'measurement_id' => $measurementId, 'event' => 'server_ping_test', 'responses' => $this->responseLog];
+	}
+
+	// Yapılandırma durumu (secret değerleri döndürülmez).
+	public function channelStatus()
+	{
+		return [
+			'ga4' => !empty(getenv('GA4_MEASUREMENT_ID')) && !empty(getenv('GA4_API_SECRET')),
+			'meta' => $this->metaPixelId() !== '' && !empty(getenv('META_CAPI_TOKEN')),
+		];
+	}
+
+	// META_PIXEL_ID env değeri öncelikli; yoksa admin ayarı kullanılır. Geçersizse boş döner.
+	private function metaPixelId()
+	{
+		$id = trim((string)getenv('META_PIXEL_ID'));
+		if ($id === '') {
+			$id = trim((string)site_setting('meta_pixel_id'));
+		}
+		return preg_match('/^[0-9]+$/', $id) ? $id : '';
+	}
+
+	private function sendGa4($order, $eventName, $value, array $tracking, $eventTime)
 	{
 		$measurementId = getenv('GA4_MEASUREMENT_ID');
 		$apiSecret = getenv('GA4_API_SECRET');
 		if (empty($measurementId) || empty($apiSecret)) {
 			log_message('warning', 'GA4 credentials are not configured; analytics event skipped.');
-			return true;
+			return null;
 		}
 
 		$params = [
@@ -157,17 +272,22 @@ class Analytics_tracker
 		if ((int)$order->order_reseller_id > 0) {
 			$payload['user_id'] = (string)$order->order_reseller_id;
 		}
+		// GA4 geçmiş zamanlı olayı en fazla 72 saat geriye kabul eder; daha eskisi sınırlanır.
+		if ($this->useOrderTime) {
+			$payload['timestamp_micros'] = (string)(max($eventTime, time() - 71 * 3600) * 1000000);
+		}
 
-		$url = 'https://www.google-analytics.com/mp/collect?measurement_id=' . rawurlencode($measurementId) . '&api_secret=' . rawurlencode($apiSecret);
+		$endpoint = $this->ga4Debug ? '/debug/mp/collect' : '/mp/collect';
+		$url = 'https://www.google-analytics.com' . $endpoint . '?measurement_id=' . rawurlencode($measurementId) . '&api_secret=' . rawurlencode($apiSecret);
 		return $this->postJson($url, $payload, 'GA4');
 	}
 
-	private function sendMeta($order, $metaName, $gaName, $eventKey, $value, array $tracking)
+	private function sendMeta($order, $metaName, $gaName, $eventKey, $value, array $tracking, $eventTime)
 	{
-		$pixelId = trim((string)site_setting('meta_pixel_id'));
+		$pixelId = $this->metaPixelId();
 		$token = getenv('META_CAPI_TOKEN');
-		if (!preg_match('/^[0-9]+$/', $pixelId) || empty($token)) {
-			return true;
+		if ($pixelId === '' || empty($token)) {
+			return null;
 		}
 
 		$user = $this->CI->db->select('user_email, user_phone')->where('user_id', (int)$order->order_reseller_id)->get('users')->row();
@@ -197,7 +317,7 @@ class Analytics_tracker
 		$isStandard = in_array($metaName, ['Purchase'], true);
 		$event = [
 			'event_name' => $isStandard ? $metaName : $gaName,
-			'event_time' => time(),
+			'event_time' => $this->useOrderTime ? max($eventTime, time() - 6 * 86400) : time(),
 			'event_id' => $eventKey . '_' . $order->order_id,
 			'action_source' => 'website',
 			'event_source_url' => $tracking['url'] ?? site_url(),
@@ -216,7 +336,11 @@ class Analytics_tracker
 		}
 
 		$url = 'https://graph.facebook.com/v19.0/' . $pixelId . '/events?access_token=' . rawurlencode($token);
-		return $this->postJson($url, ['data' => [$event]], 'Meta CAPI');
+		$body = ['data' => [$event]];
+		if ($this->metaTestCode !== '') {
+			$body['test_event_code'] = $this->metaTestCode;
+		}
+		return $this->postJson($url, $body, 'Meta CAPI');
 	}
 
 	private function postJson($url, array $payload, $label)
@@ -233,6 +357,30 @@ class Analytics_tracker
 		$code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$error = curl_error($ch);
 		curl_close($ch);
+
+		$ev = $payload['events'][0] ?? null;
+		$mev = $payload['data'][0] ?? null;
+		$this->responseLog[] = [
+			'channel' => $label,
+			'event' => $ev['name'] ?? ($mev['event_name'] ?? null),
+			'order_id' => $ev['params']['transaction_id'] ?? ($mev['custom_data']['order_id'] ?? null),
+			'value' => $ev['params']['value'] ?? ($mev['custom_data']['value'] ?? null),
+			'client_id' => $payload['client_id'] ?? null,
+			'session_id' => $ev['params']['session_id'] ?? null,
+			'time' => isset($payload['timestamp_micros']) ? date('Y-m-d H:i:s', (int)($payload['timestamp_micros'] / 1000000)) : ($mev ? date('Y-m-d H:i:s', $mev['event_time']) : null),
+			'http' => $code,
+			'curl_error' => $error,
+			'response' => is_string($body) ? substr($body, 0, 300) : null,
+		];
+		if (count($this->responseLog) > 400) {
+			array_shift($this->responseLog);
+		}
+
+		// Debug ucu, geçersiz payload'ı 200 ile döner; validationMessages doluysa başarısız say.
+		if ($label === 'GA4' && $this->ga4Debug && is_string($body)) {
+			$decoded = json_decode($body, true);
+			return $code === 200 && is_array($decoded) && empty($decoded['validationMessages']);
+		}
 
 		if ($body === false || $code < 200 || $code >= 300) {
 			log_message('error', $label . ' event failed. HTTP ' . $code . ' ' . $error . ' ' . (is_string($body) ? substr($body, 0, 300) : ''));

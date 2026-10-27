@@ -113,6 +113,7 @@ class Payment extends MY_Controller
 	public $data = array();
 	private const CREDIT_CARD_COMMISSION_RATE = 2.7;
 	private const MOBILE_COMMISSION_RATE = 60;
+	private const MAX_ORDER_QTY = 10;
 
 	private function isCardExpiryInFuture($month, $year): bool
 	{
@@ -893,6 +894,19 @@ class Payment extends MY_Controller
 			return json(['status' => 'error', 'message' => 'Bu ürün için Sunucu ID (Server ID) seçilmesi zorunludur.']);
 		}
 
+		$qty = 1;
+		if ((int)$getProduct->product_is_bundle !== 1) {
+			$productCategory = $this->db->select('category_type, category_parent_category_id')->get_where('categories', ['category_id' => $getProduct->product_category_id])->row();
+			$categoryType = (int)($productCategory->category_type ?? 0);
+			if (!empty($productCategory->category_parent_category_id)) {
+				$parentCategory = $this->db->select('category_type')->get_where('categories', ['category_id' => $productCategory->category_parent_category_id])->row();
+				$categoryType = (int)($parentCategory->category_type ?? $categoryType);
+			}
+			if ($categoryType === 3) {
+				$qty = max(1, min(self::MAX_ORDER_QTY, (int)($post['qty'] ?? 1)));
+			}
+		}
+
 		$cartData = [
 			'product_id'        => $getProduct->product_id,
 			'product_name'      => $getProduct->product_name,
@@ -900,13 +914,15 @@ class Payment extends MY_Controller
 			'sub_category_id'   => $getProduct->product_sub_category_id,
 			'product_image'     => $getProduct->product_image,
 			'product_icon'      => $getProduct->product_icon,
-			'price'             => $userPrice,
+			'unit_price'        => (float)$userPrice,
+			'price'             => round((float)$userPrice * $qty, 2),
 			'user_id'           => $uid,
 			'server_id'         => $sid,
 			'provider_id'       => $getProduct->product_provider_id,
 			'product_type'      => $getProduct->product_type,
 			'is_bundle'         => $getProduct->product_is_bundle,
-			'qty'               => 1,
+			'qty'               => $qty,
+			'quantity'          => $qty,
 			'created_at'        => date('Y-m-d H:i:s'),
 		];
 
@@ -938,7 +954,15 @@ class Payment extends MY_Controller
 
 		$this->load->model('coupon_model');
 		$userID = $this->data['user']['user_id'] ?? null;
-		$cartItems = $this->session->userdata('checkout_cart') ? [$this->session->userdata('checkout_cart')] : [];
+		$cartItems = [];
+		$sessionCart = $this->session->userdata('checkout_cart');
+		if ($sessionCart) {
+			$cartQty = max(1, (int)($sessionCart['qty'] ?? 1));
+			$sessionCart['qty'] = $cartQty;
+			// Kupon modeli price * qty hesapladığı için birim fiyat verilir.
+			$sessionCart['price'] = isset($sessionCart['unit_price']) ? (float)$sessionCart['unit_price'] : round((float)$sessionCart['price'] / $cartQty, 2);
+			$cartItems = [$sessionCart];
+		}
 		$coupon = $this->coupon_model->validate_and_calculate($couponCode, $userID, $cartItems, $data['currentLocale']->locale_code);
 
 		if ($coupon['status'] === 'error') {
@@ -2025,6 +2049,12 @@ class Payment extends MY_Controller
 			$totalListPrice += $price;
 		}
 
+		// Bundle dışı ürünlerde her adet ayrı sipariş satırıdır; satırlar bundle_reference ile gruplanır.
+		$orderQty = ((int)$parentProduct->product_is_bundle === 1) ? 1 : max(1, min(self::MAX_ORDER_QTY, (int)($cartData['qty'] ?? 1)));
+		if ($orderQty > 1) {
+			$productIDs = array_fill(0, $orderQty, $pid);
+			$totalListPrice = round($totalListPrice * $orderQty, 2);
+		}
 		$couponDiscount = max(0.0, (float)(isset($post['_coupon_discount']) ? $post['_coupon_discount'] : ($appliedCoupon['discount'] ?? 0)));
 		$bundleSalePrice = isset($cartData['price']) ? (float)$cartData['price'] : $totalListPrice;
 		$couponDiscount = min($couponDiscount, $bundleSalePrice);
@@ -2045,11 +2075,13 @@ class Payment extends MY_Controller
 		$allocatedSalePrice = 0.0;
 		$allocatedBundleSalePrice = 0.0;
 		$allocatedCouponDiscount = 0.0;
-		$bundleReference = (int)$parentProduct->product_is_bundle === 1
+		$bundleReference = ((int)$parentProduct->product_is_bundle === 1 || $orderQty > 1)
 			? 'bundle_' . date('YmdHis') . '_' . bin2hex(random_bytes(6))
 			: null;
 		$pricingSnapshot = [
-			'is_bundle' => $bundleReference !== null,
+			'is_bundle' => (int)$parentProduct->product_is_bundle === 1,
+			'is_quantity_group' => $orderQty > 1,
+			'quantity' => $orderQty,
 			'bundle_reference' => $bundleReference,
 			'bundle_product_id' => $bundleReference !== null ? $pid : null,
 			'bundle_product_name' => $bundleReference !== null ? (string)$cartData['product_name'] : null,
