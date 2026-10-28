@@ -51,6 +51,7 @@
             </div>
             <div class="modal-body">
                 <form class="form w-100" method="POST" novalidate="novalidate" id="kt_sign_in_form" action="<?= base_url('admins/addUser') ?>">
+                    <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
                     <div class="fv-row mb-8">
                         <input type="text" placeholder="Kullanıcı Adı" name="name" autocomplete="off" class="form-control bg-transparent form-control-solid" />
                     </div>

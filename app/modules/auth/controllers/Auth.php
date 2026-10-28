@@ -98,13 +98,24 @@ class Auth extends MY_Controller
 			redirect($_SERVER['HTTP_REFERER']);
 		}
 
+		$loginEmail = strtolower(trim((string)($post['email'] ?? '')));
+		$ipKey = 'login_ip_' . getIp();
+		$emailKey = 'login_email_' . $loginEmail;
+		if (!$this->throttleHit($ipKey, 30, 900) || !$this->throttleHit($emailKey, 10, 900)) {
+			$this->session->set_flashdata('alert', [
+				'type' => 'error',
+				'message' => 'Çok fazla deneme yaptınız. Lütfen 15 dakika sonra tekrar deneyin.'
+			]);
+			redirect($_SERVER['HTTP_REFERER']);
+		}
+
 		$userCheck = $this->db->get_where('users', ['user_email' => $post['email']])->row();
 
 
 		if (empty($userCheck)) {
 			$this->session->set_flashdata('alert', [
 				'type' => 'error',
-				'message' => $this->lang->line('wrong_email')
+				'message' => $this->lang->line('check_infos')
 			]);
 			redirect($_SERVER['HTTP_REFERER']);
 		}
@@ -117,6 +128,7 @@ class Auth extends MY_Controller
 			]);
 			redirect($_SERVER['HTTP_REFERER']);
 		}
+		$this->throttleClear($emailKey);
 
 		$restriction = customerRestriction($userCheck->user_id, 'login');
 		if ($restriction || (int)$userCheck->user_status !== 1) {
@@ -129,7 +141,7 @@ class Auth extends MY_Controller
 
 		// 2FA CHECK
 		if (isset($userCheck->user_2fa_method) && in_array($userCheck->user_2fa_method, [1, 2])) {
-			$otpCode = rand(100000, 999999);
+			$otpCode = random_int(100000, 999999);
 			$method = $userCheck->user_2fa_method; // 1: Email, 2: SMS
 			
 			$this->db->insert('user_2fa_codes', [
@@ -257,12 +269,20 @@ class Auth extends MY_Controller
 		$userCheck = $this->db->get_where('users', ['user_id' => $tempUserId])->row();
 
 		if (isset($userCheck->user_2fa_method) && in_array($userCheck->user_2fa_method, [1, 2])) {
+			if (!$this->throttleHit('resend2fa_cd_' . (int)$userCheck->user_id, 1, 60)
+				|| !$this->throttleHit('resend2fa_hr_' . (int)$userCheck->user_id, 5, 3600)) {
+				$this->session->set_flashdata('alert', [
+					'type' => 'error',
+					'message' => 'Yeni kod istemek için lütfen biraz bekleyin.'
+				]);
+				redirect(topupcenter() . $langPrefix . '/auth/verify_2fa');
+			}
 			// Önceki aktif kodları iptal edelim
 			$this->db->where('2fa_user_id', $userCheck->user_id);
 			$this->db->where('2fa_status', 0);
 			$this->db->update('user_2fa_codes', ['2fa_status' => 2]); // 2: expired/cancelled
 
-			$otpCode = rand(100000, 999999);
+			$otpCode = random_int(100000, 999999);
 			$method = $userCheck->user_2fa_method; // 1: Email, 2: SMS
 			
 			$this->db->insert('user_2fa_codes', [
@@ -309,6 +329,19 @@ class Auth extends MY_Controller
 
 		$otpCode = isset($post['otp_code']) ? trim($post['otp_code']) : '';
 
+		$attemptKey = 'verify2fa_' . (int)$tempUserId;
+		if (!$this->throttleHit($attemptKey, 5, 600)) {
+			$this->db->where('2fa_user_id', $tempUserId)->where('2fa_status', 0)
+				->update('user_2fa_codes', ['2fa_status' => 2]);
+			$this->session->unset_userdata('temp_2fa_user_id');
+			$this->session->unset_userdata('temp_2fa_redirect');
+			$this->session->set_flashdata('alert', [
+				'type' => 'error',
+				'message' => 'Çok fazla hatalı deneme. Lütfen yeniden giriş yapın.'
+			]);
+			redirect(topupcenter() . $langPrefix . '/login');
+		}
+
 		$checkCode = $this->db->get_where('user_2fa_codes', [
 			'2fa_user_id' => $tempUserId,
 			'2fa_otp_code' => $otpCode,
@@ -323,6 +356,7 @@ class Auth extends MY_Controller
 			]);
 			redirect($_SERVER['HTTP_REFERER']);
 		}
+		$this->throttleClear($attemptKey);
 
 		// Update code as used
 		$this->db->where('2fa_id', $checkCode->{'2fa_id'});
@@ -584,11 +618,20 @@ class Auth extends MY_Controller
 			}
 
 			// Kullanıcı kontrolü
-			$userCheck = $this->db->get_where('users', ['user_email' => $post['email']])->row();
-			if (empty($userCheck)) {
+			$forgotEmail = strtolower(trim((string)($post['email'] ?? '')));
+			if (!$this->throttleHit('forgot_ip_' . getIp(), 10, 3600) || !$this->throttleHit('forgot_email_' . $forgotEmail, 3, 3600)) {
 				$this->session->set_flashdata('alert', [
 					'type'    => 'error',
-					'message' => $this->lang->line('wrong_email')
+					'message' => 'Çok fazla istek gönderdiniz. Lütfen daha sonra tekrar deneyin.'
+				]);
+				redirect(topupcenter() . $this->uri->segment(1) . '/forgot-password');
+			}
+			$userCheck = $this->db->get_where('users', ['user_email' => $post['email']])->row();
+			if (empty($userCheck)) {
+				// Hesap numaralandırmayı önlemek için başarılı gibi yanıtla
+				$this->session->set_flashdata('alert', [
+					'type'    => 'success',
+					'message' => $this->lang->line('email_reset_password')
 				]);
 				redirect(topupcenter() . $this->uri->segment(1) . '/forgot-password');
 			}
@@ -600,8 +643,8 @@ class Auth extends MY_Controller
 
 			if (!empty($recentRequest)) {
 				$this->session->set_flashdata('alert', [
-					'type'    => 'error',
-					'message' => 'Lütfen yeni bir şifre sıfırlama isteği göndermeden önce 5 dakika bekleyiniz.'
+					'type'    => 'success',
+					'message' => $this->lang->line('email_reset_password')
 				]);
 				redirect(topupcenter() . $this->uri->segment(1) . '/forgot-password');
 			}

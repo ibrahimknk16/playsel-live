@@ -451,6 +451,12 @@ class Payment extends MY_Controller
 		if (!$userID || !$this->isValidMobilePhoneNumber($phone)) {
 			return json(['status' => 'error', 'message' => 'Lütfen geçerli bir telefon numarası girin.'], 422);
 		}
+		if (!$this->throttleHit('cotp_cd_' . $userID, 1, 60)
+			|| !$this->throttleHit('cotp_user_' . $userID, 5, 3600)
+			|| !$this->throttleHit('cotp_phone_' . $phone, 3, 3600)
+			|| !$this->throttleHit('cotp_ip_' . getIp(), 15, 3600)) {
+			return json(['status' => 'error', 'message' => 'Çok fazla kod istediniz. Lütfen daha sonra tekrar deneyin.'], 429);
+		}
 
 		$otpCode = (string)random_int(100000, 999999);
 		$this->db->where('2fa_user_id', $userID)->where('2fa_method', 2)->where('2fa_status', 0)
@@ -460,7 +466,7 @@ class Payment extends MY_Controller
 			'2fa_status' => 0, '2fa_created_at' => date('Y-m-d H:i:s'),
 			'2fa_expires_at' => date('Y-m-d H:i:s', strtotime('+3 minutes')),
 		]);
-		$this->session->set_userdata('checkout_phone_pending', $phone);
+		$this->session->set_userdata('checkout_phone_pending', ['phone' => $phone, 'code_id' => (int)$this->db->insert_id()]);
 		sendSms2($phone, 'Playsel Checkout telefon doğrulama kodunuz: ' . $otpCode);
 		return json(['status' => 'success', 'message' => 'Doğrulama kodu telefonunuza gönderildi.']);
 	}
@@ -469,14 +475,27 @@ class Payment extends MY_Controller
 	{
 		$userID = (int)($this->data['user']['user_id'] ?? 0);
 		$otpCode = trim((string)$this->input->post('otp_code', TRUE));
+		$pending = $this->session->userdata('checkout_phone_pending');
+		$phone = is_array($pending) ? ($pending['phone'] ?? '') : '';
+		$pendingCodeID = is_array($pending) ? (int)($pending['code_id'] ?? 0) : 0;
+		if (!$userID || !$phone || $pendingCodeID <= 0) {
+			return json(['status' => 'error', 'message' => 'Doğrulama kodu hatalı veya süresi dolmuş.'], 422);
+		}
+		if (!$this->throttleHit('cotp_verify_' . $userID, 5, 600)) {
+			$this->db->where('2fa_user_id', $userID)->where('2fa_method', 2)->where('2fa_status', 0)
+				->update('user_2fa_codes', ['2fa_status' => 2]);
+			$this->session->unset_userdata('checkout_phone_pending');
+			return json(['status' => 'error', 'message' => 'Çok fazla hatalı deneme. Lütfen yeni kod isteyin.'], 429);
+		}
 		$code = $this->db->where([
+			'2fa_id' => $pendingCodeID,
 			'2fa_user_id' => $userID, '2fa_otp_code' => $otpCode, '2fa_method' => 2,
 			'2fa_status' => 0,
 		])->where('2fa_expires_at >=', date('Y-m-d H:i:s'))->limit(1)->get('user_2fa_codes')->row();
-		$phone = $this->session->userdata('checkout_phone_pending');
-		if (!$userID || !$code || !$phone) {
+		if (!$code) {
 			return json(['status' => 'error', 'message' => 'Doğrulama kodu hatalı veya süresi dolmuş.'], 422);
 		}
+		$this->throttleClear('cotp_verify_' . $userID);
 
 		$this->db->where('2fa_id', $code->{'2fa_id'})->update('user_2fa_codes', ['2fa_status' => 1]);
 		$this->db->where('user_id', $userID)->update('users', [
@@ -2100,6 +2119,35 @@ class Payment extends MY_Controller
 	}
 
 	public function createOrder($userID, $cartData, $post)
+	{
+		$appliedCoupon = $this->session->userdata('applied_coupon') ?: [];
+		$couponID = isset($post['_coupon_id']) ? (int)$post['_coupon_id'] : (!empty($appliedCoupon['coupon_id']) ? (int)$appliedCoupon['coupon_id'] : null);
+		if (!$couponID) {
+			return $this->createOrderInternal($userID, $cartData, $post);
+		}
+
+		// Kupon limiti kontrol ve kayıt arasındaki yarışı kapatmak için kupon bazlı kilit.
+		$lockName = 'playsel_coupon_' . $couponID;
+		$lock = $this->db->query('SELECT GET_LOCK(?, 5) AS acquired', [$lockName])->row();
+		if (!$lock || (int)$lock->acquired !== 1) {
+			return ['status' => 'error', 'message' => 'Kupon işlemi şu anda yapılamıyor, lütfen tekrar deneyin.'];
+		}
+		try {
+			$coupon = $this->db->select('coupon_total_limit, coupon_user_limit')->where('coupon_id', $couponID)->get('coupons')->row();
+			$this->load->model('coupon_model');
+			if ($coupon && (int)$coupon->coupon_total_limit > 0 && $this->coupon_model->count_active_usages($couponID) >= (int)$coupon->coupon_total_limit) {
+				return ['status' => 'error', 'message' => 'Bu kuponun toplam kullanım limiti dolmuştur.'];
+			}
+			if ($coupon && (int)$coupon->coupon_user_limit > 0 && $this->coupon_model->count_active_usages($couponID, (int)$userID) >= (int)$coupon->coupon_user_limit) {
+				return ['status' => 'error', 'message' => 'Bu kuponu maksimum kullanım sınırınıza ulaştınız.'];
+			}
+			return $this->createOrderInternal($userID, $cartData, $post);
+		} finally {
+			$this->db->query('SELECT RELEASE_LOCK(?)', [$lockName]);
+		}
+	}
+
+	private function createOrderInternal($userID, $cartData, $post)
 	{
 		$data = $this->data;
 		$appliedCoupon = $this->session->userdata('applied_coupon') ?: [];

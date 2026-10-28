@@ -31,6 +31,7 @@
             <hr class="my-8" />
 
             <form method="POST" action="<?= base_url('admins/updateUserPermissions/' . (int) $user->admin_id) ?>">
+                <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
                 <input type="hidden" name="admin_id" value="<?= (int) $user->admin_id ?>">
 
                 <div class="alert alert-secondary">

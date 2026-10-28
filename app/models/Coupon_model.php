@@ -45,23 +45,18 @@ class Coupon_model extends CI_Model
 
         $coupon_id = $coupon->coupon_id;
 
-        // 2. Genel Toplam Kullanım Limiti Kontrolü (Sadece '1' yani teslim edilenleri sayıyoruz)
+        // 2. Genel Toplam Kullanım Limiti Kontrolü (teslim edilenler + devam eden siparişler)
         if ($coupon->coupon_total_limit > 0) {
-            $total_usages = $this->db->where('coupon_usage_coupon_id', $coupon_id)
-                ->where('coupon_usage_status', 1)
-                ->count_all_results('coupon_usages');
+            $total_usages = $this->count_active_usages($coupon_id);
 
             if ($total_usages >= $coupon->coupon_total_limit) {
                 return ['status' => 'error', 'message' => 'Bu kuponun toplam kullanım limiti dolmuştur.', 'discount' => 0.00, 'coupon_id' => $coupon_id];
             }
         }
 
-        // 3. Kullanıcı Bazlı Kullanım Limiti Kontrolü (Sadece '1' yani teslim edilenleri sayıyoruz)
+        // 3. Kullanıcı Bazlı Kullanım Limiti Kontrolü
         if ($coupon->coupon_user_limit > 0) {
-            $user_usages = $this->db->where('coupon_usage_coupon_id', $coupon_id)
-                ->where('coupon_usage_user_id', $user_id)
-                ->where('coupon_usage_status', 1)
-                ->count_all_results('coupon_usages');
+            $user_usages = $this->count_active_usages($coupon_id, $user_id);
 
             if ($user_usages >= $coupon->coupon_user_limit) {
                 return ['status' => 'error', 'message' => 'Bu kuponu maksimum kullanım sınırınıza ulaştınız.', 'discount' => 0.00, 'coupon_id' => $coupon_id];
@@ -143,6 +138,28 @@ class Coupon_model extends CI_Model
             'coupon_value' => $coupon->coupon_value,
             'coupon_type' => $coupon->coupon_type,
         ];
+    }
+
+    /**
+     * Teslim edilmiş (1) ve ödeme/işlem bekleyen (son 1 saat, sipariş 0 veya 11) kullanımları sayar.
+     */
+    public function count_active_usages($coupon_id, $user_id = null)
+    {
+        $this->db->from('coupon_usages cu')
+            ->join('orders o', 'o.order_id = cu.coupon_usage_order_id', 'left')
+            ->where('cu.coupon_usage_coupon_id', (int)$coupon_id)
+            ->group_start()
+                ->where('cu.coupon_usage_status', 1)
+                ->or_group_start()
+                    ->where('cu.coupon_usage_status', 0)
+                    ->where_in('o.order_status', [0, 11])
+                    ->where('cu.coupon_usage_created_at >=', date('Y-m-d H:i:s', strtotime('-1 hour')))
+                ->group_end()
+            ->group_end();
+        if ($user_id !== null) {
+            $this->db->where('cu.coupon_usage_user_id', (int)$user_id);
+        }
+        return (int)$this->db->count_all_results();
     }
 
     /**

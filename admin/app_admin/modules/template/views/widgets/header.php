@@ -56,10 +56,13 @@
 			</span>
 
 			<!-- Çıkış Butonu -->
-			<a href="<?= base_url('user/logout'); ?>" class="header-tool-btn btn-outline-danger" title="Çıkış Yap">
+			<form method="post" action="<?= base_url('user/logout'); ?>" class="m-0">
+				<input type="hidden" name="admin_action_csrf" value="<?= html_escape($this->session->userdata('admin_action_csrf_token')) ?>">
+				<button type="submit" class="header-tool-btn btn-outline-danger" title="Çıkış Yap">
 				<i class="fa-solid fa-right-from-bracket fs-7 text-danger"></i>
 				<span class="d-none d-md-inline">Çıkış</span>
-			</a>
+				</button>
+			</form>
 		</div>
 	</div>
 </div>

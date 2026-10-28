@@ -26,7 +26,7 @@ Kullanıcı yönetimi ve ilişkili admin operasyonlarını güvenli, test edileb
 - [x] Yetki tabloları bulunamadığında kodun erişime izin verdiği doğrulandı (`enforceAdminPermission()` fail-open davranıyor). Bunun ortamda fiilen tetiklenip tetiklenmediği henüz doğrulanmadı.
 - [ ] Yetki istisnaları ayrıca doğrulanmalı: login/dashboard yanında bazı `admins.*` rotaları whitelist'te; bu rotaların rol tablosu yokken davranışı ve erişim gerekçesi gözden geçirilmeli.
 - [x] Rol ve admin oluşturma kodu incelendi: `admin_power = 2` rolü `Super Admin`; `Users::addUser()` admin kaydını sabit `2` ile oluşturuyor, `Admins::addUser()` ise rol seçimini alıyor. Kullanıcı kararı: yeni adminleri yalnızca Super Admin oluşturabilir.
-- [x] Admin CSRF yapılandırması ve form/AJAX kullanımı tarandı. CSRF kapalı; 56 PHP dosyasında 91 form/helper eşleşmesi ve 37 dosyada 160 AJAX/POST eşleşmesi bulundu; taramada açık CSRF tokenı veya `form_open()` kullanımı bulunmadı. Envanter eşleşmeleri elle endpoint doğrulaması gerektirir.
+- [x] İlk envanterde admin CSRF yapılandırması ve form/AJAX kullanımı tarandı. CSRF kapalıydı; 56 PHP dosyasında 91 form/helper eşleşmesi ve 37 dosyada 160 AJAX/POST eşleşmesi bulundu; başlangıç taramasında açık CSRF tokenı veya `form_open()` kullanımı bulunmadı.
 - [ ] `customer_restrictions` ve ilgili tabloların varlığı kullanıcı tarafından teyit edildi. DB değişikliklerini kullanıcı phpMyAdmin ile manuel uyguluyor; uygulama kodu SFTP ile yükleniyor. Depoda görünen app migration'ı `support_and_transfer_expiry`; admin migration dizini ve uygulamanın referans verdiği `migration/operations_requests.sql` bu incelemede bulunamadı. Sürümleme/yedekleme/rollback akışını doğrula.
 - [ ] Bakiye, ödeme, sipariş, şifre sıfırlama ve impersonation için iş sahibi/karar vericileri belirle.
 - [ ] Her bulguya bir sorumlu, önem derecesi ve hedef tarih ata.
@@ -47,13 +47,20 @@ Kullanıcı yönetimi ve ilişkili admin operasyonlarını güvenli, test edileb
 - [x] Admin oluşturma akışında rol politikasını belirle: yeni adminleri yalnızca Super Admin oluşturabilir.
 - [x] Her iki admin oluşturma ucuna Super Admin kontrolü eklendi; rol girdisi `Admins::addUser()` içinde 2/3/4 ile sınırlandı.
 - [x] Kısa vadeli karar: yüzlerce form/AJAX akışı nedeniyle global CSRF açılımı şu an yapılmayacak. Bu, riskin sıfır olduğu değil; kontrollü biçimde ertelendiği anlamına gelir.
+- [x] Canlı `https://playsel.com/admin` yanıtı kontrol edildi: Cloudflare Access'e 302 yönlendirmesi ve `Server: cloudflare` görüldü. Yanıttaki `CF_AppSession` Cloudflare Access çerezidir; uygulamanın admin session çerezini doğrulamaz.
 - [ ] Cloudflare Zero Trust'ın admin origin'ini gerçekten koruduğunu ve doğrudan origin erişiminin kapalı olduğunu doğrula. Zero Trust oturumlu tarayıcıdan kaynaklanabilecek CSRF'yi tek başına engellemez.
-- [ ] Admin session cookie ayarlarını incele: yapılandırmada Secure ve HttpOnly açık, SameSite Lax, oturum süresi 7200 saniye ve IP eşleştirme kapalı. Canlı yanıt başlıklarında ve gerçek tarayıcıda doğrula; Lax ek azaltımdır, mutlak CSRF koruması değildir.
-- [ ] Durum değiştiren admin rotalarını tara; hiçbir değişiklik GET ile yapılmamalı. Yüksek etkili işlemlerin (admin/rol, bakiye, parola, hesap durumu, impersonation) listesini çıkar.
+- [x] Admin session cookie yapılandırmasını inceledim: Secure ve HttpOnly açık, SameSite Lax, oturum süresi 7200 saniye ve IP eşleştirme kapalı.
+- [x] Giriş sonrası uygulamanın gerçek admin session `Set-Cookie` nitelikleri doğrulandı: Secure, HttpOnly ve SameSite=Lax; Max-Age 7200 saniye. Cookie değeri bu plana kaydedilmedi. Lax ek azaltımdır, mutlak CSRF koruması değildir.
+- [x] Admin logout POST + hedefli token ile sınırlandı; başarılı login/logout'ta session ID yenilenerek eski ID iptal ediliyor.
+- [ ] Hosting/firewall panelinde origin'e yalnız Cloudflare IP aralıklarının izinli olduğunu veya Cloudflare Tunnel kullanıldığını doğrula; doğrudan-origin erişimi belirsiz kaldığı sürece risk kapanmış sayılmaz.
+- [x] `Admins` ve `Users` controller'larındaki durum değiştiren rotalar POST ile sınırlandı; logout, bakiye, parola sıfırlama, hesap durumu, kredi onayı ve banka hesabı silme dahil kritik arayüzler GET'ten POST'a geçirildi.
 - [ ] Mevcut 2FA'nın yalnızca girişte mi, yoksa hassas işlem öncesinde yeniden doğrulama olarak da mı kullanıldığını doğrula; gerekirse yalnızca yüksek etkili işlemlere step-up doğrulama ekle.
-- [ ] Yüksek etkili uçlar için hedefli token veya eşdeğer istek doğrulaması seçeneğini staging'de dene; modül modül ilerle, tüm formlar uyumlu olmadan global korumayı açma.
+- [x] Admin yönetimi ve seçilen kullanıcı yönetimi mutasyonları için session-bound hedefli token uygulandı; formlar ve AJAX istekleri token gönderiyor. Global CSRF kapalı bırakıldı.
+- [ ] Hedefli token korumasını staging'de doğrula; modül modül ilerle, tüm formlar uyumlu olmadan global korumayı açma.
+- [ ] Staging'de admin oluşturma/rol izinleri, bakiye, parola sıfırlama, hesap durumu, kredi onayı, banka hesabı silme, kısıtlama, adres ve yayıncı durumu akışlarını test et.
+- [ ] Her hedefli uçta GET'in 405 ile reddedildiğini, token eksik/geçersiz POST'un 403 verdiğini ve geçerli form/AJAX tokenıyla işlemin başarıyla tamamlandığını doğrula; reddedilen isteklerde veri değişmediğini kontrol et.
 - [ ] CSRF'yi geçici olarak erteleme kararı için kalan risk, telafi kontrolleri, sorumlu ve yeniden değerlendirme tarihi kaydet.
-- [ ] Özel impersonation CSRF kontrolünü koru ve ortak CSRF yaklaşımıyla tutarlı çalıştığını doğrula.
+- [x] Özel impersonation CSRF kontrolünün POST-only, Super Admin'e özel, süreli ve tek kullanımlık olduğu doğrulandı; mevcut özel token korundu.
 - [ ] Erişim reddi ve kritik admin işlemlerini hassas veri içermeyecek şekilde logla.
 - [ ] Yetkisiz ve geçersiz isteklerde açık hata yanıtı ve doğru HTTP durum kodu sağla.
 
@@ -160,6 +167,21 @@ Kullanıcı yönetimi ve ilişkili admin operasyonlarını güvenli, test edileb
 - [ ] Geri dönüş planı uygulanabilir ve sorumlusu atanmış.
 - [ ] Yayın sonrası izleme ve olay eskalasyonu hazır.
 
+## Öncelik: Son kullanıcı (müşteri) tarafı güvenliği
+
+- [x] `cron`, `cron2` ve `test` controller'larının herkese açık olduğu tespit edildi (`routes.php` + `{lang}/(.+)` kuralı). Constructor'larda `CRON_KEY` ve `TOOLS_ACCESS_KEY` kontrolü eklendi; CLI serbest, env yoksa kapalı (fail-closed). `analyticsReplay` kendi anahtarını kullanmaya devam ediyor.
+- [ ] **Yayın öncesi:** production `.env` içine `CRON_KEY` ve `TOOLS_ACCESS_KEY` ekle; cron curl çağrılarına `X-Cron-Key` header'ı koy; SONRA kodu yükle. Aksi halde cron'lar durur.
+- [ ] Yayın sonrası `/cron2/...` ve `/tr-TR/test/...` adreslerinin anahtarsız 404 verdiğini doğrula.
+- [ ] `app/config/config.php` içindeki sabit `encryption_key` repoda; kullanımını incele, env'e taşı ve gerekiyorsa döndür.
+- [x] Müşteri akışları incelemesi yapıldı (IDOR, fatura/sipariş/ticket/IBAN sorguları temiz). Bulgular:
+  - [ ] **#1 (HIGH, bilinçli ertelendi):** `Callback::handleMagicpayCallback` imzasız; sahte `PAYOUT_COMPLETED`+`FAILURE` ile ödenmiş sipariş/cüzdan yüklemesi iptal edilebilir, `resolvePaymentId` `LIKE` ile eşleşir. Risk AÇIK.
+  - [x] #2 `Profile::request_withdrawal` / `convertBalance`: `playsel_checkout_{userID}` kilidi altında bakiye kontrolü (staging'de paralel istek testi gerekli).
+  - [x] #3 Kupon: `Coupon_model::count_active_usages` bekleyen siparişleri (status 0 + sipariş 0/11, 1 saat) sayar; `Payment::createOrder` kupon bazlı kilit ile limiti yeniden doğrular.
+  - [x] #4 Auth: login IP/e-posta throttle, 2FA 5 hatalı denemede iptal, resend cooldown+saatlik sınır, `random_int`, kullanıcı numaralandırma kapatıldı, forgot-password throttle (dosya cache `app/cache`, şema değişikliği yok).
+  - [x] #5 Checkout telefon OTP'si numara + kod ID'sine bağlı; kullanıcı/numara/IP rate limit, doğrulama deneme sınırı; Profile iletişim OTP'lerinde de aynı sınırlar.
+- [ ] `check-user` ve sağlayıcıya giden sorgularda rate limit.
+- [ ] Ödeme callback'leri imzasız ama kredi vermeden önce sağlayıcıdan sorguluyor; tutar/kullanıcı eşleşmesi ve tekrar işleme (idempotency) testleri yapılmalı.
+
 ## Karar ve bağımlılık bekleyen maddeler
 
 - [x] `admin_power = 2` rolü `Super Admin`; yeni adminleri yalnızca Super Admin oluşturmalı (kullanıcı kararı).
@@ -174,7 +196,7 @@ Kullanıcı yönetimi ve ilişkili admin operasyonlarını güvenli, test edileb
 | Aşama | Durum | Tahmin |
 |---|---|---:|
 | 0 — Mevcut durumu doğrula | Devam ediyor — PHP, rol politikası, tablo varlığı ve manuel dağıtım bilgileri kullanıcı tarafından teyit edildi; rollback/yedekleme ve iş sahipleri bekliyor | 1–2 iş günü |
-| 1 — Yetki ve CSRF | Devam ediyor — admin oluşturma uçları ve izin-denetimli rotalarda fail-closed eklendi; global CSRF kısa vadede ertelendi, origin/cookie/GET ve yüksek etkili işlem kontrolleri bekliyor | 2–4 iş günü |
+| 1 — Yetki ve CSRF | Devam ediyor — fail-closed yetki davranışı, POST-only mutasyonlar ve admin/user modüllerinde hedefli token uygulandı; public admin Cloudflare Access'e gidiyor, ancak direct-origin kuralı ve uygulama session cookie'si doğrulanmalı; staging testi bekliyor | 2–4 iş günü |
 | 2 — Migration ve şema | Devam ediyor — mevcut manuel phpMyAdmin/SFTP akışı belgelendi; sürümleme, yedekleme ve rollback standardı bekliyor | 1–3 iş günü |
 | 3 — Test ve yayın güvencesi | Başlamadı | 3–5 iş günü |
 | 4 — Modül sürdürülebilirliği | Başlamadı | 4–8 iş günü |

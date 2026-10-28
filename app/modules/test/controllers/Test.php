@@ -23,6 +23,11 @@ class Test extends MY_Controller
 		$this->data['user'] = $this->session->userdata('user');
 		$this->data['lang'] = $lang;
 		$this->data['country'] = $country;
+
+		// analyticsReplay kendi ANALYTICS_REPLAY_KEY kontrolünü yapar; diğer tüm uçlar iç anahtar ister.
+		if ($this->router->fetch_method() !== 'analyticsReplay') {
+			$this->requireInternalAccessKey('TOOLS_ACCESS_KEY', 'X-Tools-Key', 'tools_key');
+		}
 	}
 
 	public function index()

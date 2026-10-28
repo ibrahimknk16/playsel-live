@@ -60,6 +60,50 @@ class MY_Controller extends MX_Controller
 		return $value;
 	}
 
+	// CLI çalıştırmaya izin verir; HTTP isteğinde env'deki gizli anahtar header veya query ile gelmelidir.
+	// Dosya cache tabanlı sabit pencere sayacı; true dönerse istek serbesttir.
+	protected function throttleHit($key, $max, $windowSeconds)
+	{
+		$this->load->driver('cache', ['adapter' => 'file']);
+		$cacheKey = 'thr_' . md5($key);
+		$entry = $this->cache->get($cacheKey);
+		if (!is_array($entry) || ($entry['expires'] ?? 0) <= time()) {
+			$entry = ['count' => 0, 'expires' => time() + (int)$windowSeconds];
+		}
+		if ($entry['count'] >= (int)$max) {
+			return false;
+		}
+		$entry['count']++;
+		$this->cache->save($cacheKey, $entry, max(1, $entry['expires'] - time()));
+		return true;
+	}
+
+	protected function throttleClear($key)
+	{
+		$this->load->driver('cache', ['adapter' => 'file']);
+		$this->cache->delete('thr_' . md5($key));
+	}
+
+	protected function requireInternalAccessKey($envName, $headerName, $queryName)
+	{
+		if (PHP_SAPI === 'cli') {
+			return;
+		}
+
+		$expected = (string)getenv($envName);
+		if ($expected === '') {
+			log_message('error', $envName . ' tanımlı değil; ' . $this->router->fetch_class() . ' HTTP erişimi kapalı.');
+			show_error('Servis yapılandırması eksik', 503);
+		}
+
+		$serverKey = 'HTTP_' . strtoupper(str_replace('-', '_', $headerName));
+		$given = (string)($_SERVER[$serverKey] ?? $this->input->get($queryName) ?? '');
+		if ($given === '' || !hash_equals($expected, $given)) {
+			log_message('error', 'Yetkisiz iç servis erişimi: ' . $this->router->fetch_class() . '/' . $this->router->fetch_method() . ' IP=' . $this->input->ip_address());
+			show_404();
+		}
+	}
+
 	public function __construct()
 	{
 		parent::__construct();

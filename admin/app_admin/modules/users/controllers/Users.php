@@ -15,6 +15,7 @@ class Users extends MY_Controller
 	public function index()
 	{
 		$data = $this->data;
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$data['countries'] = array_column(
 			$this->db->distinct()->select('user_country')->where('user_type', 4)->where("user_country <> ''", null, false)->order_by('user_country')->get('users')->result_array(),
 			'user_country'
@@ -29,6 +30,7 @@ class Users extends MY_Controller
 			show_error('customer_restrictions tablosu bulunamadı. migration/operations_requests.sql dosyasını çalıştırın.', 500);
 		}
 		$data = $this->data;
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$data['restrictions'] = $this->db
 			->select('r.*, u.user_name, u.user_surname, u.user_email')
 			->from('customer_restrictions r')
@@ -76,6 +78,10 @@ class Users extends MY_Controller
 
 	public function createRestriction()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$userId = (int)$this->input->post('user_id');
 		$customerReason = trim((string)$this->input->post('customer_reason', true));
 		$adminReason = trim((string)$this->input->post('admin_reason', true));
@@ -102,6 +108,10 @@ class Users extends MY_Controller
 
 	public function removeRestriction()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$id = (int)$this->input->post('restriction_id');
 		if (!$this->db->table_exists('customer_restrictions') || $id <= 0) {
 			return json(['status' => 'error', 'message' => 'Geçersiz kısıtlama.'], 422);
@@ -197,6 +207,10 @@ class Users extends MY_Controller
 
 	public function approveReferenceRequest()
 	{
+		if (!$this->requirePostRequest()) {
+			return;
+		}
+
 		$request_id = $this->input->post('request_id');
 		$req = $this->db->get_where('reference_change_requests', ['request_id' => $request_id])->row();
 		
@@ -214,6 +228,10 @@ class Users extends MY_Controller
 
 	public function rejectReferenceRequest()
 	{
+		if (!$this->requirePostRequest()) {
+			return;
+		}
+
 		$request_id = $this->input->post('request_id');
 		$req = $this->db->get_where('reference_change_requests', ['request_id' => $request_id])->row();
 		
@@ -241,6 +259,10 @@ class Users extends MY_Controller
 
 		public function approveNicknameRequest()
 		{
+			if (!$this->requirePostRequest()) {
+				return;
+			}
+
 			$id = (int) $this->input->post('request_id');
 			$this->db->trans_begin();
 			$request = $this->db->get_where('nickname_change_requests', ['nickname_request_id' => $id, 'nickname_request_status' => 2])->row();
@@ -285,6 +307,10 @@ class Users extends MY_Controller
 
 		public function rejectNicknameRequest()
 		{
+			if (!$this->requirePostRequest()) {
+				return;
+			}
+
 			$id = (int) $this->input->post('request_id');
 			$updated = $this->db->where(['nickname_request_id' => $id, 'nickname_request_status' => 2])
 				->update('nickname_change_requests', ['nickname_request_status' => 0, 'nickname_request_updated_at' => date('Y-m-d H:i:s')]);
@@ -294,6 +320,10 @@ class Users extends MY_Controller
 
 	public function addBalance($id)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$id = (int)$id;
 		$user = $this->db->get_where('users', ['user_id' => $id])->row();
 		if (!$user) {
@@ -334,6 +364,10 @@ class Users extends MY_Controller
 
 	public function removeBalance($id)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$id = (int)$id;
 		$amount = (float)$this->input->post('amount');
 		$type = (int)$this->input->post('type');
@@ -676,6 +710,10 @@ class Users extends MY_Controller
 
 	public function addUser()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$admin = $this->session->userdata('admin');
 		if (!is_array($admin) || (int) ($admin['admin_power'] ?? 0) !== 2) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'title' => 'Yetkisiz işlem', 'message' => 'Yalnızca Super Admin yeni yönetici oluşturabilir.']);
@@ -724,6 +762,7 @@ class Users extends MY_Controller
 		}
 		unset($user->user_password);
 		$data['user'] = $user;
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$data['fraudDocuments'] = $this->getFraudDocuments((int) $userID);
 		$data['userBalance'] = $this->userBalance($userID);
 
@@ -836,6 +875,10 @@ class Users extends MY_Controller
 
 	public function impersonate($userID = null)
 	{
+		if (!$this->requirePostRequest()) {
+			return;
+		}
+
 		$userID = (int)$userID;
 		$admin = $this->session->userdata('admin');
 		$csrf = $this->session->userdata('admin_impersonation_csrf');
@@ -930,6 +973,10 @@ class Users extends MY_Controller
 
 	public function uploadFraudDocument()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$userId = (int) $this->input->post('user_id');
 		$documentType = trim((string) $this->input->post('document_type', true));
 		$note = trim((string) $this->input->post('admin_note', true));
@@ -1340,6 +1387,10 @@ class Users extends MY_Controller
 
 	public function updateDetails($userID = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$userID = (int)($userID ?: $this->uri->segment(3));
 		if ($userID <= 0) {
 			return json(['status' => 'error', 'message' => 'Geçersiz kullanıcı.']);
@@ -1474,6 +1525,10 @@ class Users extends MY_Controller
 
 	public function resetPassword($userID = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$userID = (int)$userID;
 		$sendEmail = (int)$this->input->post('send_email') === 1;
 		$sendSms = (int)$this->input->post('send_sms') === 1;
@@ -2190,6 +2245,10 @@ class Users extends MY_Controller
 
 	public function changeUserStatus($userID = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$userID = (int)($userID ?: $this->uri->segment(3));
 		if ($userID <= 0) {
 			return json(['status' => 'error', 'message' => 'Geçersiz kullanıcı.']);
@@ -2225,9 +2284,17 @@ class Users extends MY_Controller
 
 	public function approve_credit()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$adminID = $this->session->userdata('admin')['admin_id'];
 		$balanceID = (int)$this->uri->segment(3);
 		$getBalance = $this->db->where('user_balance_id', $balanceID)->get('user_balance')->row();
+		if (!$getBalance) {
+			show_404();
+			return;
+		}
 
 		// user_balance_bank_id 4 kredi, user_balance_bank_id =5 ödenmiş kredi
 		//
@@ -2247,6 +2314,10 @@ class Users extends MY_Controller
 
 	public function updateUserCategory()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$post = $this->input->post();
 		$userID = (int)$post['user_id'];
 		$categoryID = (int)$post['category_id'];
@@ -2280,6 +2351,10 @@ class Users extends MY_Controller
 
 	public function updateUserCategoryCredit()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$post = $this->input->post();
 		$uid = (int)$post['user_id'];
 		$catid = (int)$post['category_id'];
@@ -2329,6 +2404,10 @@ class Users extends MY_Controller
 
 	public function updateBillingInfo($id)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		// Yalnızca yetkili (Admin) kontrolü burada varsa ekleyin
 
 		$post = $this->input->post();
@@ -2392,6 +2471,10 @@ class Users extends MY_Controller
 
 	public function saveUserAddress($userID)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$userID = (int)$userID;
 		$user = $this->db->where('user_id', $userID)->get('users')->row();
 		if (!$user) {
@@ -2503,6 +2586,10 @@ class Users extends MY_Controller
 
 	public function setDefaultUserAddress($userID, $addressID)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$userID = (int)$userID;
 		$addressID = (int)$addressID;
 		$target = $this->db->where([
@@ -2538,6 +2625,10 @@ class Users extends MY_Controller
 
 	public function deleteUserAddress($userID, $addressID)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$userID = (int)$userID;
 		$addressID = (int)$addressID;
 		$target = $this->db->where([
@@ -2585,6 +2676,7 @@ class Users extends MY_Controller
 	{
 		$data['title'] = "Yayıncı Yönetimi";
 		$data['pageName'] = "Yayıncı Yönetimi";
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$this->template->content->view('streamers', $data);
 		$this->template->publish();
 	}
@@ -2622,6 +2714,10 @@ class Users extends MY_Controller
 
 	public function updateStreamerStatus()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$user_id = $this->input->post('user_id');
 		$status = $this->input->post('status');
 
@@ -2638,6 +2734,10 @@ class Users extends MY_Controller
 
 	public function deleteBankAcc($id)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$bankAcc = $this->db->get_where('user_bank_accounts', ['id' => $id])->row();
 		if ($bankAcc) {
 			$this->db->where('id', $id);

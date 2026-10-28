@@ -19,6 +19,7 @@ class Admins extends MY_Controller
 	public function index()
 	{
 		$data = $this->data;
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$users = $this->db->select('admin_id, admin_email, admin_name, admin_power, admin_status, admin_created_at')->get('admins')->result();
 		$data['users'] = $users;
 		$data['roles'] = $this->adminRoles;
@@ -27,6 +28,10 @@ class Admins extends MY_Controller
 	}
 	public function addUser()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$admin = $this->session->userdata('admin');
 		if (!is_array($admin) || (int) ($admin['admin_power'] ?? 0) !== 2) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'title' => 'Yetkisiz işlem', 'message' => 'Yalnızca Super Admin yeni yönetici oluşturabilir.']);
@@ -131,6 +136,7 @@ class Admins extends MY_Controller
 
 		unset($user->admin_pass);
 		$data['user'] = $user;
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$data['roles'] = $this->adminRoles;
 		$data['categories'] = $categories;
 		$data['permissionsByCategory'] = $permissionsByCategory;
@@ -143,6 +149,10 @@ class Admins extends MY_Controller
 
 	public function updateUserPermissions($userID = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		if (!$this->hasPermissionTables()) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'title' => 'Hata!', 'message' => 'Permission tablolari bulunamadi.']);
 			redirect(base_url('admins'));
@@ -214,6 +224,7 @@ class Admins extends MY_Controller
 		}
 
 		$data = $this->data;
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$data['roles'] = $this->adminRoles;
 		$data['categories'] = $this->db->order_by('permission_category_name', 'ASC')->get('permission_categories')->result_array();
 
@@ -230,6 +241,10 @@ class Admins extends MY_Controller
 
 	public function addCategory()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		if (!$this->hasPermissionTables()) {
 			redirect(base_url('admins'));
 		}
@@ -263,6 +278,10 @@ class Admins extends MY_Controller
 
 	public function updateCategory($categoryID = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		if (!$this->hasPermissionTables()) {
 			redirect(base_url('admins'));
 		}
@@ -297,6 +316,10 @@ class Admins extends MY_Controller
 
 	public function deleteCategory($categoryID = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		if (!$this->hasPermissionTables()) {
 			redirect(base_url('admins'));
 		}
@@ -320,6 +343,10 @@ class Admins extends MY_Controller
 
 	public function addPermission()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		if (!$this->hasPermissionTables()) {
 			redirect(base_url('admins'));
 		}
@@ -367,6 +394,10 @@ class Admins extends MY_Controller
 
 	public function updatePermission($permissionID = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		if (!$this->hasPermissionTables()) {
 			redirect(base_url('admins'));
 		}
@@ -411,6 +442,10 @@ class Admins extends MY_Controller
 
 	public function deletePermission($permissionID = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		if (!$this->hasPermissionTables()) {
 			redirect(base_url('admins'));
 		}
@@ -477,6 +512,7 @@ class Admins extends MY_Controller
 		}
 
 		$data = $this->data;
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$data['roles'] = $this->adminRoles;
 		$data['selectedRole'] = $adminPower;
 		$data['categories'] = $categories;
@@ -490,6 +526,10 @@ class Admins extends MY_Controller
 
 	public function updateRolePermissions($adminPower = null)
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		if (!$this->hasPermissionTables()) {
 			redirect(base_url('admins'));
 		}

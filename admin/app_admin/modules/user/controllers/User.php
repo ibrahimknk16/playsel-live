@@ -18,7 +18,12 @@ class User extends MY_Controller
 
 	public function logout()
 	{
+		if (!$this->requirePostRequest() || !$this->requireAdminActionCsrf()) {
+			return;
+		}
+
 		$this->session->unset_userdata('admin');
+		$this->session->sess_regenerate(TRUE);
 		redirect(base_url('login'));
 	}
 
@@ -71,6 +76,7 @@ class User extends MY_Controller
 					'admin_email' => $checkUser['admin_email'],
 					'admin_power' => $checkUser['admin_power'],
 				];
+				$this->session->sess_regenerate(TRUE);
 				$this->session->set_userdata('admin', $userData);
 				redirect(base_url($checkRef));
 			} else {

@@ -303,6 +303,7 @@
 
             <div class="modal-body pt-6">
                 <form class="form w-100" method="POST" id="kt_sign_in_form" action="<?= base_url('admins/addUser') ?>">
+                    <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
 
                     <div class="fv-row mb-5">
                         <label class="form-label fw-semibold">Kullanıcı Adı</label>
@@ -352,6 +353,8 @@
     var LIST_URL = "<?= base_url('users/getUsersList') ?>";
     var EXPORT_URL = "<?= base_url('users/exportUsersCsv') ?>";
     var STATUS_URL = "<?= site_url('users/changeUserStatus') ?>/";
+    var ADMIN_ACTION_CSRF = <?= json_encode($adminActionCsrfToken) ?>;
+    jQuery.ajaxSetup({ headers: { 'X-Admin-CSRF': ADMIN_ACTION_CSRF } });
     var $ = function (id) { return document.getElementById(id); };
     var state = { page: 1, sort: 'id', dir: 'asc', total: 0, filtered: 0, req: 0 };
     var typeClass = { 'Son Kullanıcı': 'end' };

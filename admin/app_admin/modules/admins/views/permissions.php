@@ -23,6 +23,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="<?= base_url('admins/addCategory') ?>">
+                    <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
                     <div class="mb-4">
                         <label class="form-label">Kategori Key</label>
                         <input type="text" name="permission_category_key" class="form-control form-control-solid" placeholder="orders" required>
@@ -64,21 +65,23 @@
                         <tbody>
                             <?php foreach ($categories as $category): ?>
                                 <tr>
-                                    <form method="POST" action="<?= base_url('admins/updateCategory/' . (int) $category['permission_category_id']) ?>">
-                                        <td><?= (int) $category['permission_category_id'] ?></td>
-                                        <td><input type="text" name="permission_category_key" class="form-control form-control-sm form-control-solid" value="<?= html_escape($category['permission_category_key']) ?>" required></td>
-                                        <td><input type="text" name="permission_category_name" class="form-control form-control-sm form-control-solid" value="<?= html_escape($category['permission_category_name']) ?>" required></td>
                                         <td>
-                                            <select name="permission_category_status" class="form-select form-select-sm form-select-solid">
+                                            <form id="category-form-<?= (int) $category['permission_category_id'] ?>" method="POST" action="<?= base_url('admins/updateCategory/' . (int) $category['permission_category_id']) ?>"></form>
+                                            <input form="category-form-<?= (int) $category['permission_category_id'] ?>" type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
+                                            <?= (int) $category['permission_category_id'] ?>
+                                        </td>
+                                        <td><input form="category-form-<?= (int) $category['permission_category_id'] ?>" type="text" name="permission_category_key" class="form-control form-control-sm form-control-solid" value="<?= html_escape($category['permission_category_key']) ?>" required></td>
+                                        <td><input form="category-form-<?= (int) $category['permission_category_id'] ?>" type="text" name="permission_category_name" class="form-control form-control-sm form-control-solid" value="<?= html_escape($category['permission_category_name']) ?>" required></td>
+                                        <td>
+                                            <select form="category-form-<?= (int) $category['permission_category_id'] ?>" name="permission_category_status" class="form-select form-select-sm form-select-solid">
                                                 <option value="1" <?= (int) $category['permission_category_status'] === 1 ? 'selected' : '' ?>>Aktif</option>
                                                 <option value="0" <?= (int) $category['permission_category_status'] === 0 ? 'selected' : '' ?>>Pasif</option>
                                             </select>
                                         </td>
                                         <td class="text-nowrap">
-                                            <button type="submit" class="btn btn-sm btn-primary">Guncelle</button>
-                                            <a href="<?= base_url('admins/deleteCategory/' . (int) $category['permission_category_id']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bu kategoriyi silmek istediginize emin misiniz?')">Sil</a>
+                                            <button form="category-form-<?= (int) $category['permission_category_id'] ?>" type="submit" class="btn btn-sm btn-primary">Guncelle</button>
+                                            <button form="category-form-<?= (int) $category['permission_category_id'] ?>" type="submit" formaction="<?= base_url('admins/deleteCategory/' . (int) $category['permission_category_id']) ?>" formmethod="POST" class="btn btn-sm btn-danger" onclick="return confirm('Bu kategoriyi silmek istediginize emin misiniz?')">Sil</button>
                                         </td>
-                                    </form>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -95,6 +98,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="<?= base_url('admins/addPermission') ?>">
+                    <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
                     <div class="row g-4">
                         <div class="col-md-2">
                             <label class="form-label">Kategori</label>
@@ -166,10 +170,13 @@
                         <tbody>
                             <?php foreach ($permissions as $permission): ?>
                                 <tr>
-                                    <form method="POST" action="<?= base_url('admins/updatePermission/' . (int) $permission['permission_id']) ?>">
-                                        <td><?= (int) $permission['permission_id'] ?></td>
                                         <td>
-                                            <select name="permission_category_id" class="form-select form-select-sm form-select-solid" required>
+                                            <form id="permission-form-<?= (int) $permission['permission_id'] ?>" method="POST" action="<?= base_url('admins/updatePermission/' . (int) $permission['permission_id']) ?>"></form>
+                                            <input form="permission-form-<?= (int) $permission['permission_id'] ?>" type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
+                                            <?= (int) $permission['permission_id'] ?>
+                                        </td>
+                                        <td>
+                                            <select form="permission-form-<?= (int) $permission['permission_id'] ?>" name="permission_category_id" class="form-select form-select-sm form-select-solid" required>
                                                 <?php foreach ($categories as $category): ?>
                                                     <option value="<?= (int) $category['permission_category_id'] ?>" <?= (int) $permission['permission_category_id'] === (int) $category['permission_category_id'] ? 'selected' : '' ?>>
                                                         <?= html_escape($category['permission_category_name']) ?>
@@ -178,28 +185,27 @@
                                             </select>
                                         </td>
                                         <td>
-                                            <input type="text" name="permission_code" class="form-control form-control-sm mb-1 form-control-solid" value="<?= html_escape($permission['permission_code']) ?>" required>
+                                            <input form="permission-form-<?= (int) $permission['permission_id'] ?>" type="text" name="permission_code" class="form-control form-control-sm mb-1 form-control-solid" value="<?= html_escape($permission['permission_code']) ?>" required>
                                             <div class="d-flex gap-1">
-                                                <input type="text" name="permission_module" class="form-control form-control-sm form-control-solid" value="<?= html_escape($permission['permission_module']) ?>" required>
-                                                <input type="text" name="permission_controller" class="form-control form-control-sm form-control-solid" value="<?= html_escape($permission['permission_controller']) ?>" required>
-                                                <input type="text" name="permission_method" class="form-control form-control-sm form-control-solid" value="<?= html_escape($permission['permission_method']) ?>" required>
+                                                <input form="permission-form-<?= (int) $permission['permission_id'] ?>" type="text" name="permission_module" class="form-control form-control-sm form-control-solid" value="<?= html_escape($permission['permission_module']) ?>" required>
+                                                <input form="permission-form-<?= (int) $permission['permission_id'] ?>" type="text" name="permission_controller" class="form-control form-control-sm form-control-solid" value="<?= html_escape($permission['permission_controller']) ?>" required>
+                                                <input form="permission-form-<?= (int) $permission['permission_id'] ?>" type="text" name="permission_method" class="form-control form-control-sm form-control-solid" value="<?= html_escape($permission['permission_method']) ?>" required>
                                             </div>
                                         </td>
                                         <td>
-                                            <input type="text" name="permission_name" class="form-control form-control-sm mb-1 form-control-solid" value="<?= html_escape($permission['permission_name']) ?>" required>
-                                            <input type="text" name="permission_description" class="form-control form-control-sm form-control-solid" value="<?= html_escape($permission['permission_description']) ?>">
+                                            <input form="permission-form-<?= (int) $permission['permission_id'] ?>" type="text" name="permission_name" class="form-control form-control-sm mb-1 form-control-solid" value="<?= html_escape($permission['permission_name']) ?>" required>
+                                            <input form="permission-form-<?= (int) $permission['permission_id'] ?>" type="text" name="permission_description" class="form-control form-control-sm form-control-solid" value="<?= html_escape($permission['permission_description']) ?>">
                                         </td>
                                         <td>
-                                            <select name="permission_status" class="form-select form-select-sm form-select-solid">
+                                            <select form="permission-form-<?= (int) $permission['permission_id'] ?>" name="permission_status" class="form-select form-select-sm form-select-solid">
                                                 <option value="1" <?= (int) $permission['permission_status'] === 1 ? 'selected' : '' ?>>Aktif</option>
                                                 <option value="0" <?= (int) $permission['permission_status'] === 0 ? 'selected' : '' ?>>Pasif</option>
                                             </select>
                                         </td>
                                         <td class="text-nowrap">
-                                            <button type="submit" class="btn btn-sm btn-primary">Guncelle</button>
-                                            <a href="<?= base_url('admins/deletePermission/' . (int) $permission['permission_id']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Permission silinsin mi?')">Sil</a>
+                                            <button form="permission-form-<?= (int) $permission['permission_id'] ?>" type="submit" class="btn btn-sm btn-primary">Guncelle</button>
+                                            <button form="permission-form-<?= (int) $permission['permission_id'] ?>" type="submit" formaction="<?= base_url('admins/deletePermission/' . (int) $permission['permission_id']) ?>" formmethod="POST" class="btn btn-sm btn-danger" onclick="return confirm('Permission silinsin mi?')">Sil</button>
                                         </td>
-                                    </form>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

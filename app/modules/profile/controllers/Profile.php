@@ -164,6 +164,16 @@ class Profile extends MY_Controller
 		$userID = $this->data['user']['user_id'];
 		
 		$type = $post['type'] ?? '';
+		if (!in_array($type, ['email', 'phone'], true)) {
+			echo json_encode(['status' => 'error', 'message' => 'Geçersiz istek.']);
+			return;
+		}
+		if (!$this->throttleHit('contact_cd_' . $userID, 1, 60)
+			|| !$this->throttleHit('contact_user_' . $userID, 8, 3600)
+			|| !$this->throttleHit('contact_ip_' . getIp(), 20, 3600)) {
+			echo json_encode(['status' => 'error', 'message' => 'Çok fazla kod istediniz. Lütfen daha sonra tekrar deneyin.']);
+			return;
+		}
 		$userCheck = $this->db->get_where('users', ['user_id' => $userID])->row();
 
 		if ($type === 'email') {
@@ -188,7 +198,7 @@ class Profile extends MY_Controller
 			$this->db->update('user_2fa_codes', ['2fa_status' => 2]);
 			
 			// Generate OTP
-			$otpCode = rand(100000, 999999);
+			$otpCode = random_int(100000, 999999);
 			$this->db->insert('user_2fa_codes', [
 				'2fa_user_id' => $userID,
 				'2fa_otp_code' => $otpCode,
@@ -218,6 +228,10 @@ class Profile extends MY_Controller
 				echo json_encode(['status' => 'error', 'message' => 'Telefon numarası boş olamaz.']);
 				return;
 			}
+			if (!$this->throttleHit('contact_phone_' . $newPhone, 3, 3600)) {
+				echo json_encode(['status' => 'error', 'message' => 'Bu numara için çok fazla kod istendi. Lütfen daha sonra tekrar deneyin.']);
+				return;
+			}
 			if ($newPhone === $userCheck->user_phone && $userCheck->user_phone_is_verified == 1) {
 				echo json_encode(['status' => 'success', 'requires_verification' => false, 'message' => 'Telefon numaranız zaten güncel ve onaylı.']);
 				return;
@@ -232,7 +246,7 @@ class Profile extends MY_Controller
 			$this->db->update('user_2fa_codes', ['2fa_status' => 2]);
 			
 			// Generate OTP
-			$otpCode = rand(100000, 999999);
+			$otpCode = random_int(100000, 999999);
 			$this->db->insert('user_2fa_codes', [
 				'2fa_user_id' => $userID,
 				'2fa_otp_code' => $otpCode,
@@ -273,12 +287,20 @@ class Profile extends MY_Controller
 		if ($otpType === 'email') $where['2fa_method'] = 1;
 		else if ($otpType === 'phone') $where['2fa_method'] = 2;
 
+		$verifyKey = 'contact_verify_' . (int)$userID;
+		if (!$this->throttleHit($verifyKey, 5, 600)) {
+			$this->db->where('2fa_user_id', $userID)->where('2fa_status', 0)->update('user_2fa_codes', ['2fa_status' => 2]);
+			echo json_encode(['status' => 'error', 'message' => 'Çok fazla hatalı deneme. Lütfen yeni kod isteyin.']);
+			return;
+		}
+
 		$checkCode = $this->db->get_where('user_2fa_codes', $where)->row();
 
 		if (empty($checkCode)) {
 			echo json_encode(['status' => 'error', 'message' => 'Girdiğiniz kod hatalı veya süresi dolmuş.']);
 			return;
 		}
+		$this->throttleClear($verifyKey);
 
 		// Update code as used
 		$this->db->where('2fa_id', $checkCode->{'2fa_id'});
@@ -974,14 +996,23 @@ class Profile extends MY_Controller
 			return;
 		}
 
+		$lockName = $this->acquireBalanceLock($userID);
+		if ($lockName === null) {
+			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'İşleminiz devam ediyor, lütfen tekrar deneyiniz.']);
+			redirect($this->uri->segment(1) . '/profile/withdrawals#tab-request');
+			return;
+		}
+
 		$this->load->model('Wallet_model');
 		$balances = $this->Wallet_model->get_user_balances($userID);
 		if ((float)($balances['withdrawable_balance'] ?? 0) < $requestedAmount) {
+			$this->releaseBalanceLock($lockName);
 			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Çekilebilir bakiyeniz yetersiz.']);
 			redirect($this->uri->segment(1) . '/profile/withdrawals#tab-request');
 			return;
 		}
 		if (!$this->db->table_exists('withdrawals')) {
+			$this->releaseBalanceLock($lockName);
 			log_message('error', 'Withdrawal request table is missing.');
 			$this->session->set_flashdata('alert', ['type' => 'error', 'message' => 'Para çekim talebi şu anda oluşturulamadı.']);
 			redirect($this->uri->segment(1) . '/profile/withdrawals#tab-request');
@@ -1005,6 +1036,7 @@ class Profile extends MY_Controller
 			'user_balance_created_at' => date('Y-m-d H:i:s'),
 		]);
 		$this->db->trans_complete();
+		$this->releaseBalanceLock($lockName);
 
 		$this->session->set_flashdata('alert', [
 			'type' => $this->db->trans_status() ? 'success' : 'error',
@@ -1107,6 +1139,13 @@ class Profile extends MY_Controller
 			return;
 		}
 
+		$lockName = $this->acquireBalanceLock((int)$userID);
+		if ($lockName === null) {
+			$this->session->set_flashdata('error', 'İşleminiz devam ediyor, lütfen tekrar deneyiniz.');
+			redirect('profile/wallet');
+			return;
+		}
+
 		$this->load->model('Wallet_model');
 		$balances = $this->Wallet_model->get_user_balances($userID);
 		$withdrawable = $balances['withdrawable_balance'] ?? 0;
@@ -1135,6 +1174,7 @@ class Profile extends MY_Controller
 			]);
 
 			$this->db->trans_complete();
+			$this->releaseBalanceLock($lockName);
 
 			if ($this->db->trans_status() === FALSE) {
 				$this->session->set_flashdata('error', 'Bakiye dönüştürme işlemi sırasında bir hata oluştu.');
@@ -1142,10 +1182,23 @@ class Profile extends MY_Controller
 				$this->session->set_flashdata('success', 'Çekilebilir bakiyenizden ' . nFormat($requestedAmount) . ' ₺ başarıyla kullanılabilir bakiyeye dönüştürüldü.');
 			}
 		} else {
+			$this->releaseBalanceLock($lockName);
 			$this->session->set_flashdata('error', 'Yetersiz çekilebilir bakiye.');
 		}
 
 		redirect('profile/wallet');
+	}
+
+	private function acquireBalanceLock($userID)
+	{
+		$lockName = 'playsel_checkout_' . (int)$userID;
+		$row = $this->db->query('SELECT GET_LOCK(?, 5) AS acquired', [$lockName])->row();
+		return ($row && (int)$row->acquired === 1) ? $lockName : null;
+	}
+
+	private function releaseBalanceLock($lockName)
+	{
+		$this->db->query('SELECT RELEASE_LOCK(?)', [$lockName]);
 	}
 
 	public function transactions()

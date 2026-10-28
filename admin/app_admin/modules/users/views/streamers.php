@@ -29,6 +29,7 @@
 
 <script>
 $(document).ready(function() {
+    var adminActionCsrfToken = <?= json_encode($adminActionCsrfToken) ?>;
     var table = $('#streamersTable').DataTable({
         processing: true,
         serverSide: true,
@@ -105,7 +106,7 @@ $(document).ready(function() {
             }
         }).then(function (result) {
             if (result.isConfirmed) {
-                $.post("<?= base_url('users/updateStreamerStatus') ?>", { user_id: userId, status: 1 }, function(res) {
+                $.post("<?= base_url('users/updateStreamerStatus') ?>", { user_id: userId, status: 1, admin_action_csrf: adminActionCsrfToken }, function(res) {
                     var json = JSON.parse(res);
                     if (json.status) {
                         if (typeof toastr !== 'undefined') toastr.success(json.message);
@@ -134,7 +135,7 @@ $(document).ready(function() {
             }
         }).then(function (result) {
             if (result.isConfirmed) {
-                $.post("<?= base_url('users/updateStreamerStatus') ?>", { user_id: userId, status: 0 }, function(res) {
+                $.post("<?= base_url('users/updateStreamerStatus') ?>", { user_id: userId, status: 0, admin_action_csrf: adminActionCsrfToken }, function(res) {
                     var json = JSON.parse(res);
                     if (json.status) {
                         if (typeof toastr !== 'undefined') toastr.success(json.message);

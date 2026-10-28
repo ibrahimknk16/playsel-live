@@ -7,6 +7,7 @@
     </div>
     <div class="card-body">
         <form id="restrictionForm" class="restriction-form row g-4 mb-8">
+            <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
             <div class="col-md-3">
                 <label class="form-label">Müşteri</label>
                 <select name="user_id" id="userSelect" class="form-select" required>
@@ -90,6 +91,7 @@ $(function () {
             }
         }
     });
+    $.ajaxSetup({ headers: { 'X-Admin-CSRF': <?= json_encode($adminActionCsrfToken) ?> } });
 
     $('#restrictionForm').on('submit', function (event) {
         event.preventDefault();
@@ -101,7 +103,7 @@ $(function () {
 
     $('.js-remove-restriction').on('click', function () {
         if (!confirm('Bu kısıtlama kaldırılsın mı?')) return;
-        $.post('<?= base_url('users/removeRestriction') ?>', {restriction_id: $(this).data('id')}, function (response) {
+        $.post('<?= base_url('users/removeRestriction') ?>', {restriction_id: $(this).data('id'), admin_action_csrf: <?= json_encode($adminActionCsrfToken) ?>}, function (response) {
             if (response.status === 'success') location.reload();
             else alert(response.message || 'İşlem başarısız.');
         }, 'json');

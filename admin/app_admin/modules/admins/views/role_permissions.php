@@ -25,6 +25,7 @@
             </form>
 
             <form method="POST" action="<?= base_url('admins/updateRolePermissions/' . (int) $selectedRole) ?>">
+                <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
                 <input type="hidden" name="admin_power" value="<?= (int) $selectedRole ?>">
 
                 <div class="alert alert-secondary">

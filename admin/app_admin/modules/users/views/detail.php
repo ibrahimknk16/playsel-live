@@ -468,6 +468,7 @@ if (!empty($user->user_reference_id)) {
                     </div>
                     <div class="card-body">
                         <form class="fraud-document-form" action="<?= base_url('users/uploadFraudDocument') ?>" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
                             <input type="hidden" name="user_id" value="<?= (int) $user->user_id ?>">
                             <div class="row g-5 fraud-document-form-row">
                                 <div class="col-12 col-xl-3">
@@ -1217,7 +1218,10 @@ if (!empty($user->user_reference_id)) {
                                                 <td class="text-end cd-actions-cell">
                                                     <button type="button" class="cd-table-btn" data-cd-payment="<?= (int)$row->user_balance_id ?>">Ödeme Detayı</button>
                                                     <?php if ($row->user_balance_bank_id == 4 && $row->user_balance_status != 0): ?>
-                                                        <a href="<?= base_url('users/approve_credit/' . (int)$row->user_balance_id) ?>" class="btn btn-sm btn-success approve-credit-btn" data-id="<?= (int)$row->user_balance_id ?>">Krediyi Onayla</a>
+                                                        <form method="post" action="<?= base_url('users/approve_credit/' . (int)$row->user_balance_id) ?>" class="d-inline">
+                                                            <input type="hidden" name="admin_action_csrf" value="<?= html_escape($adminActionCsrfToken) ?>">
+                                                            <button type="submit" class="btn btn-sm btn-success approve-credit-btn" data-id="<?= (int)$row->user_balance_id ?>">Krediyi Onayla</button>
+                                                        </form>
                                                     <?php endif; ?>
                                                 </td>
                                             </tr>
@@ -1948,6 +1952,9 @@ if (!empty($user->user_reference_id)) {
 (function() {
     var CUSTOMER = <?= json_encode(['name' => $fullName, 'email' => (string)$user->user_email, 'id' => (int)$user->user_id], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var BAL = <?= json_encode(['withdrawable' => (float)$userBalance2['withdrawable_balance'], 'spendable' => (float)$userBalance2['spendable_balance'], 'credit' => (float)$user->user_credit_limit]) ?>;
+    window.ADMIN_ACTION_CSRF = <?= json_encode($adminActionCsrfToken) ?>;
+    var ADMIN_ACTION_CSRF = window.ADMIN_ACTION_CSRF;
+    $.ajaxSetup({ headers: { 'X-Admin-CSRF': ADMIN_ACTION_CSRF } });
     var URLS = {
         base: "<?= base_url('users/') ?>",
         restrictCreate: "<?= base_url('users/createRestriction') ?>",
@@ -2170,6 +2177,7 @@ if (!empty($user->user_reference_id)) {
         openForm(add ? 'Bakiye Ekle' : 'Bakiye Çıkar', CUSTOMER.name + ' · #' + CUSTOMER.id,
             '<div class="cd-pop-figs"><div><small>Çekilebilir Bakiye</small><strong>' + esc(money(BAL.withdrawable)) + '</strong></div><div><small>Harcanabilir Bakiye</small><strong>' + esc(money(BAL.spendable)) + '</strong></div><div><small>Kredi Limiti</small><strong>' + esc(money(BAL.credit)) + '</strong></div></div>' +
             '<form method="post" id="cdBalForm" class="cd-pop-form" action="' + URLS.base + (add ? 'addBalance/' : 'removeBalance/') + CUSTOMER.id + '">' +
+            '<input type="hidden" name="admin_action_csrf" value="' + esc(ADMIN_ACTION_CSRF) + '">' +
             '<div class="cd-pop-grid"><label>Tutar (₺)<input type="number" name="amount" id="cdBalAmount" min="0.01" step="0.01" required placeholder="Örn: 100,50" autocomplete="off"></label>' +
             '<label>Bakiye Türü<select name="type" id="cdBalType"><option value="2">Harcanabilir Bakiye</option><option value="1">Çekilebilir Bakiye</option></select></label></div>' +
             '<label>Not' + (add ? ' (opsiyonel)' : ' (çıkarma nedeni)') + '<input type="text" name="note" maxlength="200" placeholder="' + (add ? 'Örn: Elden alındı, havale' : 'Örn: Hatalı yükleme düzeltmesi') + '" autocomplete="off"></label>' +
@@ -2207,6 +2215,7 @@ if (!empty($user->user_reference_id)) {
         openForm('Müşteri Kısıtlama', CUSTOMER.name + ' · #' + CUSTOMER.id,
             '<div class="cd-pop-note warn">Kısıtlama anında uygulanır ve müşterinin açık oturumları sonlandırılır. Müşteri, aşağıdaki açıklamayı görür.</div>' +
             '<form id="cdRestrictForm" class="cd-pop-form">' +
+            '<input type="hidden" name="admin_action_csrf" value="' + esc(ADMIN_ACTION_CSRF) + '">' +
             '<label>Süre<select name="duration_minutes"><option value="60">1 saat</option><option value="1440">24 saat</option><option value="10080">7 gün</option><option value="43200">30 gün</option><option value="0">Süresiz</option></select></label>' +
             '<label>Müşteriye gösterilecek açıklama<textarea name="customer_reason" rows="3" maxlength="500" required placeholder="Müşterinin göreceği mesaj"></textarea></label>' +
             '<label>Yönetici notu (yalnızca personel görür)<textarea name="admin_reason" rows="3" maxlength="1000" required placeholder="Kısıtlama gerekçesi"></textarea></label>' +
@@ -2227,7 +2236,7 @@ if (!empty($user->user_reference_id)) {
     function unrestrictForm(restrictionId) {
         openForm('Kısıtlamayı Kaldır', CUSTOMER.name + ' · #' + CUSTOMER.id,
             '<div class="cd-pop-note warn">Kısıtlama kaldırılınca müşteri hesabına yeniden erişebilir.</div>' +
-            '<form id="cdUnrestrictForm" class="cd-pop-form"><label>Kaldırma gerekçesi<textarea name="removal_reason" rows="3" maxlength="500" placeholder="Opsiyonel"></textarea></label>' +
+            '<form id="cdUnrestrictForm" class="cd-pop-form"><input type="hidden" name="admin_action_csrf" value="' + esc(ADMIN_ACTION_CSRF) + '"><label>Kaldırma gerekçesi<textarea name="removal_reason" rows="3" maxlength="500" placeholder="Opsiyonel"></textarea></label>' +
             '<div class="cd-pop-note" id="cdFormMsg" hidden></div>' +
             '<div class="cd-pop-actions"><button type="button" class="cd-pop-btn" data-cd-close>Vazgeç</button><button type="submit" class="cd-pop-btn primary" id="cdUnrestrictSubmit">Kısıtlamayı Kaldır</button></div></form>');
         document.getElementById('cdUnrestrictForm').addEventListener('submit', function(e) {
@@ -2930,7 +2939,7 @@ if (!empty($user->user_reference_id)) {
                 url: "<?= site_url('users/resetPassword/' . (int)$userID) ?>",
                 type: 'POST',
                 dataType: 'json',
-                data: {send_email: sendEmail ? 1 : 0, send_sms: sendSms ? 1 : 0},
+                data: {send_email: sendEmail ? 1 : 0, send_sms: sendSms ? 1 : 0, admin_action_csrf: ADMIN_ACTION_CSRF},
                 success: function(res) {
                     if (res && res.status === 'success') {
                         toastr.success(res.message);
@@ -3558,6 +3567,11 @@ if (!empty($user->user_reference_id)) {
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '<?= base_url("users/addBalance/") ?>' + userId;
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'admin_action_csrf';
+                csrfInput.value = ADMIN_ACTION_CSRF;
+                form.appendChild(csrfInput);
                 
                 const inpAmount = document.createElement('input');
                 inpAmount.type = 'hidden';
@@ -3623,6 +3637,11 @@ if (!empty($user->user_reference_id)) {
             var form = document.createElement('form');
             form.method = 'POST';
             form.action = '<?= base_url("users/removeBalance/") ?>' + userId;
+            var csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'admin_action_csrf';
+            csrfInput.value = ADMIN_ACTION_CSRF;
+            form.appendChild(csrfInput);
             Object.keys(result.value).forEach(function (key) {
                 var input = document.createElement('input');
                 input.type = 'hidden';
@@ -3647,7 +3666,16 @@ if (!empty($user->user_reference_id)) {
             cancelButtonText: 'İptal'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = '<?= base_url("users/deleteBankAcc/") ?>' + id;
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '<?= base_url("users/deleteBankAcc/") ?>' + id;
+                var csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'admin_action_csrf';
+                csrfInput.value = window.ADMIN_ACTION_CSRF;
+                form.appendChild(csrfInput);
+                document.body.appendChild(form);
+                form.submit();
             }
         });
     }
