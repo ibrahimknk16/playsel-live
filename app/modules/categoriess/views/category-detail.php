@@ -855,6 +855,7 @@ if (!function_exists('format_category_seo_tables')) {
 
   #products-grid .product-item {
     display: flex !important;
+    flex-wrap: wrap !important;
     align-items: center !important;
     justify-content: space-between !important;
     padding: 16px 18px !important;
@@ -923,12 +924,17 @@ if (!function_exists('format_category_seo_tables')) {
   }
 
   #products-grid .product-item-name {
-    font-size: 12px !important;
+    font-size: 14px !important;
     font-weight: 700 !important;
     color: #f4f5fa !important;
     line-height: 1.35 !important;
     margin: 0 !important;
     display: block;
+    transition: color 0.2s ease;
+  }
+
+  #products-grid .product-item.selected .product-item-name {
+    color: #ffd05b !important;
   }
 
   #products-grid .product-item-short-desc {
@@ -941,24 +947,32 @@ if (!function_exists('format_category_seo_tables')) {
 
   /* Divider hidden by default on desktop */
   #products-grid .product-item-divider {
-    display: none;
+    display: none !important;
   }
 
-  /* Right/Side area on desktop (Flash on top, Discount badge below, Prices below) */
+  /* Right/Side area on desktop (Row 1: Discount + Flash, Row 2: Price + Old Price, Row 3: Stepper) */
   #products-grid .product-item-side {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 6px;
-    flex-shrink: 0;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #products-grid .product-item-side-info {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    gap: 6px !important;
   }
 
   #products-grid .product-item-side-top {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
   }
 
   #products-grid .product-item-badge-wrap {
@@ -983,6 +997,7 @@ if (!function_exists('format_category_seo_tables')) {
     box-shadow: none !important;
     white-space: nowrap !important;
     margin: 0 !important;
+    flex-shrink: 0 !important;
   }
 
   #products-grid .ps-product-flash {
@@ -1022,30 +1037,137 @@ if (!function_exists('format_category_seo_tables')) {
   }
 
   #products-grid .product-item-prices {
-    display: flex;
-    align-items: baseline;
-    justify-content: flex-end;
-    gap: 6px;
-    margin: 0;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
   }
 
   #products-grid .product-item-price {
-    font-size: 17px !important;
-    font-weight: 700;
-    color: #ffb300;
-    line-height: 1.2;
-    letter-spacing: -.3px;
-    margin: 0;
-    order: 1;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #ffb300 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -.3px !important;
+    margin: 0 !important;
+    order: 1 !important;
+    white-space: nowrap !important;
   }
 
   #products-grid .product-item-old-price {
-    font-size: 11px;
-    color: #7d8596;
-    text-decoration: line-through;
-    line-height: 1.2;
-    margin: 0;
-    order: 2;
+    font-size: 12px !important;
+    color: #7d8596 !important;
+    text-decoration: line-through !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    order: 2 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Quantity Stepper (Adet Seçici - 1. Görsel ile Birebir) */
+  #products-grid .product-item-qty-wrap {
+    display: none !important;
+    width: auto !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    margin-top: 4px !important;
+    box-sizing: border-box !important;
+  }
+
+  #products-grid .product-item[data-epin="1"].selected .product-item-qty-wrap {
+    display: flex !important;
+  }
+
+  #products-grid .cd-qty {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 32px !important;
+    width: 114px !important;
+    background: #1c212d !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #products-grid .cd-qty-btn {
+    width: 34px !important;
+    height: 100% !important;
+    background: transparent !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+    user-select: none !important;
+  }
+
+  #products-grid .cd-qty-minus {
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #8b93a5 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+  }
+
+  #products-grid .cd-qty-minus:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #ffffff !important;
+  }
+
+  #products-grid .cd-qty-minus:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+  }
+
+  #products-grid .cd-qty-val {
+    flex: 1 !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    min-width: 40px !important;
+    text-align: center !important;
+    user-select: none !important;
+  }
+
+  #products-grid .cd-qty-plus {
+    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #ffb300 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+  }
+
+  #products-grid .cd-qty-plus:hover:not(:disabled) {
+    background: rgba(255, 179, 0, 0.12) !important;
+    color: #ffd05b !important;
+  }
+
+  #products-grid .cd-qty-plus:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+  }
+
+  #products-grid .cd-qty-plus:hover:not(:disabled) {
+    background: rgba(255, 179, 0, 0.12) !important;
+    color: #ffd05b !important;
+  }
+
+  #products-grid .cd-qty-plus:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
   }
 
   /* Divider before Tüm Ürünler */
@@ -1147,23 +1269,32 @@ if (!function_exists('format_category_seo_tables')) {
 
     #products-grid .product-item-side {
       display: flex !important;
+      flex-direction: column !important;
+      width: 100% !important;
+      margin-top: auto !important;
+      padding-top: 14px !important;
+      gap: 0 !important;
+    }
+
+    #products-grid .product-item-side-info {
+      display: flex !important;
       flex-direction: row !important;
       align-items: flex-end !important;
       justify-content: space-between !important;
       width: 100% !important;
-      margin-top: auto !important;
-      padding-top: 16px !important;
       margin-bottom: 12px !important;
     }
 
     #products-grid .product-item-side-top {
       display: flex !important;
       align-items: center !important;
+      flex-shrink: 0 !important;
     }
 
     #products-grid .product-item-badge-wrap {
       display: flex !important;
       align-items: center !important;
+      flex-shrink: 0 !important;
     }
 
     #products-grid .ps-product-flash {
@@ -1178,14 +1309,18 @@ if (!function_exists('format_category_seo_tables')) {
       align-items: flex-end !important;
       gap: 2px !important;
       margin-left: auto !important;
+      flex-shrink: 0 !important;
     }
 
     #products-grid .product-item-old-price {
       order: 1 !important;
+      white-space: nowrap !important;
     }
 
     #products-grid .product-item-price {
       order: 2 !important;
+      font-size: 16px !important;
+      white-space: nowrap !important;
     }
 
     #products-grid .product-item-divider {
@@ -1195,6 +1330,17 @@ if (!function_exists('format_category_seo_tables')) {
       background: rgba(255, 255, 255, 0.08) !important;
       margin: 0 !important;
     }
+
+    #products-grid .product-item:not([data-epin="1"]) .product-item-divider {
+      display: none !important;
+    }
+
+    #products-grid .product-item-qty-wrap {
+      width: 100% !important;
+      justify-content: center !important;
+      margin-top: 12px !important;
+      margin-bottom: 2px !important;
+    }
   }
 
   @media (max-width: 480px) {
@@ -1203,7 +1349,16 @@ if (!function_exists('format_category_seo_tables')) {
     }
 
     #products-grid .product-item {
-      padding: 12px !important;
+      padding: 14px 12px !important;
+    }
+
+    #products-grid .product-item-price {
+      font-size: 15px !important;
+    }
+
+    #products-grid .product-discount-badge {
+      padding: 2px 5px !important;
+      font-size: 10.5px !important;
     }
 
     .ps-pass-grid.count-2,
@@ -2567,14 +2722,15 @@ if (!function_exists('format_category_seo_tables')) {
                     $discountBadge = '<span class="product-discount-badge">%' . $discountPercentage . ' indirim</span>';
                   }
                 }
+                $isEpinProduct = ((int) ($product->product_type ?? 0) === 3 && empty($product->product_is_bundle));
+                $isSelected = (!$isInStock ? false : (($this->input->get('p') !== null && $this->input->get('p') == $product->product_id) || ($this->input->get('p') === null && (int) $product->product_id === $firstAvailableProductId)));
                 ?>
 
                 <div role="button" tabindex="0" aria-label="<?= html_escape($product->product_name) ?>"
-                  class="product-item <?= !$isInStock ? 'product-out-of-stock' : (($this->input->get('p') !== null && $this->input->get('p') == $product->product_id) || ($this->input->get('p') === null && (int) $product->product_id === $firstAvailableProductId) ? 'selected' : '') ?>"
+                  class="product-item <?= !$isInStock ? 'product-out-of-stock' : ($isSelected ? 'selected' : '') ?>"
                   data-product="<?= htmlspecialchars($product->product_id) ?>"
-                  data-price="<?= htmlspecialchars($product->user_price) ?>"
-                  data-epin="<?= ((int) ($product->product_type ?? 0) === 3 && empty($product->product_is_bundle)) ? '1' : '0' ?>"
-                  data-name="<?= htmlspecialchars($product->product_name) ?>">
+                  data-price="<?= htmlspecialchars($product->user_price) ?>" data-epin="<?= $isEpinProduct ? '1' : '0' ?>"
+                  data-qty="1" data-name="<?= htmlspecialchars($product->product_name) ?>">
 
                   <div class="product-item-main">
                     <div class="product-item-icon">
@@ -2592,27 +2748,39 @@ if (!function_exists('format_category_seo_tables')) {
                   </div>
 
                   <div class="product-item-side">
-                    <div class="product-item-side-top">
-                      <span class="ps-product-flash" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" focusable="false">
-                          <path d="M13.6 2.8 5.8 13h5.4l-.8 8.2L18.2 11h-5.4l.8-8.2Z"></path>
-                        </svg>
-                      </span>
-                      <div class="product-item-badge-wrap">
-                        <?= $discountBadge ?>
+                    <div class="product-item-side-info">
+                      <div class="product-item-side-top">
+                        <div class="product-item-badge-wrap">
+                          <?= $discountBadge ?>
+                        </div>
+                        <span class="ps-product-flash" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M13.6 2.8 5.8 13h5.4l-.8 8.2L18.2 11h-5.4l.8-8.2Z"></path>
+                          </svg>
+                        </span>
+                      </div>
+
+                      <div class="product-item-prices">
+                        <span class="product-item-price" <?= $isInStock ? ' itemprop="price" content="' . htmlspecialchars(number_format((float) $product->user_price, 2, '.', '')) . '"' : '' ?>><?= !$isInStock ? 'Stokta Yok' : number_format($product->user_price, 2, ',', '.') . ' ' . $displayCurrency ?></span>
+                        <?php if (!empty($product->list_price) && $product->list_price > $product->user_price): ?>
+                          <span class="product-item-old-price"><?= number_format($product->list_price, 2, ',', '.') ?>
+                            <?= $displayCurrency ?></span>
+                        <?php endif; ?>
                       </div>
                     </div>
 
-                    <div class="product-item-prices">
-                      <span class="product-item-price" <?= $isInStock ? ' itemprop="price" content="' . htmlspecialchars(number_format((float) $product->user_price, 2, '.', '')) . '"' : '' ?>><?= !$isInStock ? 'Stokta Yok' : number_format($product->user_price, 2, ',', '.') . ' ' . $displayCurrency ?></span>
-                      <?php if (!empty($product->list_price) && $product->list_price > $product->user_price): ?>
-                        <span class="product-item-old-price"><?= number_format($product->list_price, 2, ',', '.') ?>
-                          <?= $displayCurrency ?></span>
-                      <?php endif; ?>
-                    </div>
-                  </div>
+                    <div class="product-item-divider"></div>
 
-                  <div class="product-item-divider"></div>
+                    <?php if ($isEpinProduct): ?>
+                      <div class="product-item-qty-wrap">
+                        <div class="cd-qty" role="group" aria-label="Adet Seçimi">
+                          <button type="button" class="cd-qty-btn cd-qty-minus" aria-label="Azalt" disabled>-</button>
+                          <span class="cd-qty-val">1</span>
+                          <button type="button" class="cd-qty-btn cd-qty-plus" aria-label="Arttır">+</button>
+                        </div>
+                      </div>
+                    <?php endif; ?>
+                  </div>
                 </div>
               <?php endforeach; ?>
             <?php else: ?>
@@ -3144,37 +3312,49 @@ if (!function_exists('format_category_seo_tables')) {
     const IS_EPIN = <?= ((int) ($category->category_type ?? 0) === 3) ? 'true' : 'false' ?>;
     const MAX_QTY = 10;
 
-    (function injectQtyControls() {
-      const style = document.createElement('style');
-      style.textContent = '.product-item{position:relative}' +
-        '.cd-qty{position:absolute;right:12px;bottom:10px;display:inline-flex;align-items:center;gap:8px}' +
-        '.cd-qty button{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:inherit;font-size:15px;line-height:1;cursor:pointer;padding:0}' +
-        '.cd-qty button:disabled{opacity:.35;cursor:not-allowed}' +
-        '.cd-qty .cd-qty-val{min-width:18px;text-align:center;font-weight:600;font-size:14px}';
-      document.head.appendChild(style);
-      document.querySelectorAll('.product-item[data-epin="1"]:not(.product-out-of-stock)').forEach(item => {
-        item.dataset.qty = '1';
-        const box = document.createElement('span');
-        box.className = 'cd-qty';
-        box.innerHTML = '<button type="button" class="cd-qty-minus" aria-label="Azalt" disabled>-</button>' +
-          '<span class="cd-qty-val">1</span>' +
-          '<button type="button" class="cd-qty-plus" aria-label="Arttır">+</button>';
-        box.addEventListener('click', e => e.stopPropagation());
-        box.addEventListener('keydown', e => e.stopPropagation());
-        box.querySelector('.cd-qty-minus').addEventListener('click', () => setQty(item, parseInt(item.dataset.qty) - 1));
-        box.querySelector('.cd-qty-plus').addEventListener('click', () => setQty(item, parseInt(item.dataset.qty) + 1));
-        item.appendChild(box);
-      });
-    })();
+    // Quantity Controls Setup
+    document.querySelectorAll('.product-item[data-epin="1"]:not(.product-out-of-stock)').forEach(item => {
+      if (!item.dataset.qty) item.dataset.qty = '1';
+      const qtyWrap = item.querySelector('.product-item-qty-wrap');
+      if (!qtyWrap) return;
+
+      qtyWrap.addEventListener('click', e => e.stopPropagation());
+      qtyWrap.addEventListener('keydown', e => e.stopPropagation());
+
+      const minusBtn = qtyWrap.querySelector('.cd-qty-minus');
+      const plusBtn = qtyWrap.querySelector('.cd-qty-plus');
+
+      if (minusBtn) {
+        minusBtn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          setQty(item, (parseInt(item.dataset.qty) || 1) - 1);
+        });
+      }
+
+      if (plusBtn) {
+        plusBtn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          setQty(item, (parseInt(item.dataset.qty) || 1) + 1);
+        });
+      }
+    });
 
     function setQty(item, n) {
       const q = Math.min(MAX_QTY, Math.max(1, n));
       item.dataset.qty = q;
-      item.querySelector('.cd-qty-val').textContent = q;
-      item.querySelector('.cd-qty-minus').disabled = q <= 1;
-      item.querySelector('.cd-qty-plus').disabled = q >= MAX_QTY;
-      document.querySelectorAll('.product-item').forEach(p => p.classList.remove('selected'));
-      item.classList.add('selected');
+      const valEl = item.querySelector('.cd-qty-val');
+      if (valEl) valEl.textContent = q;
+      const minusBtn = item.querySelector('.cd-qty-minus');
+      if (minusBtn) minusBtn.disabled = q <= 1;
+      const plusBtn = item.querySelector('.cd-qty-plus');
+      if (plusBtn) plusBtn.disabled = q >= MAX_QTY;
+      if (!item.classList.contains('selected')) {
+        document.querySelectorAll('.product-item').forEach(p => p.classList.remove('selected'));
+        item.classList.add('selected');
+        syncFeaturedPasses();
+      }
       updateTotalPrice();
       updateBarsVisibility();
     }
