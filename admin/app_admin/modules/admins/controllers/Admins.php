@@ -27,10 +27,25 @@ class Admins extends MY_Controller
 	}
 	public function addUser()
 	{
+		$admin = $this->session->userdata('admin');
+		if (!is_array($admin) || (int) ($admin['admin_power'] ?? 0) !== 2) {
+			$this->session->set_flashdata('alert', ['type' => 'error', 'title' => 'Yetkisiz işlem', 'message' => 'Yalnızca Super Admin yeni yönetici oluşturabilir.']);
+			redirect(base_url('admins'));
+			return;
+		}
+
 		$post = $this->input->post();
 		if (empty($post)) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'title' => 'Hata!', 'message' => 'Hatalı istek.']);
 			redirect(base_url('admins'));
+			return;
+		}
+
+		$adminPower = isset($post['admin_power']) && $post['admin_power'] !== '' ? (int) $post['admin_power'] : 4;
+		if (!in_array($adminPower, [2, 3, 4], true)) {
+			$this->session->set_flashdata('alert', ['type' => 'error', 'title' => 'Hatalı rol', 'message' => 'Geçerli bir yönetici rolü seçin.']);
+			redirect(base_url('admins'));
+			return;
 		}
 
 		$checkUserEmail = $this->db->where('admin_email', $post['email'])->get('admins')->row();
@@ -42,7 +57,7 @@ class Admins extends MY_Controller
 			'admin_name' => !empty($post['name']) ? $post['name'] : '',
 			'admin_email' => !empty($post['email']) ? $post['email'] : '',
 			'admin_pass' => password_hash($post['password'], PASSWORD_DEFAULT),
-			'admin_power' => !empty($post['admin_power']) ? $post['admin_power'] : 4,
+			'admin_power' => $adminPower,
 			'admin_permissions' => !empty($post['permissions']) ? json_encode($post['permissions']) : json_encode([]),
 		];
 		if (empty($insertData['admin_name']) || empty($insertData['admin_email']) || empty($insertData['admin_pass'])) {

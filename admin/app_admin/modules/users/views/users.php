@@ -34,7 +34,7 @@
 #customers-page .subbar strong{color:var(--c-text)}
 #customers-page .mobile-tip{display:none}
 #customers-page .table-scroll{overflow-x:auto}
-#customers-page table.customers{border-collapse:collapse;width:100%;min-width:1120px}
+#customers-page table.customers{border-collapse:collapse;width:100%;min-width:1400px}
 #customers-page .customers th{text-align:left;background:var(--c-panel2);color:#a7a7bb;font-size:10px;font-weight:600;border-bottom:1px solid var(--c-line);padding:13px 12px;white-space:nowrap}
 #customers-page .customers th.sort{cursor:pointer;user-select:none}
 #customers-page .customers th.sort:hover{color:#ffbf3d}
@@ -62,6 +62,9 @@
 #customers-page .copy{display:inline-grid;place-items:center;width:23px;height:23px;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;color:#8e90a7;cursor:pointer}
 #customers-page .copy:hover,#customers-page .copy:focus-visible{color:var(--c-gold);border-color:#51452d;background:#332b23}
 #customers-page .copy svg{width:13px;height:13px}
+#customers-page .wa{display:inline-grid;place-items:center;width:23px;height:23px;border-radius:5px;color:#4ade80;border:1px solid transparent;text-decoration:none}
+#customers-page .wa:hover,#customers-page .wa:focus-visible{background:#18382d;border-color:#245c45;color:#63d9a6}
+#customers-page .wa svg{width:14px;height:14px}
 #customers-page .country strong{display:block;color:var(--c-text);font-weight:600}
 #customers-page .country small{color:#77788f;font-size:9px}
 #customers-page .money{font-weight:600;color:#57d69d;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -72,6 +75,10 @@
 #customers-page .tag.dealer{background:#3b3020;color:#ffc368}
 #customers-page .tag.active{background:#18382d;color:#63d9a6}
 #customers-page .tag.passive{background:#40252e;color:#f18b9b}
+#customers-page .user-cell .flags{display:flex;gap:4px;margin-top:3px}
+#customers-page .tag.restricted{background:#40252e;color:#f18b9b;padding:2px 6px}
+#customers-page .tag.fraud{background:#3b3020;color:#ffc368;padding:2px 6px}
+#customers-page .customer-filter-fields input[type=date]{color-scheme:dark}
 #customers-page .statusline{display:flex;align-items:center;gap:8px;white-space:nowrap}
 #customers-page .switch{position:relative;width:30px;height:17px;display:inline-block;flex:none}
 #customers-page .switch input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
@@ -193,6 +200,38 @@
                             <input id="fIp" placeholder="Örn. 85.106.6.10" aria-label="Kayıt IP adresi" autocomplete="off">
                         </div>
                     </div>
+                    <div class="field">
+                        <label for="fId">Müşteri ID</label>
+                        <div class="customer-ip-search"><input id="fId" type="number" min="1" placeholder="Örn. 1024" autocomplete="off"></div>
+                    </div>
+                    <div class="field">
+                        <label for="fName">Ad Soyad</label>
+                        <div class="customer-ip-search"><input id="fName" type="text" maxlength="100" placeholder="Ad veya soyad" autocomplete="off"></div>
+                    </div>
+                    <div class="field">
+                        <label for="fDateFrom">Kayıt Tarihi (Başlangıç)</label>
+                        <div class="customer-ip-search"><input id="fDateFrom" type="date"></div>
+                    </div>
+                    <div class="field">
+                        <label for="fDateTo">Kayıt Tarihi (Bitiş)</label>
+                        <div class="customer-ip-search"><input id="fDateTo" type="date"></div>
+                    </div>
+                    <div class="field">
+                        <label for="fRestricted">Kısıtlama</label>
+                        <select id="fRestricted">
+                            <option value="">Tümü</option>
+                            <option value="yes">Kısıtlı</option>
+                            <option value="no">Kısıtlı Değil</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="fFraud">Fraud Belgesi</label>
+                        <select id="fFraud">
+                            <option value="">Tümü</option>
+                            <option value="yes">Belgesi Olanlar</option>
+                            <option value="no">Belgesi Olmayanlar</option>
+                        </select>
+                    </div>
                     <button type="button" class="btn btn-primary" id="filterBtn">
                         <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
                         <span>Filtrele</span>
@@ -227,6 +266,8 @@
                         <th class="sort" data-sort="withdrawable">Çekilebilir Bakiye <span class="sortmark">↕</span></th>
                         <th class="sort" data-sort="type">Müşteri Tipi <span class="sortmark">↕</span></th>
                         <th class="sort" data-sort="active">Durum <span class="sortmark">↕</span></th>
+                        <th>Son Giriş</th>
+                        <th>Sipariş / Harcama</th>
                         <th class="sort" data-sort="date">Kayıt Tarihi <span class="sortmark">↕</span></th>
                         <th class="act">İşlemler</th>
                     </tr>
@@ -309,6 +350,7 @@
 <script>
 (function () {
     var LIST_URL = "<?= base_url('users/getUsersList') ?>";
+    var EXPORT_URL = "<?= base_url('users/exportUsersCsv') ?>";
     var STATUS_URL = "<?= site_url('users/changeUserStatus') ?>/";
     var $ = function (id) { return document.getElementById(id); };
     var state = { page: 1, sort: 'id', dir: 'asc', total: 0, filtered: 0, req: 0 };
@@ -335,7 +377,8 @@
         copy: '<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
         mail: '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
         phone: '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
-        eye: '<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>'
+        eye: '<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+        wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2a9.9 9.9 0 0 0-8.5 14.9L2 22l5.25-1.4A9.9 9.9 0 1 0 12.04 2Zm0 18.1a8.2 8.2 0 0 1-4.2-1.15l-.3-.18-3.1.82.83-3.02-.2-.31a8.2 8.2 0 1 1 6.97 3.84Zm4.5-6.1c-.25-.12-1.46-.72-1.68-.8-.23-.08-.4-.12-.56.12-.17.25-.64.8-.78.96-.14.17-.29.19-.53.06a6.7 6.7 0 0 1-3.3-2.88c-.25-.43.25-.4.72-1.33.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.41-.56-.42h-.47c-.17 0-.43.06-.65.31-.23.25-.86.84-.86 2.05s.88 2.38 1 2.55c.12.17 1.73 2.65 4.2 3.72.59.25 1.05.4 1.4.52.59.19 1.13.16 1.55.1.47-.07 1.46-.6 1.66-1.17.2-.58.2-1.07.14-1.17-.06-.1-.23-.17-.48-.29Z"/></svg>'
     };
 
     function verify(ok) {
@@ -346,18 +389,22 @@
     }
 
     function rowHtml(c) {
-        var phone = c.phone ? '+' + String(c.phone).replace(/^\+/, '') : '';
+        var phone = c.phone || '';
+        var wa = c.whatsapp_url ? '<a class="wa" href="' + esc(c.whatsapp_url) + '" target="_blank" rel="noopener noreferrer" title="WhatsApp ile mesaj gönder" aria-label="WhatsApp ile mesaj gönder">' + icons.wa + '</a>' : '';
         var email = c.email
             ? '<div class="contact-line"><span class="tiny-icon">' + icons.mail + '</span><a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' + verify(c.email_verified) + copyBtn(c.email, 'E-posta kopyala') + '</div>'
             : '<div class="contact-line"><span class="tiny-icon">' + icons.mail + '</span><span class="none">—</span></div>';
         var tel = phone
-            ? '<div class="contact-line"><span class="tiny-icon">' + icons.phone + '</span><a href="tel:' + esc(phone) + '">' + esc(phone) + '</a>' + verify(c.phone_verified) + copyBtn(phone, 'Telefon kopyala') + '</div>'
+            ? '<div class="contact-line"><span class="tiny-icon">' + icons.phone + '</span><a href="tel:' + esc(phone) + '">' + esc(phone) + '</a>' + verify(c.phone_verified) + copyBtn(phone, 'Telefon kopyala') + wa + '</div>'
             : '<div class="contact-line"><span class="tiny-icon">' + icons.phone + '</span><span class="none">—</span></div>';
         var initial = esc(String(c.name || 'M').trim().charAt(0).toLocaleUpperCase('tr') || 'M');
         var cls = typeClass[c.type] || 'dealer';
+        var flags = (c.restricted || c.fraud)
+            ? '<div class="flags">' + (c.restricted ? '<span class="tag restricted">Kısıtlı</span>' : '') + (c.fraud ? '<span class="tag fraud">Fraud belgesi</span>' : '') + '</div>'
+            : '';
         return '<tr>' +
             '<td class="id">#' + c.id + '</td>' +
-            '<td><div class="user-cell"><span class="avatar">' + initial + '</span><div><strong><a href="' + esc(c.url) + '">' + esc(c.name) + '</a></strong><small>Playsel müşterisi</small></div></div></td>' +
+            '<td><div class="user-cell"><span class="avatar">' + initial + '</span><div><strong><a href="' + esc(c.url) + '">' + esc(c.name) + '</a></strong><small>Playsel müşterisi</small>' + flags + '</div></div></td>' +
             '<td><div class="contact">' + email + tel + '</div></td>' +
             '<td class="country"><strong>' + esc(countryName(c.country)) + '</strong><small>' + esc(c.register_ip || '—') + '</small></td>' +
             '<td><span class="money' + (c.balance < 0 ? ' neg' : '') + '">' + money(c.balance) + '</span></td>' +
@@ -365,6 +412,8 @@
             '<td><span class="tag ' + cls + '">' + esc(c.type) + '</span></td>' +
             '<td><div class="statusline"><span class="tag ' + (c.active ? 'active' : 'passive') + ' js-status-badge">' + (c.active ? 'Aktif' : 'Pasif') + '</span>' +
             '<label class="switch"><input type="checkbox" class="js-user-status-switch" data-user-id="' + c.id + '"' + (c.active ? ' checked' : '') + ' aria-label="Hesap durumunu değiştir"><span></span></label></div></td>' +
+            '<td>' + esc(c.last_login || '—') + '</td>' +
+            '<td><span class="money-w">' + esc(c.orders) + ' sipariş</span><br><small style="color:#87879f">' + money(c.spend) + '</small></td>' +
             '<td>' + esc(c.created) + '</td>' +
             '<td class="act"><a class="detail-btn" href="' + esc(c.url) + '">' + icons.eye + 'Detay</a></td>' +
             '</tr>';
@@ -380,6 +429,12 @@
             mail_verified: $('fMailVerified').value,
             phone_verified: $('fPhoneVerified').value,
             ip: $('fIp').value.trim(),
+            id: $('fId').value.trim(),
+            name: $('fName').value.trim(),
+            date_from: $('fDateFrom').value,
+            date_to: $('fDateTo').value,
+            restricted: $('fRestricted').value,
+            fraud: $('fFraud').value,
             sort: state.sort,
             dir: state.dir
         };
@@ -387,11 +442,15 @@
 
     function activeFilterLabels() {
         var out = [];
-        [['fType', 'Tip'], ['fStatus', 'Durum'], ['fBalance', 'Bakiye'], ['fCountry', 'Ülke'], ['fMailVerified', 'E-posta'], ['fPhoneVerified', 'Telefon']].forEach(function (p) {
+        [['fType', 'Tip'], ['fStatus', 'Durum'], ['fBalance', 'Bakiye'], ['fCountry', 'Ülke'], ['fMailVerified', 'E-posta'], ['fPhoneVerified', 'Telefon'], ['fRestricted', 'Kısıtlama'], ['fFraud', 'Fraud']].forEach(function (p) {
             var el = $(p[0]);
             if (el.value) out.push(p[1] + ': ' + el.options[el.selectedIndex].text);
         });
         if ($('fIp').value.trim()) out.push('IP: ' + $('fIp').value.trim());
+        if ($('fId').value.trim()) out.push('ID: ' + $('fId').value.trim());
+        if ($('fName').value.trim()) out.push('Ad: ' + $('fName').value.trim());
+        if ($('fDateFrom').value) out.push('Kayıt ≥ ' + $('fDateFrom').value);
+        if ($('fDateTo').value) out.push('Kayıt ≤ ' + $('fDateTo').value);
         if ($('fSearch').value.trim()) out.push('Arama: ' + $('fSearch').value.trim());
         return out;
     }
@@ -424,7 +483,7 @@
             var rows = (res && res.data) || [];
             state.total = res.recordsTotal || 0;
             state.filtered = res.recordsFiltered || 0;
-            tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="10" class="empty">Aramanıza uygun müşteri bulunamadı.</td></tr>';
+            tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="12" class="empty">Aramanıza uygun müşteri bulunamadı.</td></tr>';
             var pages = Math.max(1, Math.ceil(state.filtered / size));
             if (state.page > pages && state.filtered > 0) { state.page = pages; return load(); }
             $('totalCount').textContent = state.filtered;
@@ -438,7 +497,7 @@
             renderPager(pages);
         }).fail(function () {
             if (req !== state.req) return;
-            tbody.innerHTML = '<tr><td colspan="10" class="empty">Müşteri listesi yüklenemedi. Lütfen tekrar deneyin.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" class="empty">Müşteri listesi yüklenemedi. Lütfen tekrar deneyin.</td></tr>';
             notify('error', 'Müşteri listesi yüklenemedi.');
         }).always(function () {
             if (req === state.req) tbody.classList.remove('loading');
@@ -470,8 +529,9 @@
     $('fSearch').addEventListener('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(reload, 350); });
     $('fSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { clearTimeout(searchTimer); reload(); } });
     $('fIp').addEventListener('keydown', function (e) { if (e.key === 'Enter') reload(); });
+    ['fId', 'fName'].forEach(function (id) { $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') reload(); }); });
     $('filterBtn').addEventListener('click', reload);
-    ['fType', 'fStatus', 'fBalance', 'fCountry', 'fMailVerified', 'fPhoneVerified'].forEach(function (id) { $(id).addEventListener('change', reload); });
+    ['fType', 'fStatus', 'fBalance', 'fCountry', 'fMailVerified', 'fPhoneVerified', 'fRestricted', 'fFraud', 'fDateFrom', 'fDateTo'].forEach(function (id) { $(id).addEventListener('change', reload); });
     $('pageSize').addEventListener('change', reload);
 
     $('toggleFilters').addEventListener('click', function () {
@@ -480,8 +540,8 @@
         this.setAttribute('aria-expanded', String(open));
     });
     $('resetBtn').addEventListener('click', function () {
-        $('fSearch').value = ''; $('fIp').value = '';
-        ['fType', 'fStatus', 'fBalance', 'fCountry', 'fMailVerified', 'fPhoneVerified'].forEach(function (id) { $(id).value = ''; });
+        $('fSearch').value = ''; $('fIp').value = ''; $('fId').value = ''; $('fName').value = ''; $('fDateFrom').value = ''; $('fDateTo').value = '';
+        ['fType', 'fStatus', 'fBalance', 'fCountry', 'fMailVerified', 'fPhoneVerified', 'fRestricted', 'fFraud'].forEach(function (id) { $(id).value = ''; });
         state.sort = 'id'; state.dir = 'asc';
         updateSortMarks();
         reload();
@@ -542,29 +602,11 @@
         }).always(function () { sw.disabled = false; });
     });
 
-    // Dışa aktar: mevcut filtrelerin tüm sonucu
-    function csvCell(v) {
-        var s = String(v == null ? '' : v);
-        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
-        return '"' + s.replace(/"/g, '""') + '"';
-    }
+    // Dışa aktar: mevcut filtrelerin tüm sonucu sunucuda CSV olarak üretilir
     $('exportBtn').addEventListener('click', function () {
-        var btn = this, payload = filterPayload();
-        payload.draw = 0; payload.start = 0; payload.length = -1;
-        btn.disabled = true;
-        jQuery.ajax({ url: LIST_URL, type: 'POST', dataType: 'json', data: payload }).done(function (res) {
-            var rows = (res && res.data) || [];
-            var head = ['ID', 'Ad Soyad', 'E-posta', 'Telefon', 'Kayıt Ülkesi', 'Kayıt IP', 'Bakiye', 'Çekilebilir Bakiye', 'Müşteri Tipi', 'Durum', 'Kayıt Tarihi'];
-            var lines = [head.map(csvCell).join(';')].concat(rows.map(function (c) {
-                return [c.id, c.name, c.email, c.phone, countryName(c.country), c.register_ip, c.balance.toFixed(2).replace('.', ','), c.withdrawable.toFixed(2).replace('.', ','), c.type, c.active ? 'Aktif' : 'Pasif', c.created].map(csvCell).join(';');
-            }));
-            var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-            var a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'musteriler-' + new Date().toISOString().slice(0, 10) + '.csv';
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            URL.revokeObjectURL(a.href);
-        }).fail(function () { notify('error', 'Dışa aktarma başarısız.'); }).always(function () { btn.disabled = false; });
+        var q = filterPayload();
+        q.search = q.search.value;
+        window.location.href = EXPORT_URL + '?' + jQuery.param(q);
     });
 
     // Yeni kullanıcı modalı

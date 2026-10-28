@@ -41,8 +41,43 @@
         </div>
 
         <div class="card-body">
+            <div class="d-flex flex-wrap gap-2 mb-5" id="ticketStatusTabs">
+                <button type="button" class="btn btn-sm btn-primary" data-status="">Tümü <span class="badge badge-light ms-1"><?= (int)array_sum($status_counts) ?></span></button>
+                <button type="button" class="btn btn-sm btn-light-warning" data-status="0">Kullanıcı Cevabı <span class="badge badge-light ms-1"><?= (int)$status_counts[0] ?></span></button>
+                <button type="button" class="btn btn-sm btn-light-success" data-status="1">Yanıtlandı <span class="badge badge-light ms-1"><?= (int)$status_counts[1] ?></span></button>
+                <button type="button" class="btn btn-sm btn-light-secondary" data-status="2">Kapatıldı <span class="badge badge-light ms-1"><?= (int)$status_counts[2] ?></span></button>
+            </div>
+
+            <form id="ticketFilters" class="row g-3 mb-6" autocomplete="off">
+                <div class="col-md-4">
+                    <label class="form-label fs-8">Ara</label>
+                    <input type="text" id="filterSearch" class="form-control form-control-solid form-control-sm" placeholder="Talep no, konu, kullanıcı adı veya e-posta">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-8">Durum</label>
+                    <select id="filterStatus" class="form-select form-select-solid form-select-sm">
+                        <option value="">Tümü</option>
+                        <option value="0">Kullanıcı Cevabı</option>
+                        <option value="1">Yanıtlandı</option>
+                        <option value="2">Kapatıldı</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-8">Başlangıç</label>
+                    <input type="date" id="filterStartDate" class="form-control form-control-solid form-control-sm">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-8">Bitiş</label>
+                    <input type="date" id="filterEndDate" class="form-control form-control-solid form-control-sm">
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary flex-fill">Filtrele</button>
+                    <button type="button" id="resetTicketFilters" class="btn btn-sm btn-light flex-fill">Sıfırla</button>
+                </div>
+            </form>
+
             <div class="table-responsive">
-                <table id="ticketsTable" class="table table-row-dashed table-row-gray-300 align-middle gs-0 gy-4">
+                <table id="ticketsTable" class="table table-row-dashed table-row-gray-300 align-middle gs-0 gy-4 w-100">
                     <thead>
                         <tr class="fw-bolder text-muted">
                             <th class="w-25px">ID</th>
@@ -53,51 +88,6 @@
                             <th class="min-w-150px text-end">İşlemler</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <?php if (empty($tickets)): ?>
-                            <tr>
-                                <td colspan="6" class="text-center text-muted">Henüz destek talebi bulunmamaktadır.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($tickets as $ticket): ?>
-                                <tr>
-                                    <td><?= $ticket->tickets_id ?></td>
-                                    <td>
-                                        <div class="d-flex flex-column">
-                                            <span class="text-gray-800 fw-bolder"><?= html_escape($ticket->user_name) ?></span>
-                                            <span class="text-muted fw-bold text-muted d-block fs-7"><?= html_escape($ticket->user_email) ?></span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="text-gray-800 fw-bolder d-block fs-6"><?= html_escape($ticket->tickets_subject) ?></span>
-                                        <span class="text-muted fw-bold d-block fs-7"><?= html_escape($ticket->tickets_topic) ?></span>
-                                    </td>
-                                    <td>
-                                        <span class="text-gray-600 fw-bold d-block fs-7"><?= date('d.m.Y H:i', strtotime($ticket->tickets_updated_at)) ?></span>
-                                    </td>
-                                    <td>
-                                        <?php if ($ticket->tickets_status == 0): ?>
-                                            <span class="badge badge-light-warning">Kullanıcı Cevabı</span>
-                                        <?php elseif ($ticket->tickets_status == 1): ?>
-                                            <span class="badge badge-light-success">Yanıtlandı</span>
-                                        <?php elseif ($ticket->tickets_status == 2): ?>
-                                            <span class="badge badge-light-secondary">Kapatıldı</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-end">
-                                        <a href="<?= base_url('tickets/detail/' . $ticket->tickets_id) ?>" class="btn btn-icon btn-light-primary btn-sm me-1" title="Görüntüle/Cevapla">
-                                            <i class="fa-solid fa-eye"></i>
-                                        </a>
-                                        <?php if ($ticket->tickets_status != 2): ?>
-                                            <button class="btn btn-icon btn-light-danger btn-sm btn-update-status" data-id="<?= $ticket->tickets_id ?>" data-status="2" title="Talebi Kapat">
-                                                <i class="fa-solid fa-lock"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
                 </table>
             </div>
         </div>
@@ -107,7 +97,71 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        const statusButtons = document.querySelectorAll('.btn-update-status');
+        const ticketsTable = $('#ticketsTable').DataTable({
+            serverSide: true,
+            ordering: false,
+            searching: false,
+            deferRender: true,
+            pageLength: 20,
+            lengthMenu: [[10, 20, 50, 100], [10, 20, 50, 100]],
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/2.2.2/i18n/tr.json'
+            },
+            columns: [
+                { title: 'ID' },
+                { title: 'Kullanıcı' },
+                { title: 'Konu / Başlık' },
+                { title: 'Son Güncelleme' },
+                { title: 'Durum' },
+                { title: 'İşlemler', className: 'text-end' }
+            ],
+            ajax: {
+                url: '<?= base_url('tickets/getTickets') ?>',
+                type: 'POST',
+                data: function(d) {
+                    d.search_text = $('#filterSearch').val();
+                    d.status = $('#filterStatus').val();
+                    d.start_date = $('#filterStartDate').val();
+                    d.end_date = $('#filterEndDate').val();
+                }
+            }
+        });
+
+        function setStatusTab(status) {
+            $('#ticketStatusTabs button').each(function() {
+                const isActive = String($(this).data('status')) === String(status);
+                $(this).toggleClass('btn-primary', isActive);
+            });
+        }
+
+        $('#ticketFilters').on('submit', function(e) {
+            e.preventDefault();
+            setStatusTab($('#filterStatus').val());
+            ticketsTable.ajax.reload();
+        });
+
+        $('#ticketStatusTabs button').on('click', function() {
+            $('#filterStatus').val(String($(this).data('status')));
+            setStatusTab($(this).data('status'));
+            ticketsTable.ajax.reload();
+        });
+
+        $('#filterStatus').on('change', function() {
+            setStatusTab(this.value);
+            ticketsTable.ajax.reload();
+        });
+
+        let searchTimer;
+        $('#filterSearch').on('input', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() { ticketsTable.ajax.reload(); }, 400);
+        });
+
+        $('#resetTicketFilters').on('click', function() {
+            $('#ticketFilters')[0].reset();
+            setStatusTab('');
+            ticketsTable.ajax.reload();
+        });
 
         $('#cancellationReasonForm').on('submit', function(e) {
             e.preventDefault();
@@ -117,45 +171,43 @@
             }, 'json');
         });
 
-        statusButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const ticketId = this.getAttribute('data-id');
-                const status = this.getAttribute('data-status');
-                
-                Swal.fire({
-                    title: 'Emin misiniz?',
-                    text: 'Bu destek talebini kapatmak istediğinize emin misiniz? Kapatılan taleplere tekrar cevap yazılamaz.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#f1416c',
-                    cancelButtonColor: '#a1a5b7',
-                    confirmButtonText: 'Evet, kapat!',
-                    cancelButtonText: 'İptal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        $.ajax({
-                            url: '<?= base_url('tickets/updateStatus') ?>',
-                            type: 'POST',
-                            data: {
-                                ticket_id: ticketId,
-                                status: status
-                            },
-                            dataType: 'json',
-                            success: function(response) {
-                                if (response.status === 'success') {
-                                    Swal.fire('Başarılı!', response.message, 'success').then(() => {
-                                        location.reload();
-                                    });
-                                } else {
-                                    Swal.fire('Hata!', response.message, 'error');
-                                }
-                            },
-                            error: function() {
-                                Swal.fire('Hata!', 'Bir sunucu hatası oluştu.', 'error');
+        $('#ticketsTable').on('click', '.btn-update-status', function() {
+            const ticketId = this.getAttribute('data-id');
+            const status = this.getAttribute('data-status');
+
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: 'Bu destek talebini kapatmak istediğinize emin misiniz? Kapatılan taleplere tekrar cevap yazılamaz.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f1416c',
+                cancelButtonColor: '#a1a5b7',
+                confirmButtonText: 'Evet, kapat!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '<?= base_url('tickets/updateStatus') ?>',
+                        type: 'POST',
+                        data: {
+                            ticket_id: ticketId,
+                            status: status
+                        },
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                Swal.fire('Başarılı!', response.message, 'success').then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Hata!', response.message, 'error');
                             }
-                        });
-                    }
-                });
+                        },
+                        error: function() {
+                            Swal.fire('Hata!', 'Bir sunucu hatası oluştu.', 'error');
+                        }
+                    });
+                }
             });
         });
     });

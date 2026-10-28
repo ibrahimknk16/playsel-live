@@ -344,13 +344,26 @@ function enforceAdminPermission($ci, array $user)
 		return true;
 	}
 
-	if (!hasPermissionTables($ci)) {
-		return true;
-	}
-
 	$adminPower = isset($user['admin_power']) ? (int) $user['admin_power'] : 0;
 	if ($adminPower === 2) {
 		return true;
+	}
+
+	if (!hasPermissionTables($ci)) {
+		$message = 'Admin yetki tabloları kullanılamıyor. Sistem yöneticinize başvurun.';
+		log_message('error', 'Admin authorization denied because permission tables are unavailable: ' . $permissionKey);
+		if (isAjaxRequest($ci)) {
+			json(['status' => false, 'message' => $message], 503);
+			return false;
+		}
+
+		$ci->session->set_flashdata('alert', [
+			'type' => 'error',
+			'title' => 'Yetki sistemi kullanılamıyor',
+			'message' => $message,
+		]);
+		redirect(base_url('dashboard'));
+		return false;
 	}
 
 	if (hasRolePermission($ci, $adminPower, $permissionKey)) {
@@ -516,6 +529,36 @@ function xhrCheck()
 		return true;
 	} else {
 		return json(array('status' => false, 'message' => 'Bu sayfaya erişim yetkiniz bulunmamaktadır.'));
+	}
+}
+
+// Türkiye numaralarını +905XXXXXXXXX biçimine çevirir; yabancı (+ ile başlayan) numaralar +rakamlar olarak korunur.
+// app/helpers/general_helper.php içindeki ile aynı davranışı korumalıdır.
+if (!function_exists('normalizePhoneE164')) {
+	function normalizePhoneE164($phoneNumber)
+	{
+		$raw = trim((string)$phoneNumber);
+		$digits = preg_replace('/\D+/', '', $raw);
+		if ($digits === '') {
+			return '';
+		}
+		if (strpos($raw, '+') !== 0 && strpos($raw, '00') === 0 && strpos($digits, '00') === 0) {
+			$digits = substr($digits, 2);
+			$raw = '+' . $digits;
+		}
+		if (preg_match('/^(?:90|0)?(5\d{9})$/', $digits, $m)) {
+			return '+90' . $m[1];
+		}
+		return strpos($raw, '+') === 0 ? '+' . $digits : $digits;
+	}
+}
+
+// Normalize edilmiş numara geçerli uluslararası biçimdeyse wa.me bağlantısı döner, değilse boş string.
+if (!function_exists('whatsappUrl')) {
+	function whatsappUrl($phoneNumber)
+	{
+		$e164 = normalizePhoneE164($phoneNumber);
+		return preg_match('/^\+[1-9]\d{7,14}$/', $e164) ? 'https://wa.me/' . substr($e164, 1) : '';
 	}
 }
 

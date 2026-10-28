@@ -46,9 +46,19 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 	.user-kpi-card small { color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; font-size:.72rem; font-weight:700; }
 	.user-kpi-card strong { display:block; margin-top:.5rem; color:#f8fafc; font-size:1.55rem; }
 	.user-kpi-card span { display:block; margin-top:.35rem; color:#64748b; font-size:.8rem; }
-	.user-kpi-layout { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr); gap:1rem; margin-bottom:1rem; }
 	.user-kpi-panel h2 { margin:0 0 .25rem; color:#f8fafc; font-size:1.15rem; font-weight:800; }
 	.user-kpi-panel > p { margin:0 0 1rem; color:#94a3b8; font-size:.88rem; }
+	.period-leaderboard { margin-bottom:1rem; }
+	.period-leaderboard-header { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; }
+	.period-leaderboard-header h2 { margin:0; }
+	.period-window { flex:0 0 auto; padding:.38rem .7rem; border:1px solid rgba(125,211,252,.2); border-radius:999px; background:rgba(56,189,248,.08); color:#7dd3fc; font-size:.75rem; font-weight:700; }
+	.leaderboard-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+	.leaderboard-card { min-width:0; padding:1rem; border:1px solid rgba(148,163,184,.13); border-radius:14px; background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012)); }
+	.leaderboard-card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:.75rem; margin-bottom:.8rem; }
+	.leaderboard-card-header h3 { margin:0; color:#f8fafc; font-size:1rem; font-weight:750; }
+	.leaderboard-card-header p { margin:.25rem 0 0; color:#94a3b8; font-size:.78rem; }
+	.leaderboard-icon { display:flex; width:2.2rem; height:2.2rem; flex:0 0 auto; align-items:center; justify-content:center; border-radius:10px; background:rgba(56,189,248,.12); color:#7dd3fc; font-size:.78rem; font-weight:800; }
+	.leaderboard-card--amount .leaderboard-icon { background:rgba(52,211,153,.12); color:#6ee7b7; }
 	.period-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
 	.period-card { border:1px solid rgba(148,163,184,.13); border-radius:13px; padding:.9rem; }
 	.period-card h3 { margin:0; color:#7dd3fc; font-size:1rem; }
@@ -58,18 +68,26 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 	.period-metrics small { display:block; color:#94a3b8; font-size:.7rem; }
 	.period-metrics b { display:block; margin-top:.2rem; color:#f8fafc; font-size:1rem; }
 	.kpi-table { width:100%; border-collapse:collapse; font-size:.84rem; }
-	.kpi-table th { color:#94a3b8; text-align:left; font-weight:700; font-size:.72rem; text-transform:uppercase; }
-	.kpi-table th, .kpi-table td { padding:.58rem .45rem; border-bottom:1px solid rgba(148,163,184,.1); }
+	.kpi-table th { color:#64748b; text-align:left; font-weight:700; font-size:.67rem; text-transform:uppercase; letter-spacing:.05em; }
+	.kpi-table th, .kpi-table td { padding:.68rem .45rem; border-bottom:1px solid rgba(148,163,184,.09); }
+	.kpi-table tbody tr:last-child td { border-bottom:0; }
 	.kpi-table td { color:#dbe4f0; }
 	.kpi-table td:last-child, .kpi-table th:last-child { text-align:right; }
-	.user-rank { display:inline-flex; width:1.5rem; height:1.5rem; align-items:center; justify-content:center; border-radius:50%; background:rgba(56,189,248,.13); color:#7dd3fc; font-size:.72rem; font-weight:800; }
+	.kpi-table tbody tr:hover { background:rgba(255,255,255,.025); }
+	.leader-rank { display:inline-flex; width:1.65rem; height:1.65rem; align-items:center; justify-content:center; border:1px solid rgba(148,163,184,.16); border-radius:50%; color:#94a3b8; font-size:.72rem; font-weight:800; }
+	.leader-rank--top { border-color:rgba(251,191,36,.28); background:rgba(251,191,36,.1); color:#fcd34d; }
+	.leader-name { display:block; color:#f1f5f9; font-weight:650; }
+	.leader-email { display:block; margin-top:.16rem; color:#64748b; font-size:.72rem; overflow-wrap:anywhere; }
+	.leader-metric { color:#e2e8f0; font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; }
+	.leaderboard-empty { padding:1.25rem .5rem; color:#94a3b8; font-size:.84rem; text-align:center; }
 	.kpi-trend { display:grid; grid-template-columns:repeat(15,minmax(24px,1fr)); align-items:end; gap:.35rem; min-height:150px; padding-top:1rem; }
 	.kpi-bar-wrap { height:130px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:.35rem; }
 	.kpi-bar { width:100%; min-height:2px; border-radius:5px 5px 0 0; background:linear-gradient(180deg,#38bdf8,#6366f1); }
 	.kpi-bar-label { color:#64748b; font-size:.64rem; writing-mode:vertical-rl; transform:rotate(180deg); }
 	.user-kpi-chart-wrap { position:relative; min-height:320px; background:rgba(255,255,255,.01); border:1px solid rgba(148,163,184,.12); border-radius:14px; padding:.85rem; }
-	@media (max-width:1100px) { .user-kpi-grid { grid-template-columns:repeat(2,1fr); } .user-kpi-layout { grid-template-columns:1fr; } }
-	@media (max-width:700px) { .user-kpi-header { display:block; } .user-kpi-grid, .period-grid { grid-template-columns:1fr; } }
+	@media (max-width:1100px) { .user-kpi-grid { grid-template-columns:repeat(2,1fr); } }
+	@media (max-width:800px) { .leaderboard-grid { grid-template-columns:1fr; } }
+	@media (max-width:700px) { .user-kpi-header { display:block; } .user-kpi-grid, .period-grid { grid-template-columns:1fr; } .period-leaderboard-header { align-items:flex-start; flex-direction:column; gap:.55rem; } .kpi-table th, .kpi-table td { padding:.6rem .3rem; } }
 </style>
 
 <div class="user-kpi-shell">
@@ -88,8 +106,7 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 		<div class="user-kpi-card"><small>Bu ay yeni kayıt</small><strong><?= $number($periodsData['monthly']['registrations'] ?? 0) ?></strong><span>Ay başından bugüne</span></div>
 	</div>
 
-	<div class="user-kpi-layout">
-		<section class="user-kpi-panel">
+	<section class="user-kpi-panel" style="margin-bottom:1rem;">
 			<h2>Dönem karşılaştırması</h2>
 			<p>Tamamlanan alışverişler ve yeni kullanıcı kayıtları.</p>
 			<div class="period-grid">
@@ -108,30 +125,51 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 					</div>
 				<?php endforeach; ?>
 			</div>
-		</section>
-	</div>
+	</section>
 
-	<?php foreach ($periodLabels as $key => $label): $period = $periodsData[$key] ?? []; ?>
-		<section class="user-kpi-panel" style="margin-bottom:1rem;">
-			<h2><?= $label ?> en aktif kullanıcılar</h2>
-			<p>Sipariş adedine ve toplam alışveriş tutarına göre ilk 10 kullanıcı.</p>
-			<div class="user-kpi-layout" style="margin:0;">
-				<div>
-					<table class="kpi-table"><thead><tr><th>#</th><th>Kullanıcı</th><th>Sipariş</th></tr></thead><tbody>
-						<?php foreach (($period['top_orders'] ?? []) as $index => $user): ?>
-							<tr><td><span class="user-rank"><?= $index + 1 ?></span></td><td><?= $escape(trim(($user['user_name'] ?? '') . ' ' . ($user['user_surname'] ?? ''))) ?><br><small style="color:#64748b;"><?= $escape($user['user_email'] ?? '') ?></small></td><td><?= $number($user['orders'] ?? 0) ?></td></tr>
-						<?php endforeach; ?>
-						<?php if (empty($period['top_orders'])): ?><tr><td colspan="3">Bu dönemde tamamlanan alışveriş yok.</td></tr><?php endif; ?>
-					</tbody></table>
-				</div>
-				<div>
-					<table class="kpi-table"><thead><tr><th>#</th><th>Kullanıcı</th><th>Tutar</th></tr></thead><tbody>
-						<?php foreach (($period['top_amount'] ?? []) as $index => $user): ?>
-							<tr><td><span class="user-rank"><?= $index + 1 ?></span></td><td><?= $escape(trim(($user['user_name'] ?? '') . ' ' . ($user['user_surname'] ?? ''))) ?><br><small style="color:#64748b;"><?= $escape($user['user_email'] ?? '') ?></small></td><td><?= $money($user['amount'] ?? 0) ?></td></tr>
-						<?php endforeach; ?>
-						<?php if (empty($period['top_amount'])): ?><tr><td colspan="3">Bu dönemde tamamlanan alışveriş yok.</td></tr><?php endif; ?>
-					</tbody></table>
-				</div>
+	<?php foreach ($periodLabels as $key => $label):
+		$period = $periodsData[$key] ?? [];
+		$leaderboards = [
+			['title' => 'En çok sipariş veren', 'subtitle' => 'Tamamlanan sipariş adedine göre', 'icon' => '#', 'users' => $period['top_orders'] ?? [], 'metric' => 'orders', 'format' => 'number', 'class' => 'orders'],
+			['title' => 'En yüksek harcama', 'subtitle' => 'Toplam sipariş tutarına göre', 'icon' => '₺', 'users' => $period['top_amount'] ?? [], 'metric' => 'amount', 'format' => 'money', 'class' => 'amount'],
+		];
+	?>
+		<section class="user-kpi-panel period-leaderboard">
+			<div class="period-leaderboard-header">
+				<h2><?= $label ?> liderleri</h2>
+				<span class="period-window"><?= $escape($periods[$key]['subtitle'] ?? '') ?></span>
+			</div>
+			<div class="leaderboard-grid">
+				<?php foreach ($leaderboards as $leaderboard): ?>
+					<div class="leaderboard-card leaderboard-card--<?= $leaderboard['class'] ?>">
+						<div class="leaderboard-card-header">
+							<div>
+								<h3><?= $leaderboard['title'] ?></h3>
+								<p><?= $leaderboard['subtitle'] ?></p>
+							</div>
+							<span class="leaderboard-icon" aria-hidden="true"><?= $leaderboard['icon'] ?></span>
+						</div>
+						<?php if (!empty($leaderboard['users'])): ?>
+							<table class="kpi-table">
+								<thead><tr><th scope="col">Sıra</th><th scope="col">Müşteri</th><th scope="col"><?= $leaderboard['format'] === 'money' ? 'Tutar' : 'Sipariş' ?></th></tr></thead>
+								<tbody>
+									<?php foreach ($leaderboard['users'] as $index => $user):
+										$userName = trim(($user['user_name'] ?? '') . ' ' . ($user['user_surname'] ?? ''));
+										$userName = $userName !== '' ? $userName : ('Kullanıcı #' . (int)($user['user_id'] ?? 0));
+									?>
+										<tr>
+											<td><span class="leader-rank<?= $index < 3 ? ' leader-rank--top' : '' ?>"><?= $index + 1 ?></span></td>
+											<td><span class="leader-name"><?= $escape($userName) ?></span><span class="leader-email"><?= $escape($user['user_email'] ?? '') ?></span></td>
+											<td class="leader-metric"><?= $leaderboard['format'] === 'money' ? $money($user[$leaderboard['metric']] ?? 0) : $number($user[$leaderboard['metric']] ?? 0) ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						<?php else: ?>
+							<div class="leaderboard-empty">Bu dönemde tamamlanan sipariş bulunmuyor.</div>
+						<?php endif; ?>
+					</div>
+				<?php endforeach; ?>
 			</div>
 		</section>
 	<?php endforeach; ?>
@@ -176,75 +214,24 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 <script src="<?= base_url('assets-front/js/chart.min.js') ?>"></script>
 <script>
 	(function () {
-		function renderMonthlyRegistrationsChart() {
-			var canvas = document.getElementById('monthlyRegistrationsChart');
+		function renderRegistrationChart(canvasId, labels, values, color, borderColor, maxBarThickness) {
+			var canvas = document.getElementById(canvasId);
 			if (!canvas || typeof Chart === 'undefined') {
 				return;
-			}
-
-			function renderDailyRegistrationsChart() {
-				var canvas = document.getElementById('dailyRegistrationsChart');
-				if (!canvas || typeof Chart === 'undefined') {
-					return;
-				}
-
-				new Chart(canvas.getContext('2d'), {
-					type: 'bar',
-					data: {
-						labels: <?= $registrationTrendLabelsJson ?: '[]' ?>,
-						datasets: [{
-							label: 'Yeni kayıt',
-							data: <?= $registrationTrendValuesJson ?: '[]' ?>,
-							backgroundColor: '#818cf8',
-							borderColor: '#a5b4fc',
-							borderWidth: 1,
-							borderRadius: 8,
-							maxBarThickness: 64
-						}]
-					},
-					options: {
-						responsive: true,
-						maintainAspectRatio: false,
-						plugins: {
-							legend: { display: false },
-							tooltip: {
-								callbacks: {
-									label: function (context) {
-										return ' ' + new Intl.NumberFormat('tr-TR').format(context.parsed.y) + ' kullanıcı';
-									}
-								}
-							}
-						},
-						scales: {
-							x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-							y: {
-								beginAtZero: true,
-								ticks: {
-									color: '#94a3b8',
-									precision: 0,
-									callback: function (value) {
-										return new Intl.NumberFormat('tr-TR').format(value);
-									}
-								},
-								grid: { color: 'rgba(148,163,184,.12)' }
-							}
-						}
-					}
-				});
 			}
 
 			new Chart(canvas.getContext('2d'), {
 				type: 'bar',
 				data: {
-					labels: <?= $monthlyTrendLabelsJson ?: '[]' ?>,
+					labels: labels,
 					datasets: [{
 						label: 'Yeni kayıt',
-						data: <?= $monthlyTrendValuesJson ?: '[]' ?>,
-						backgroundColor: '#38bdf8',
-						borderColor: '#7dd3fc',
+						data: values,
+						backgroundColor: color,
+						borderColor: borderColor,
 						borderWidth: 1,
 						borderRadius: 8,
-						maxBarThickness: 42
+						maxBarThickness: maxBarThickness
 					}]
 				},
 				options: {
@@ -281,12 +268,29 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 			});
 		}
 
+		function renderRegistrationCharts() {
+			renderRegistrationChart(
+				'monthlyRegistrationsChart',
+				<?= $monthlyTrendLabelsJson ?: '[]' ?>,
+				<?= $monthlyTrendValuesJson ?: '[]' ?>,
+				'#38bdf8',
+				'#7dd3fc',
+				42
+			);
+			renderRegistrationChart(
+				'dailyRegistrationsChart',
+				<?= $registrationTrendLabelsJson ?: '[]' ?>,
+				<?= $registrationTrendValuesJson ?: '[]' ?>,
+				'#818cf8',
+				'#a5b4fc',
+				64
+			);
+		}
+
 		if (document.readyState === 'loading') {
-			document.addEventListener('DOMContentLoaded', renderMonthlyRegistrationsChart);
-			document.addEventListener('DOMContentLoaded', renderDailyRegistrationsChart);
+			document.addEventListener('DOMContentLoaded', renderRegistrationCharts);
 		} else {
-			renderMonthlyRegistrationsChart();
-			renderDailyRegistrationsChart();
+			renderRegistrationCharts();
 		}
 	}());
 </script>

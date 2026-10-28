@@ -351,96 +351,51 @@ class Users extends MY_Controller
 		redirect('users/detail/' . $id);
 	}
 
-	public function getUsersList()
+	private const USERS_LIST_MAX_PAGE = 100;
+	private const USERS_EXPORT_MAX_ROWS = 20000;
+
+	private function usersListFilters(array $p)
 	{
-		$postData = $this->input->post();
-
-		// DataTables Parametreleri
-		$draw = isset($postData['draw']) ? (int)$postData['draw'] : 1;
-		$start = isset($postData['start']) ? (int)$postData['start'] : 0;
-		$length = isset($postData['length']) ? (int)$postData['length'] : 10;
-		$searchValue = isset($postData['search']['value']) ? $postData['search']['value'] : '';
-
-		// Özel Filtre Parametreleri
-		$filterEmail = isset($postData['email']) ? trim($postData['email']) : '';
-		$filterPhone = isset($postData['phone']) ? trim($postData['phone']) : '';
-		$filterTier = isset($postData['tier']) ? $postData['tier'] : '';
-		$filterStatus = isset($postData['status']) ? $postData['status'] : '';
-		$filterBalance = isset($postData['balance']) ? (string)$postData['balance'] : '';
-		$filterCountry = isset($postData['country']) ? strtoupper(trim((string)$postData['country'])) : '';
-		$filterMail = isset($postData['mail_verified']) ? (string)$postData['mail_verified'] : '';
-		$filterPhoneVerified = isset($postData['phone_verified']) ? (string)$postData['phone_verified'] : '';
-		$filterIp = isset($postData['ip']) ? trim((string)$postData['ip']) : '';
-		$sortKey = isset($postData['sort']) ? (string)$postData['sort'] : 'id';
-		$orderDirection = strtolower((string)($postData['dir'] ?? 'asc')) === 'desc' ? 'DESC' : 'ASC';
-
-		// 1. Toplam Kayıt Sayısı (Filtresiz) - type 4 (Son Kullanıcı)
-		$totalRecords = $this->db->where('user_type', 4)->count_all_results('users');
-
-		// 2. Sorgu Oluşturma (Filtreli)
-		$withdrawableSql = '(COALESCE(SUM(CASE WHEN user_balance.user_balance_type = 1 AND user_balance.user_balance_status = 1 THEN user_balance.user_balance_amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN user_balance.user_balance_type = 1 AND user_balance.user_balance_status = 3 THEN user_balance.user_balance_amount ELSE 0 END), 0))';
-		$this->db->select('users.*, (COALESCE(SUM(CASE WHEN user_balance.user_balance_status = 1 THEN user_balance.user_balance_amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN user_balance.user_balance_status IN (3, 4) THEN user_balance.user_balance_amount ELSE 0 END), 0)) AS current_balance, ' . $withdrawableSql . ' AS withdrawable_balance', false)
-			->from('users')
-			->join('user_balance', 'user_balance.user_balance_user_id = users.user_id', 'left')
-			->where('users.user_type', 4)
-			->group_by('users.user_id');
-
-		// Arama (Search) Mantığı
-		if (!empty($searchValue)) {
-			$this->db->group_start()
-				->like('user_name', $searchValue)
-				->or_like('user_surname', $searchValue)
-				->or_like('user_email', $searchValue)
-				->or_like('user_phone', $searchValue)
-				->or_like('user_id', $searchValue)
-				->group_end();
+		$text = function ($key, $max = 100) use ($p) {
+			return mb_substr(trim((string)($p[$key] ?? '')), 0, $max);
+		};
+		$yesNo = function ($key) use ($p) {
+			$v = (string)($p[$key] ?? '');
+			return in_array($v, ['yes', 'no'], true) ? $v : '';
+		};
+		$date = function ($key) use ($p) {
+			$v = trim((string)($p[$key] ?? ''));
+			return validateDate($v, 'Y-m-d') ? $v : '';
+		};
+		$search = $p['search'] ?? '';
+		if (is_array($search)) {
+			$search = $search['value'] ?? '';
 		}
+		$id = $text('id', 12);
 
-		// Email Filtresi
-		if (!empty($filterEmail)) {
-			$this->db->like('user_email', $filterEmail);
-		}
+		return [
+			'search' => mb_substr(trim((string)$search), 0, 100),
+			'id' => ctype_digit($id) ? (int)$id : 0,
+			'name' => $text('name'),
+			'tier' => ($p['tier'] ?? '') === '' ? '' : (int)$p['tier'],
+			'status' => ($p['status'] ?? '') === '' ? '' : (int)$p['status'],
+			'balance' => in_array((string)($p['balance'] ?? ''), ['positive', 'zero'], true) ? (string)$p['balance'] : '',
+			'country' => strtoupper($text('country', 5)),
+			'mail_verified' => $yesNo('mail_verified'),
+			'phone_verified' => $yesNo('phone_verified'),
+			'ip' => $text('ip', 45),
+			'date_from' => $date('date_from'),
+			'date_to' => $date('date_to'),
+			'restricted' => $yesNo('restricted'),
+			'fraud' => $yesNo('fraud'),
+			'sort' => (string)($p['sort'] ?? 'id'),
+			'dir' => strtolower((string)($p['dir'] ?? 'asc')) === 'desc' ? 'DESC' : 'ASC',
+		];
+	}
 
-		// Telefon Filtresi
-		if (!empty($filterPhone)) {
-			$this->db->like('user_phone', $filterPhone);
-		}
-
-		// Tier Filtresi
-		if ($filterTier !== '') {
-			$this->db->where('user_tier', (int)$filterTier);
-		}
-
-		// Durum Filtresi
-		if ($filterStatus !== '') {
-			$this->db->where('user_status', (int)$filterStatus);
-		}
-
-		if ($filterCountry !== '') {
-			$this->db->where('UPPER(users.user_country)', $filterCountry);
-		}
-		if (in_array($filterMail, ['yes', 'no'], true)) {
-			$this->db->where('users.user_email_is_verified', $filterMail === 'yes' ? 1 : 0);
-		}
-		if (in_array($filterPhoneVerified, ['yes', 'no'], true)) {
-			$this->db->where('users.user_phone_is_verified', $filterPhoneVerified === 'yes' ? 1 : 0);
-		}
-		if ($filterIp !== '') {
-			$likeIp = $this->db->escape('%' . $this->db->escape_like_str($filterIp) . '%');
-			$this->db->where("users.user_id IN (SELECT user_logs_user_id FROM user_logs WHERE user_logs_user_event = 'REGISTER' AND user_logs_user_ip LIKE " . $likeIp . ")", null, false);
-		}
-		if ($filterBalance === 'positive') {
-			$this->db->having('current_balance >', 0);
-		} elseif ($filterBalance === 'zero') {
-			$this->db->having('current_balance <=', 0);
-		}
-
-		// Filtrelenmiş Kayıt Sayısı
-		$tempDb = clone $this->db;
-		$filteredRecords = $tempDb->count_all_results();
-
-		// Sıralama (Order)
-		$orderColumns = [
+	private function usersListOrderColumns()
+	{
+		return [
 			'id' => 'users.user_id',
 			'name' => 'users.user_name',
 			'email' => 'users.user_email',
@@ -451,32 +406,171 @@ class Users extends MY_Controller
 			'active' => 'users.user_status',
 			'date' => 'users.user_created_at',
 		];
-		$this->db->order_by($orderColumns[$sortKey] ?? 'users.user_id', $orderDirection);
+	}
 
-		// Sayfalama (Pagination)
-		if ($length != -1) {
-			$this->db->limit($length, $start);
-		}
+	// Tüm kullanıcılar üzerinden bakiye toplamı yalnızca bakiye filtresi/sıralaması varken gerekir.
+	private function usersListNeedsBalance(array $f)
+	{
+		return $f['balance'] !== '' || in_array($f['sort'], ['balance', 'withdrawable'], true);
+	}
 
-		$users = $this->db->get()->result();
-		$data = [];
+	private function usersBalanceSelect()
+	{
+		return "COALESCE(SUM(CASE WHEN user_balance_status = 1 THEN user_balance_amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN user_balance_status IN (3, 4) THEN user_balance_amount ELSE 0 END), 0) AS current_balance,
+			COALESCE(SUM(CASE WHEN user_balance_type = 1 AND user_balance_status = 1 THEN user_balance_amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN user_balance_type = 1 AND user_balance_status = 3 THEN user_balance_amount ELSE 0 END), 0) AS withdrawable_balance";
+	}
 
-		// Kayıt IP'leri yalnızca sayfadaki kullanıcılar için tek sorguda alınır.
-		$registerIps = [];
-		$pageIds = array_map('intval', array_column($users, 'user_id'));
-		if (!empty($pageIds)) {
-			$ipRows = $this->db->select('user_logs_user_id, user_logs_user_ip')
-				->where_in('user_logs_user_id', $pageIds)
-				->where('user_logs_user_event', 'REGISTER')
-				->order_by('user_logs_id', 'ASC')
-				->get('user_logs')->result();
-			foreach ($ipRows as $ipRow) {
-				if (!isset($registerIps[$ipRow->user_logs_user_id])) {
-					$registerIps[$ipRow->user_logs_user_id] = (string)$ipRow->user_logs_user_ip;
-				}
+	private function usersListQuery(array $f, $needBalance)
+	{
+		$this->db->from('users')->where('users.user_type', 4);
+
+		if ($needBalance) {
+			$this->db->join('(SELECT user_balance_user_id AS uid, ' . $this->usersBalanceSelect() . ' FROM user_balance GROUP BY user_balance_user_id) ub', 'ub.uid = users.user_id', 'left', false);
+			if ($f['balance'] === 'positive') {
+				$this->db->where('COALESCE(ub.current_balance, 0) > 0', null, false);
+			} elseif ($f['balance'] === 'zero') {
+				$this->db->where('COALESCE(ub.current_balance, 0) <= 0', null, false);
 			}
 		}
 
+		if ($f['search'] !== '') {
+			$this->db->group_start()
+				->like('users.user_name', $f['search'])
+				->or_like('users.user_surname', $f['search'])
+				->or_like('users.user_email', $f['search'])
+				->or_like('users.user_phone', $f['search']);
+			if (ctype_digit($f['search'])) {
+				$this->db->or_where('users.user_id', (int)$f['search']);
+			}
+			$this->db->group_end();
+		}
+		if ($f['id'] > 0) {
+			$this->db->where('users.user_id', $f['id']);
+		}
+		if ($f['name'] !== '') {
+			$this->db->where("CONCAT_WS(' ', users.user_name, users.user_surname) LIKE " . $this->db->escape('%' . $this->db->escape_like_str($f['name']) . '%'), null, false);
+		}
+		if ($f['tier'] !== '') {
+			$this->db->where('users.user_tier', $f['tier']);
+		}
+		if ($f['status'] !== '') {
+			$this->db->where('users.user_status', $f['status']);
+		}
+		if ($f['country'] !== '') {
+			$this->db->where('UPPER(users.user_country)', $f['country']);
+		}
+		if ($f['mail_verified'] !== '') {
+			$this->db->where('users.user_email_is_verified', $f['mail_verified'] === 'yes' ? 1 : 0);
+		}
+		if ($f['phone_verified'] !== '') {
+			$this->db->where('users.user_phone_is_verified', $f['phone_verified'] === 'yes' ? 1 : 0);
+		}
+		if ($f['date_from'] !== '') {
+			$this->db->where('users.user_created_at >=', $f['date_from'] . ' 00:00:00');
+		}
+		if ($f['date_to'] !== '') {
+			$this->db->where('users.user_created_at <=', $f['date_to'] . ' 23:59:59');
+		}
+		if ($f['ip'] !== '') {
+			$likeIp = $this->db->escape('%' . $this->db->escape_like_str($f['ip']) . '%');
+			$this->db->where("users.user_id IN (SELECT user_logs_user_id FROM user_logs WHERE user_logs_user_event = 'REGISTER' AND user_logs_user_ip LIKE " . $likeIp . ")", null, false);
+		}
+		if ($f['restricted'] !== '' && $this->db->table_exists('customer_restrictions')) {
+			$exists = 'EXISTS (SELECT 1 FROM customer_restrictions r WHERE r.restriction_user_id = users.user_id AND r.restriction_status = 1 AND (r.restriction_expires_at IS NULL OR r.restriction_expires_at > ' . $this->db->escape(date('Y-m-d H:i:s')) . '))';
+			$this->db->where(($f['restricted'] === 'yes' ? '' : 'NOT ') . $exists, null, false);
+		}
+		if ($f['fraud'] !== '' && $this->db->table_exists('fraud_documents')) {
+			$exists = 'EXISTS (SELECT 1 FROM fraud_documents d WHERE d.user_id = users.user_id)';
+			$this->db->where(($f['fraud'] === 'yes' ? '' : 'NOT ') . $exists, null, false);
+		}
+	}
+
+	// Sayfadaki kullanıcılar için bakiye, giriş, sipariş, kısıtlama ve fraud bilgisini toplu sorgularla alır.
+	private function usersListExtras(array $ids, $balanceLoaded)
+	{
+		$ex = ['balance' => [], 'register_ip' => [], 'last_login' => [], 'orders' => [], 'restricted' => [], 'fraud' => []];
+		if (empty($ids)) {
+			return $ex;
+		}
+
+		if (!$balanceLoaded) {
+			$rows = $this->db->select('user_balance_user_id AS uid, ' . $this->usersBalanceSelect(), false)
+				->where_in('user_balance_user_id', $ids)
+				->group_by('user_balance_user_id')
+				->get('user_balance')->result();
+			foreach ($rows as $r) {
+				$ex['balance'][(int)$r->uid] = $r;
+			}
+		}
+
+		$rows = $this->db->select('user_logs_user_id, user_logs_user_ip')
+			->where_in('user_logs_user_id', $ids)
+			->where('user_logs_user_event', 'REGISTER')
+			->order_by('user_logs_id', 'ASC')
+			->get('user_logs')->result();
+		foreach ($rows as $r) {
+			if (!isset($ex['register_ip'][$r->user_logs_user_id])) {
+				$ex['register_ip'][$r->user_logs_user_id] = (string)$r->user_logs_user_ip;
+			}
+		}
+
+		$rows = $this->db->select('user_logs_user_id AS uid, MAX(user_logs_created_at) AS last_login', false)
+			->where_in('user_logs_user_id', $ids)
+			->where('user_logs_user_event', 'LOGIN')
+			->group_by('user_logs_user_id')
+			->get('user_logs')->result();
+		foreach ($rows as $r) {
+			$ex['last_login'][(int)$r->uid] = $r->last_login;
+		}
+
+		$try = $this->referralTryCurrencies();
+		$rows = $this->db->select("order_reseller_id AS uid, COUNT(*) AS cnt, SUM(COALESCE(NULLIF(order_sale_price_tl, 0), CASE WHEN UPPER(COALESCE(order_sale_price_currency, '')) IN $try THEN order_sale_price END, 0)) AS spend", false)
+			->where_in('order_reseller_id', $ids)
+			->where('order_status', 1)
+			->group_by('order_reseller_id')
+			->get('orders')->result();
+		foreach ($rows as $r) {
+			$ex['orders'][(int)$r->uid] = $r;
+		}
+
+		if ($this->db->table_exists('customer_restrictions')) {
+			$rows = $this->db->distinct()->select('restriction_user_id')
+				->where_in('restriction_user_id', $ids)
+				->where('restriction_status', 1)
+				->group_start()
+					->where('restriction_expires_at IS NULL', null, false)
+					->or_where('restriction_expires_at >', date('Y-m-d H:i:s'))
+				->group_end()
+				->get('customer_restrictions')->result();
+			foreach ($rows as $r) {
+				$ex['restricted'][(int)$r->restriction_user_id] = true;
+			}
+		}
+		if ($this->db->table_exists('fraud_documents')) {
+			$rows = $this->db->distinct()->select('user_id')->where_in('user_id', $ids)->get('fraud_documents')->result();
+			foreach ($rows as $r) {
+				$ex['fraud'][(int)$r->user_id] = true;
+			}
+		}
+
+		return $ex;
+	}
+
+	private function usersListFetch(array $f, $needBalance, $limit, $offset)
+	{
+		$this->usersListQuery($f, $needBalance);
+		$select = 'users.user_id, users.user_name, users.user_surname, users.user_email, users.user_email_is_verified, users.user_phone, users.user_phone_is_verified, users.user_country, users.user_tier, users.user_status, users.user_created_at';
+		if ($needBalance) {
+			$select .= ', COALESCE(ub.current_balance, 0) AS current_balance, COALESCE(ub.withdrawable_balance, 0) AS withdrawable_balance';
+		}
+		$orderColumns = $this->usersListOrderColumns();
+		$this->db->select($select, false)->order_by($orderColumns[$f['sort']] ?? 'users.user_id', $f['dir']);
+		if (($orderColumns[$f['sort']] ?? 'users.user_id') !== 'users.user_id') {
+			$this->db->order_by('users.user_id', 'ASC');
+		}
+		$users = $this->db->limit($limit, $offset)->get()->result();
+
+		$ex = $this->usersListExtras(array_map('intval', array_column($users, 'user_id')), $needBalance);
 		$userTiers = [
 			1 => 'Son Kullanıcı',
 			2 => 'Dijipin',
@@ -487,39 +581,113 @@ class Users extends MY_Controller
 		];
 
 		// Ham değerler döner; HTML kaçışı istemci tarafında yapılır.
+		$data = [];
 		foreach ($users as $user) {
+			$uid = (int)$user->user_id;
+			$bal = $needBalance ? $user : ($ex['balance'][$uid] ?? null);
+			$order = $ex['orders'][$uid] ?? null;
 			$data[] = [
-				'id' => (int)$user->user_id,
+				'id' => $uid,
 				'name' => trim(($user->user_name ?? '') . ' ' . ($user->user_surname ?? '')) ?: ($user->user_name ?: '-'),
 				'email' => (string)$user->user_email,
 				'email_verified' => (int)$user->user_email_is_verified === 1,
-				'phone' => (string)$user->user_phone,
+				'phone' => normalizePhoneE164($user->user_phone),
 				'phone_verified' => (int)$user->user_phone_is_verified === 1,
+				'whatsapp_url' => whatsappUrl($user->user_phone),
 				'country' => (string)$user->user_country,
-				'register_ip' => $registerIps[$user->user_id] ?? '',
-				'balance' => (float)$user->current_balance,
-				'withdrawable' => (float)$user->withdrawable_balance,
+				'register_ip' => $ex['register_ip'][$uid] ?? '',
+				'balance' => $bal ? (float)$bal->current_balance : 0.0,
+				'withdrawable' => $bal ? (float)$bal->withdrawable_balance : 0.0,
 				'type' => $userTiers[(int)$user->user_tier] ?? '—',
 				'active' => (int)$user->user_status === 1,
 				'created' => !empty($user->user_created_at) ? date('d.m.Y', strtotime($user->user_created_at)) : '-',
-				'url' => base_url('users/detail/' . (int)$user->user_id),
+				'last_login' => !empty($ex['last_login'][$uid]) ? date('d.m.Y H:i', strtotime($ex['last_login'][$uid])) : '',
+				'orders' => $order ? (int)$order->cnt : 0,
+				'spend' => $order ? (float)$order->spend : 0.0,
+				'restricted' => isset($ex['restricted'][$uid]),
+				'fraud' => isset($ex['fraud'][$uid]),
+				'url' => base_url('users/detail/' . $uid),
 			];
 		}
+		return $data;
+	}
 
-		echo json_encode([
-			"draw" => $draw,
-			"recordsTotal" => $totalRecords,
-			"recordsFiltered" => $filteredRecords,
-			"data" => $data
+	public function getUsersList()
+	{
+		$p = $this->input->post();
+		$draw = (int)($p['draw'] ?? 1);
+		$start = max(0, (int)($p['start'] ?? 0));
+		$length = (int)($p['length'] ?? 15);
+		$length = ($length < 1 || $length > self::USERS_LIST_MAX_PAGE) ? 15 : $length;
+
+		$f = $this->usersListFilters(is_array($p) ? $p : []);
+		$needBalance = $this->usersListNeedsBalance($f);
+
+		$totalRecords = $this->db->where('user_type', 4)->count_all_results('users');
+
+		$this->usersListQuery($f, $needBalance);
+		$filteredRecords = $this->db->count_all_results();
+
+		return json([
+			'draw' => $draw,
+			'recordsTotal' => $totalRecords,
+			'recordsFiltered' => $filteredRecords,
+			'data' => $this->usersListFetch($f, $needBalance, $length, $start),
 		]);
+	}
+
+	public function exportUsersCsv()
+	{
+		$f = $this->usersListFilters($this->input->get() ?: []);
+		$needBalance = $this->usersListNeedsBalance($f);
+
+		// Excel formül enjeksiyonuna karşı hücre başlangıcı nötrlenir.
+		$cell = function ($value) {
+			$value = (string)$value;
+			return (preg_match('/^[=+\-@\t\r]/', $value) ? "'" : '') . $value;
+		};
+		$money = function ($value) {
+			return number_format((float)$value, 2, ',', '');
+		};
+
+		header('Content-Type: text/csv; charset=UTF-8');
+		header('Content-Disposition: attachment; filename="musteriler-' . date('Ymd-His') . '.csv"');
+		$out = fopen('php://output', 'w');
+		fwrite($out, "\xEF\xBB\xBF");
+		fputcsv($out, ['ID', 'Ad Soyad', 'E-posta', 'Telefon', 'Kayıt Ülkesi', 'Kayıt IP', 'Bakiye', 'Çekilebilir Bakiye', 'Müşteri Tipi', 'Durum', 'Kayıt Tarihi', 'Son Giriş', 'Tamamlanan Sipariş', 'Toplam Harcama (TL)', 'Kısıtlı', 'Fraud Belgesi'], ';');
+
+		$batch = 1000;
+		for ($offset = 0; $offset < self::USERS_EXPORT_MAX_ROWS; $offset += $batch) {
+			$rows = $this->usersListFetch($f, $needBalance, $batch, $offset);
+			foreach ($rows as $c) {
+				fputcsv($out, [
+					$c['id'], $cell($c['name']), $cell($c['email']), $cell($c['phone']), $cell($c['country']), $cell($c['register_ip']),
+					$money($c['balance']), $money($c['withdrawable']), $c['type'], $c['active'] ? 'Aktif' : 'Pasif', $c['created'],
+					$c['last_login'], $c['orders'], $money($c['spend']), $c['restricted'] ? 'Evet' : 'Hayır', $c['fraud'] ? 'Evet' : 'Hayır',
+				], ';');
+			}
+			if (count($rows) < $batch) {
+				break;
+			}
+		}
+		fclose($out);
+		exit;
 	}
 
 	public function addUser()
 	{
+		$admin = $this->session->userdata('admin');
+		if (!is_array($admin) || (int) ($admin['admin_power'] ?? 0) !== 2) {
+			$this->session->set_flashdata('alert', ['type' => 'error', 'title' => 'Yetkisiz işlem', 'message' => 'Yalnızca Super Admin yeni yönetici oluşturabilir.']);
+			redirect(base_url('admins'));
+			return;
+		}
+
 		$post = $this->input->post();
 		if (empty($post)) {
 			$this->session->set_flashdata('alert', ['type' => 'error', 'title' => 'Hata!', 'message' => 'Hatalı istek.']);
 			redirect(base_url('admins'));
+			return;
 		}
 
 		$checkUserEmail = $this->db->where('admin_email', $post['email'])->get('admins')->row();

@@ -15,11 +15,14 @@ class Tickets extends MY_Controller
 	{
 		$data = $this->data;
 
-		$this->db->select('t.*, u.user_name, u.user_email');
-		$this->db->from('tickets t');
-		$this->db->join('users u', 'u.user_id = t.tickets_user_id', 'left');
-		$this->db->order_by('t.tickets_updated_at', 'DESC');
-		$data['tickets'] = $this->db->get()->result();
+		$counts = $this->db->select('tickets_status, COUNT(*) AS total', false)
+			->group_by('tickets_status')
+			->get('tickets')->result();
+		$data['status_counts'] = [0 => 0, 1 => 0, 2 => 0];
+		foreach ($counts as $row) {
+			$data['status_counts'][(int)$row->tickets_status] = (int)$row->total;
+		}
+
 		$data['cancellation_reasons'] = [];
 		if ($this->db->table_exists('order_cancellation_reasons')) {
 			$data['cancellation_reasons'] = $this->db->order_by('reason_sort', 'ASC')->get('order_cancellation_reasons')->result();
@@ -29,6 +32,101 @@ class Tickets extends MY_Controller
 
 		$this->template->content->view('tickets/index', $data);
 		$this->template->publish();
+	}
+
+	public function getTickets()
+	{
+		$draw = (int)$this->input->post('draw');
+		$start = max(0, (int)$this->input->post('start'));
+		$length = (int)$this->input->post('length');
+		$length = $length > 0 ? min($length, 200) : 20;
+
+		$search = trim((string)$this->input->post('search_text', true));
+		$status = $this->input->post('status');
+		$startDate = $this->normalizeTicketDate($this->input->post('start_date'));
+		$endDate = $this->normalizeTicketDate($this->input->post('end_date'));
+
+		$applyFilters = function () use ($search, $status, $startDate, $endDate) {
+			if ($search !== '') {
+				$this->db->group_start();
+				if (ctype_digit($search)) {
+					$this->db->where('t.tickets_id', (int)$search);
+					$this->db->or_where('t.tickets_user_id', (int)$search);
+				}
+				$this->db->or_like('t.tickets_subject', $search);
+				$this->db->or_like('t.tickets_topic', $search);
+				$this->db->or_like('u.user_name', $search);
+				$this->db->or_like('u.user_surname', $search);
+				$this->db->or_like('u.user_email', $search);
+				$this->db->group_end();
+			}
+			if ($status !== null && $status !== '' && in_array((string)$status, ['0', '1', '2'], true)) {
+				$this->db->where('t.tickets_status', (int)$status);
+			}
+			if ($startDate) {
+				$this->db->where('t.tickets_updated_at >=', $startDate . ' 00:00:00');
+			}
+			if ($endDate) {
+				$this->db->where('t.tickets_updated_at <=', $endDate . ' 23:59:59');
+			}
+		};
+
+		$recordsTotal = (int)$this->db->count_all('tickets');
+
+		$this->db->from('tickets t');
+		$this->db->join('users u', 'u.user_id = t.tickets_user_id', 'left');
+		$applyFilters();
+		$recordsFiltered = (int)$this->db->count_all_results();
+
+		$this->db->select('t.*, u.user_name, u.user_surname, u.user_email');
+		$this->db->from('tickets t');
+		$this->db->join('users u', 'u.user_id = t.tickets_user_id', 'left');
+		$applyFilters();
+		$this->db->order_by('t.tickets_updated_at', 'DESC');
+		$this->db->order_by('t.tickets_id', 'DESC');
+		$this->db->limit($length, $start);
+		$tickets = $this->db->get()->result();
+
+		$statusBadges = [
+			0 => '<span class="badge badge-light-warning">Kullanıcı Cevabı</span>',
+			1 => '<span class="badge badge-light-success">Yanıtlandı</span>',
+			2 => '<span class="badge badge-light-secondary">Kapatıldı</span>',
+		];
+
+		$rows = [];
+		foreach ($tickets as $ticket) {
+			$id = (int)$ticket->tickets_id;
+			$status = (int)$ticket->tickets_status;
+			$userName = trim($ticket->user_name . ' ' . $ticket->user_surname);
+			$updatedAt = !empty($ticket->tickets_updated_at) ? date('d.m.Y H:i', strtotime($ticket->tickets_updated_at)) : '-';
+
+			$actions = '<a href="' . base_url('tickets/detail/' . $id) . '" class="btn btn-icon btn-light-primary btn-sm me-1" title="Görüntüle/Cevapla"><i class="fa-solid fa-eye"></i></a>';
+			if ($status !== 2) {
+				$actions .= '<button class="btn btn-icon btn-light-danger btn-sm btn-update-status" data-id="' . $id . '" data-status="2" title="Talebi Kapat"><i class="fa-solid fa-lock"></i></button>';
+			}
+
+			$rows[] = [
+				$id,
+				'<div class="d-flex flex-column"><span class="text-gray-800 fw-bolder">' . html_escape($userName) . '</span><span class="text-muted fw-bold d-block fs-7">' . html_escape((string)$ticket->user_email) . '</span></div>',
+				'<span class="text-gray-800 fw-bolder d-block fs-6">' . html_escape((string)$ticket->tickets_subject) . '</span><span class="text-muted fw-bold d-block fs-7">' . html_escape((string)$ticket->tickets_topic) . '</span>',
+				'<span class="text-gray-600 fw-bold d-block fs-7">' . $updatedAt . '</span>',
+				$statusBadges[$status] ?? '',
+				$actions,
+			];
+		}
+
+		return json([
+			'draw' => $draw,
+			'recordsTotal' => $recordsTotal,
+			'recordsFiltered' => $recordsFiltered,
+			'data' => $rows,
+		]);
+	}
+
+	private function normalizeTicketDate($date)
+	{
+		$date = trim((string)$date);
+		return preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? $date : '';
 	}
 
 	public function detail($id)
