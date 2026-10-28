@@ -69,84 +69,177 @@ if (!function_exists('format_category_seo_tables')) {
   /* ====== CATEGORY DETAIL PAGE ENHANCEMENTS ====== */
 
   /* --- Hero Product Info Card --- */
-  .product-info-card.cd-enhanced {
+  .category-detail-page .product-info-card.cd-enhanced {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(255, 200, 0, 0.08);
+    border: 1px solid rgba(255, 200, 0, 0.12);
+    border-radius: 20px;
+    padding: 24px 28px;
+    background: linear-gradient(145deg, rgba(23, 26, 35, 0.98), rgba(15, 18, 25, 0.98));
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
   }
 
-  .product-info-card.cd-enhanced::before {
+  .category-detail-page .product-info-card.cd-enhanced::before {
     content: '';
     position: absolute;
-    top: -60px;
-    right: -60px;
+    top: -50px;
+    left: -50px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(255, 179, 0, 0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced::after {
+    content: '';
+    position: absolute;
+    top: -30px;
+    right: -30px;
     width: 200px;
     height: 200px;
-    background: radial-gradient(circle, rgba(255, 200, 0, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 140, 0, 0.05) 0%, transparent 70%);
     border-radius: 50%;
     pointer-events: none;
     z-index: 0;
   }
 
-  .product-info-card.cd-enhanced::after {
-    content: '';
-    position: absolute;
-    bottom: -40px;
-    left: -40px;
-    width: 150px;
-    height: 150px;
-    background: radial-gradient(circle, rgba(255, 49, 0, 0.06) 0%, transparent 70%);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .product-info-card.cd-enhanced .product-info-top {
+  .category-detail-page .product-info-card.cd-enhanced .product-info-top {
     position: relative;
     z-index: 1;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "icon title"
+      "icon desc"
+      "icon meta";
+    column-gap: 22px;
+    row-gap: 8px;
+    align-items: start;
   }
 
-  .product-info-card.cd-enhanced .product-info-icon {
-    width: 180px;
-    height: 180px;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 200, 0, 0.1);
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
+  .category-detail-page .product-info-card.cd-enhanced .product-info-icon {
+    grid-area: icon;
+    width: 96px;
+    height: 96px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 179, 0, 0.25);
+    background: linear-gradient(135deg, #ff9e1f 0%, #ff6b00 100%);
+    align-self: start;
+    flex-shrink: 0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
 
-  .product-info-card.cd-enhanced .product-info-icon:hover {
-    transform: scale(1.08) rotate(-2deg);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 200, 0, 0.2);
+  .category-detail-page .product-info-card.cd-enhanced .product-info-icon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 20px rgba(255, 160, 0, 0.2);
   }
 
-  .product-info-card.cd-enhanced .product-info-title {
-    font-size: 22px;
-    font-weight: 600;
+  .category-detail-page .product-info-card.cd-enhanced .product-info-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 19px;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced .product-info-title-row {
+    grid-area: title;
+    display: flex;
+    align-items: center;
+    margin: 0;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced .product-info-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
     letter-spacing: -0.3px;
+    margin: 0;
+    line-height: 1.25;
   }
 
-  .product-info-card.cd-enhanced .meta {
-    margin-top: 10px;
+  .category-detail-page .product-info-card.cd-enhanced .product-info-desc {
+    grid-area: desc;
+    font-size: 14px;
+    font-weight: 400;
+    color: #9ca3af;
+    line-height: 1.5;
+    margin: 2px 0 6px 0;
+    max-width: 950px;
   }
 
-  .product-info-card.cd-enhanced .meta-item {
+  .category-detail-page .product-info-card.cd-enhanced .product-info-meta-group {
+    grid-area: meta;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 16px;
+    margin-top: 4px;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced .meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced .meta .meta-item {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
+    gap: 8px;
+    padding: 7px 16px;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 100px;
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.75);
-    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #d4d4d8;
+    white-space: nowrap;
+    transition: all 0.25s ease;
   }
 
-  .product-info-card.cd-enhanced .meta-item:hover {
-    background: rgba(255, 200, 0, 0.08);
-    border-color: rgba(255, 200, 0, 0.15);
-    color: var(--yellow);
+  .category-detail-page .product-info-card.cd-enhanced .meta .meta-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 200, 0, 0.25);
+    color: #ffffff;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced .store-badges {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced .store-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced .store-badge:hover {
+    transform: translateY(-2px);
+    opacity: 0.95;
+  }
+
+  .category-detail-page .product-info-card.cd-enhanced .store-icon {
+    height: 38px;
+    width: auto;
+    max-width: 135px;
+    object-fit: contain;
+    display: block;
+    border-radius: 6px;
   }
 
   /* --- Step Indicator --- */
@@ -215,23 +308,100 @@ if (!function_exists('format_category_seo_tables')) {
     font-size: 13px;
   }
 
+  .sub-cat-name-desktop {
+    display: inline;
+  }
+
+  .sub-cat-name-mobile {
+    display: none;
+  }
+
   /* --- Enhanced ID Input Section --- */
-  .id-input-section.cd-enhanced {
-    border: 1px solid rgba(255, 255, 255, 0.05);
+  .category-detail-page .id-input-section.cd-enhanced {
+    border: 1px solid rgba(255, 179, 0, 0.12);
+    border-radius: 20px;
+    padding: 24px 28px;
+    background: linear-gradient(145deg, rgba(23, 26, 35, 0.98), rgba(15, 18, 25, 0.98));
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.26);
   }
 
-  .id-input-section.cd-enhanced .id-field {
-    padding: 16px 18px;
-    border-radius: 10px;
+  .category-detail-page .id-input-header {
+    margin-bottom: 16px;
+  }
+
+  .category-detail-page .id-input-fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .category-detail-page .id-input-fields.has-server-id {
+    grid-template-columns: 1.5fr 1fr !important;
+  }
+
+  .category-detail-page .id-input-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .category-detail-page .id-input-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .category-detail-page .id-input-label {
+    margin-bottom: 0;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #9ca3af;
+    line-height: 1.2;
+  }
+
+  .category-detail-page .last-used-ids-trigger {
+    font-size: 11.5px;
+    color: #8f96a3;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+
+  .category-detail-page .last-used-ids-trigger:hover {
+    color: var(--cd-gold);
+  }
+
+  .category-detail-page .id-input-section.cd-enhanced .id-field {
+    width: 100%;
+    height: 52px;
+    padding: 0 16px;
+    border-radius: 12px !important;
+    font-size: 14.5px;
+    color: #ffffff !important;
+    background: #10131a !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: none;
+    transition: all 0.25s ease;
+  }
+
+  .category-detail-page .id-input-section.cd-enhanced .id-field::placeholder {
+    color: #52525b !important;
     font-size: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: all 0.3s ease;
+    font-weight: 400;
   }
 
-  .id-input-section.cd-enhanced .id-field:focus {
-    border-color: var(--yellow);
-    box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.1), 0 4px 16px rgba(255, 200, 0, 0.08);
-    background: rgba(30, 30, 30, 1);
+  .category-detail-page .id-input-section.cd-enhanced .id-field:focus {
+    border-color: #ffb300 !important;
+    background: #121620 !important;
+    box-shadow: 0 0 0 1px rgba(255, 179, 0, 0.25), 0 0 16px rgba(255, 179, 0, 0.12) !important;
+    outline: none;
+  }
+
+  .category-detail-page .id-input-hint {
+    margin: 10px 0 0 0;
+    font-size: 12.5px;
+    color: #71717a;
+    line-height: 1.4;
   }
 
   /* --- Enhanced Product Selection --- */
@@ -854,13 +1024,221 @@ if (!function_exists('format_category_seo_tables')) {
 
   /* --- Responsive --- */
   @media (max-width: 768px) {
-    .product-info-card.cd-enhanced .product-info-icon {
-      width: 72px;
-      height: 72px;
+    .category-detail-page .product-info-card.cd-enhanced {
+      padding: 16px;
+      border-radius: 18px;
     }
 
-    .product-info-card.cd-enhanced .product-info-title {
-      font-size: 18px;
+    .category-detail-page .product-info-card.cd-enhanced .product-info-top {
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto auto;
+      grid-template-areas:
+        "icon title"
+        "desc desc"
+        "meta meta";
+      column-gap: 14px;
+      row-gap: 14px;
+      align-items: center;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .product-info-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 14px;
+      align-self: center;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .product-info-icon img {
+      border-radius: 13px;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .product-info-title-row {
+      align-self: center;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .product-info-title {
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .product-info-desc {
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: #9ca3af;
+      margin: 0;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .product-info-meta-group {
+      flex-direction: column;
+      width: 100%;
+      gap: 14px;
+      margin-top: 0;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .meta {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .meta .meta-item {
+      flex: 1 1 0;
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 8px 2px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .store-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      margin-left: 0;
+      margin-top: 0;
+    }
+
+    .category-detail-page .product-info-card.cd-enhanced .store-icon {
+      height: 36px;
+      width: auto;
+      max-width: 130px;
+    }
+
+    /* Sub Category Cards Mobile Layout */
+    .sub-cat-name-desktop {
+      display: none !important;
+    }
+
+    .sub-cat-name-mobile {
+      display: inline !important;
+    }
+
+    .category-detail-page .sub-category-section.cd-enhanced {
+      padding: 16px;
+      border-radius: 18px;
+    }
+
+    .category-detail-page .sub-category-section.cd-enhanced .cd-step-header {
+      margin-bottom: 12px;
+    }
+
+    .category-detail-page .sub-category-cards {
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      gap: 8px !important;
+      width: 100% !important;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .category-detail-page .sub-category-cards::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category-detail-page .sub-category-section.cd-enhanced .sub-cat-card {
+      flex: 1 1 0;
+      min-width: 0;
+      display: inline-flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 7px !important;
+      padding: 10px 6px !important;
+      border-radius: 12px !important;
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    .category-detail-page .sub-category-section.cd-enhanced .sub-cat-card.active {
+      border: 1.5px solid #ffb300 !important;
+      background: rgba(255, 179, 0, 0.06) !important;
+      box-shadow: 0 0 16px rgba(255, 179, 0, 0.15) !important;
+    }
+
+    .category-detail-page .sub-category-section.cd-enhanced .sub-cat-icon {
+      width: 26px !important;
+      height: 26px !important;
+      border-radius: 6px !important;
+      flex-shrink: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: transparent !important;
+    }
+
+    .category-detail-page .sub-category-section.cd-enhanced .sub-cat-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+
+    .category-detail-page .sub-category-section.cd-enhanced .sub-cat-text {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .category-detail-page .sub-category-section.cd-enhanced .sub-cat-name {
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      color: #ffffff !important;
+      white-space: nowrap !important;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1 !important;
+    }
+
+    /* ID Input Section Mobile Layout */
+    .category-detail-page .id-input-section.cd-enhanced {
+      padding: 16px;
+      border-radius: 18px;
+    }
+
+    .category-detail-page .id-input-header {
+      margin-bottom: 12px;
+    }
+
+    .category-detail-page .id-input-fields.has-server-id {
+      display: grid !important;
+      grid-template-columns: 1.5fr 1fr !important;
+      gap: 10px !important;
+    }
+
+    .category-detail-page .id-input-label {
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .category-detail-page .id-input-section.cd-enhanced .id-field {
+      height: 48px;
+      padding: 0 14px;
+      font-size: 14px;
+      border-radius: 12px !important;
+    }
+
+    .category-detail-page .id-input-section.cd-enhanced .id-field::placeholder {
+      font-size: 13.5px;
+    }
+
+    .category-detail-page .id-input-hint {
+      font-size: 11.5px;
+      margin-top: 8px;
     }
 
     .cd-step-number {
@@ -873,44 +1251,6 @@ if (!function_exists('format_category_seo_tables')) {
     .cd-payment-total .total-value {
       font-size: 18px;
     }
-  }
-
-  .product-info-meta-group {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    width: fit-content;
-    max-width: 100%;
-  }
-
-  .product-info-meta-group .meta {
-    margin-top: 10px;
-    margin-bottom: 0 !important;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  .store-badges {
-    display: flex !important;
-    gap: 12px;
-    align-items: center;
-    justify-content: center !important;
-    width: 100%;
-  }
-
-  .store-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .store-icon {
-    width: 140px;
-    height: auto;
-    margin-top: 10px;
-    object-fit: contain;
   }
 
   /* --- MOBİL YÜZEN ÖDEME BARI (FLOATING ACTION BAR) --- */
@@ -1152,51 +1492,48 @@ if (!function_exists('format_category_seo_tables')) {
               <img src="<?= getenv('CDN_URL') . 'uploads/categories/' . $category->category_image ?>"
                 alt="<?= htmlspecialchars($category->category_title) ?>">
             </div>
-            <div class="product-info-text">
-              <div class="product-info-title-row">
-                <h1 class="product-info-title">                <?= htmlspecialchars(!empty($h1_tag) ? $h1_tag : $category->category_title) ?></h1>
-              </div>
+            <div class="product-info-title-row">
+              <h1 class="product-info-title"><?= htmlspecialchars(!empty($h1_tag) ? $h1_tag : $category->category_title) ?></h1>
+            </div>
+            <p class="product-info-desc" id="product-desc-text"><?= html_escape($description) ?></p>
 
-                              <p class="product-info-desc" id="product-desc-text"><?= html_escape($description) ?></p>
-
-              <div class="product-info-meta-group">
-                <div class="meta">
-                  <div class="meta-item view">
-                    <i class="fa-solid fa-bolt fa-beat" style="color: #FFD43B;"></i>Hızlı Teslimat
-                  </div>
-                  <div class="meta-item rating">
-                    <i class="fa-brands fa-rocketchat fa-beat-fade" style="color: #B197FC;"></i>7/24 Destek
-                  </div>
-                  <div class="meta-item favorites">
-                    <i class="fa-solid fa-shield fa-flip" style="color: #6fdb9a;"></i>Güvenli Ödeme
-                  </div>
+            <div class="product-info-meta-group">
+              <div class="meta">
+                <div class="meta-item view">
+                  <i class="fa-solid fa-bolt" style="color: #FFD43B;"></i><span>Hızlı Teslimat</span>
                 </div>
-
-                <?php
-                $androidUrl = trim((string)($category->category_android_app_url ?? ''));
-                $iosUrl = trim((string)($category->category_ios_app_url ?? ''));
-                $hasAndroid = !empty($androidUrl) && $androidUrl !== '0';
-                $hasIos = !empty($iosUrl) && $iosUrl !== '0';
-                ?>
-                <?php if ($hasAndroid || $hasIos): ?>
-                  <div class="store-badges">
-                    <?php if ($hasAndroid): ?>
-                      <?php $androidHref = (!preg_match('~^https?://~i', $androidUrl)) ? 'https://' . $androidUrl : $androidUrl; ?>
-                      <a href="<?= html_escape($androidHref) ?>" target="_blank" rel="noopener noreferrer" class="store-badge">
-                        <img src="<?= getenv('CDN_URL') ?>uploads/cdn-gallery/general/googleplay.webp" alt="Google Play"
-                          class="store-icon">
-                      </a>
-                    <?php endif; ?>
-                    <?php if ($hasIos): ?>
-                      <?php $iosHref = (!preg_match('~^https?://~i', $iosUrl)) ? 'https://' . $iosUrl : $iosUrl; ?>
-                      <a href="<?= html_escape($iosHref) ?>" target="_blank" rel="noopener noreferrer" class="store-badge">
-                        <img src="<?= getenv('CDN_URL') ?>uploads/cdn-gallery/general/appstore.webp" alt="App Store"
-                          class="store-icon">
-                      </a>
-                    <?php endif; ?>
-                  </div>
-                <?php endif; ?>
+                <div class="meta-item rating">
+                  <i class="fa-solid fa-comments" style="color: #B197FC;"></i><span>7/24 Destek</span>
+                </div>
+                <div class="meta-item favorites">
+                  <i class="fa-solid fa-shield" style="color: #6fdb9a;"></i><span>Güvenli Ödeme</span>
+                </div>
               </div>
+
+              <?php
+              $androidUrl = trim((string)($category->category_android_app_url ?? ''));
+              $iosUrl = trim((string)($category->category_ios_app_url ?? ''));
+              $hasAndroid = !empty($androidUrl) && $androidUrl !== '0';
+              $hasIos = !empty($iosUrl) && $iosUrl !== '0';
+              ?>
+              <?php if ($hasAndroid || $hasIos): ?>
+                <div class="store-badges">
+                  <?php if ($hasAndroid): ?>
+                    <?php $androidHref = (!preg_match('~^https?://~i', $androidUrl)) ? 'https://' . $androidUrl : $androidUrl; ?>
+                    <a href="<?= html_escape($androidHref) ?>" target="_blank" rel="noopener noreferrer" class="store-badge">
+                      <img src="<?= getenv('CDN_URL') ?>uploads/cdn-gallery/general/googleplay.webp" alt="Google Play"
+                        class="store-icon">
+                    </a>
+                  <?php endif; ?>
+                  <?php if ($hasIos): ?>
+                    <?php $iosHref = (!preg_match('~^https?://~i', $iosUrl)) ? 'https://' . $iosUrl : $iosUrl; ?>
+                    <a href="<?= html_escape($iosHref) ?>" target="_blank" rel="noopener noreferrer" class="store-badge">
+                      <img src="<?= getenv('CDN_URL') ?>uploads/cdn-gallery/general/appstore.webp" alt="App Store"
+                        class="store-icon">
+                    </a>
+                  <?php endif; ?>
+                </div>
+              <?php endif; ?>
             </div>
           </div>
         </section>
@@ -1210,6 +1547,22 @@ if (!function_exists('format_category_seo_tables')) {
             <div class="sub-category-cards">
 
               <?php foreach ($subCategories as $subCat): ?>
+                <?php
+                  $subTitle = $subCat->category_title;
+                  $mobileTitle = $subTitle;
+
+                  if ((int)($category->category_id ?? 0) === 13) {
+                    if (stripos($subCat->category_slug, 'ilk-yukleme') !== false || stripos($subTitle, 'İlk Yükleme') !== false || stripos($subTitle, 'Ilk Yukleme') !== false) {
+                      $mobileTitle = 'İlk Yükleme';
+                    } elseif (stripos($subCat->category_slug, 'global') !== false || stripos($subTitle, 'Global') !== false) {
+                      $mobileTitle = 'Global';
+                    } elseif (stripos($subCat->category_slug, 'elmas') !== false || stripos($subTitle, 'Elmas') !== false) {
+                      $mobileTitle = 'Elmas';
+                    } else {
+                      $mobileTitle = trim(preg_replace('/^(Mobile\s+Legends(:?\s*Bang\s*Bang)?|MLBB)\s*[-:]?\s*/iu', '', $subTitle));
+                    }
+                  }
+                ?>
                 <a href="<?= html_escape(topupcenter() . $uri . '/' . $subCat->category_slug) ?>"
                   class="sub-cat-card <?= ($activeSubCatId == $subCat->category_id) ? 'active' : '' ?>">
                   <div class="sub-cat-icon">
@@ -1217,7 +1570,8 @@ if (!function_exists('format_category_seo_tables')) {
                       alt="<?= htmlspecialchars($subCat->category_title) ?>">
                   </div>
                   <div class="sub-cat-text">
-                    <span class="sub-cat-name"><?= htmlspecialchars($subCat->category_title) ?></span>
+                    <span class="sub-cat-name sub-cat-name-desktop"><?= htmlspecialchars($subTitle) ?></span>
+                    <span class="sub-cat-name sub-cat-name-mobile"><?= htmlspecialchars($mobileTitle) ?></span>
                   </div>
                 </a>
               <?php endforeach; ?>
@@ -1227,6 +1581,15 @@ if (!function_exists('format_category_seo_tables')) {
         <?php endif; ?>
 
         <?php if (!empty($category->category_requires)): ?>
+          <?php
+            $hasServerReq = false;
+            foreach ($category->category_requires as $r) {
+              if (($r->inputName ?? '') === 'server_id') {
+                $hasServerReq = true;
+                break;
+              }
+            }
+          ?>
           <section class="id-input-section cd-enhanced cd-fade-in" id="id-input-section">
             <div class="id-input-header">
               <div class="cd-step-header" style="margin-bottom:0; flex-grow: 1;">
@@ -1234,14 +1597,27 @@ if (!function_exists('format_category_seo_tables')) {
                 <h2 class="section-label">Bilgilerinizi Girin</h2>
               </div>
             </div>
-            <div class="id-input-fields">
+            <div class="id-input-fields <?= $hasServerReq ? 'has-server-id' : '' ?>">
               <?php foreach ($category->category_requires as $req): ?>
                 <?php if (($req->inputName ?? '') === 'server_id' && !empty($category->servers))
                   continue; ?>
-                <div class="id-input-group" style="position: relative; display: flex; flex-direction: column;">
-                  <label style="margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #a7a2b3;">
-                    <?= htmlspecialchars($req->inputPlaceholder ?? $req->inputName) ?>
-                  </label>
+                <?php
+                  $reqName = $req->inputName ?? '';
+                  $fieldLabel = ($reqName === 'user_id') ? 'Oyuncu ID' : (($reqName === 'server_id') ? 'Sunucu ID' : ($req->inputPlaceholder ?? $reqName));
+                  $fieldPlaceholder = $req->inputPlaceholder ?? '';
+                ?>
+                <div class="id-input-group <?= $reqName ? 'id-group-' . htmlspecialchars($reqName) : '' ?>">
+                  <div class="id-input-label-row">
+                    <label for="<?= htmlspecialchars($req->inputName) ?>" class="id-input-label">
+                      <?= htmlspecialchars($fieldLabel) ?>
+                    </label>
+                    <?php if (($req->inputName ?? '') === 'user_id' && !empty($uniqueUserIds)): ?>
+                      <span class="last-used-ids-trigger"
+                        data-bs-toggle="modal" data-bs-target="#idModal">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Son kullanılan ID'ler
+                      </span>
+                    <?php endif; ?>
+                  </div>
                   <?php
                     $isNumber = ($req->inputType ?? '') === 'number';
                     $inputRealType = $isNumber ? 'text' : htmlspecialchars($req->inputType ?? 'text');
@@ -1250,28 +1626,23 @@ if (!function_exists('format_category_seo_tables')) {
                   ?>
                   <input type="<?= $inputRealType ?>"
                     name="<?= htmlspecialchars($req->inputName) ?>" id="<?= htmlspecialchars($req->inputName) ?>"
-                    class="id-field player-field" placeholder="<?= htmlspecialchars($req->inputPlaceholder ?? '') ?>"
+                    class="id-field player-field" placeholder="<?= htmlspecialchars($fieldPlaceholder) ?>"
                     <?= $inputMode ?>
                     <?= !empty($req->inputMaxLength) ? 'maxlength="' . (int) $req->inputMaxLength . '"' : '' ?>
                     <?= !empty($req->inputMinLength) ? 'minlength="' . (int) $req->inputMinLength . '"' : '' ?>
                     <?= !empty($pattern) ? 'pattern="' . htmlspecialchars($pattern) . '"' : '' ?>
                     <?= !empty($req->inputPatternError) ? 'title="' . htmlspecialchars($req->inputPatternError) . '"' : ($isNumber ? 'title="Sadece rakam girebilirsiniz."' : '') ?>
                     <?= !empty($req->inputRequired) ? 'required' : '' ?>>
-
-                  <?php if (($req->inputName ?? '') === 'user_id' && !empty($uniqueUserIds)): ?>
-                    <span style="font-size:11px; color:#a7a2b3; position:absolute; right:15px; top:8px; cursor:pointer;"
-                      data-bs-toggle="modal" data-bs-target="#idModal">
-                      <i class="fa-solid fa-clock-rotate-left"></i> Son kullanılan ID'ler
-                    </span>
-                  <?php endif; ?>
                 </div>
               <?php endforeach; ?>
 
               <?php if (!empty($category->servers) && $isServerRequired): ?>
-                <div class="id-input-group" style="display: flex; flex-direction: column;">
-                  <label style="margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #a7a2b3;">
-                    <?= htmlspecialchars($serverPlaceholder) ?>
-                  </label>
+                <div class="id-input-group id-group-server_id">
+                  <div class="id-input-label-row">
+                    <label for="server_id" class="id-input-label">
+                      Sunucu ID
+                    </label>
+                  </div>
                   <select class="id-field select player-field" name="server_id" id="server_id" <?= $serverRequiredAttr ?>>
                     <option value=""><?= htmlspecialchars($serverPlaceholder) ?></option>
                     <?php foreach ($category->servers as $server): ?>
