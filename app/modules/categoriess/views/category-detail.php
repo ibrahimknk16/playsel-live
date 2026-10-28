@@ -501,6 +501,449 @@ if (!function_exists('format_category_seo_tables')) {
     }
   }
 
+
+  /* ====== FEATURED PASSES (ÖNE ÇIKAN PAKETLER) ====== */
+  .ps-featured-passes {
+    margin: 6px 0 22px;
+  }
+  .ps-pass-heading {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 13px;
+    color: #f2f2f2;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .ps-pass-heading:before {
+    content: "";
+    width: 3px;
+    height: 15px;
+    border-radius: 3px;
+    background: #ffb300;
+  }
+  .ps-pass-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .ps-pass-grid.count-1 {
+    grid-template-columns: minmax(280px, 460px);
+  }
+  .ps-pass-grid.count-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ps-pass-grid.count-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ps-big-pass {
+    position: relative;
+    overflow: hidden;
+    min-height: 174px;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    border: 1px solid #343849;
+    border-radius: 12px;
+    background: #1b1f29;
+    color: #f2f2f2;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font: inherit;
+    isolation: isolate;
+    transition: border-color .2s, background .2s, transform .2s, box-shadow .2s;
+  }
+  .ps-big-pass:hover {
+    border-color: #646b78;
+    transform: translateY(-2px);
+  }
+  .ps-big-pass:focus-visible {
+    outline: 2px solid #fff1c5!important;
+    outline-offset: 4px!important;
+  }
+
+  /* Staggered Playsel wave on featured packages */
+  .ps-featured-passes .ps-big-pass::before {
+    content: "";
+    position: absolute;
+    inset: -100%;
+    width: 300%;
+    height: 300%;
+    border-radius: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,184,23,.02) 36%, rgba(255,184,23,.09) 41%, rgba(255,190,35,.27) 45%, rgba(255,145,0,.2) 49%, rgba(255,145,0,.14) 54%, rgba(255,145,0,.08) 61%, rgba(255,145,0,.03) 69%, transparent 79%);
+    transform: translate(60%, -60%);
+    animation: playsel-elite-wave 18s linear infinite;
+  }
+  .ps-featured-passes .ps-pass-top,
+  .ps-featured-passes .ps-pass-pricebar {
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes playsel-elite-wave {
+    0% { transform: translate(60%, -60%); opacity: 0; }
+    2% { opacity: 1; }
+    35% { transform: translate(-60%, 60%); opacity: 1; }
+    39%, 100% { transform: translate(-60%, 60%); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ps-featured-passes .ps-big-pass::before {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
+  /* Tone styles and sequential animation delay (0s, 6s, 12s) */
+  .ps-featured-passes .ps-big-pass[data-featured-tone="1"] {
+    background: radial-gradient(ellipse at 95% 0%, #3587bf25, transparent 65%), linear-gradient(125deg, #203342, #1c252f 70%)!important;
+    border-color: #52748a!important;
+  }
+  .ps-featured-passes .ps-big-pass[data-featured-tone="2"] {
+    background: radial-gradient(ellipse at 95% 0%, #39a79820, transparent 65%), linear-gradient(125deg, #203a37, #1c2b2b 70%)!important;
+    border-color: #4c8377!important;
+  }
+  .ps-featured-passes .ps-big-pass[data-featured-tone="3"] {
+    background: radial-gradient(ellipse at 95% 0%, #9a58f02b, transparent 65%), linear-gradient(125deg, #30233e, #201d2d 65%, #1d202b)!important;
+    border-color: #a77ae0!important;
+  }
+
+  .ps-featured-passes .ps-big-pass[data-featured-tone="1"]::before { animation-delay: 0s; }
+  .ps-featured-passes .ps-big-pass[data-featured-tone="2"]::before { animation-delay: 6s; }
+  .ps-featured-passes .ps-big-pass[data-featured-tone="3"]::before { animation-delay: 12s; }
+
+  /* Editorial highlight for recommendation package */
+  .ps-featured-passes .ps-big-pass.ps-highlight-package {
+    background: radial-gradient(ellipse at 95% 0%, #9a58f02b, transparent 65%), linear-gradient(125deg, #30233e, #201d2d 65%, #1d202b)!important;
+    border-color: #a77ae0!important;
+    box-shadow: 0 0 0 1px #ba8cff12, inset 0 1px 0 #e0bdff10, 0 5px 22px #9448db18!important;
+  }
+  .ps-featured-passes .ps-highlight-package .ps-pass-copy strong { color: #f6efff!important; }
+  .ps-featured-passes .ps-highlight-package .ps-pass-copy small { color: #c5b8d6!important; }
+  .ps-featured-passes .ps-big-pass.ps-highlight-package:hover {
+    border-color: #d4aaff!important;
+    box-shadow: 0 0 0 1px #cda7ff20, 0 5px 24px #9448db25!important;
+  }
+
+  /* High-contrast recommendation badge */
+  .ps-package-recommendation {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: fit-content;
+    color: #241800!important;
+    background: linear-gradient(110deg, #ffdc70, #ffb719 65%, #ff9b00)!important;
+    border: 1px solid #ffe29a!important;
+    border-radius: 6px!important;
+    padding: 4px 8px!important;
+    margin-bottom: 7px!important;
+    font: 700 11px/1.3 "Segoe UI", Arial, sans-serif!important;
+    box-shadow: 0 3px 12px #ffb71926!important;
+    letter-spacing: 0!important;
+    white-space: normal;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Top content */
+  .ps-pass-top {
+    display: flex;
+    flex-direction: row;
+    gap: 14px;
+    align-items: center;
+    min-height: 70px;
+    padding-right: 30px!important;
+  }
+  .ps-pass-image {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: drop-shadow(0 5px 9px rgba(0, 0, 0, 0.35));
+    transition: filter .2s;
+  }
+  .ps-pass-copy {
+    flex: 1;
+    min-width: 0;
+  }
+  .ps-pass-copy strong {
+    font-size: 16px;
+    font-weight: 700;
+    display: block;
+    line-height: 1.35;
+    margin: 0 0 4px;
+    color: #f4f5fa!important;
+  }
+  .ps-pass-copy small {
+    font-size: 11px;
+    line-height: 1.45;
+    color: #aeb4c4!important;
+    display: block;
+  }
+
+  /* Price bar */
+  .ps-pass-pricebar {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 15px;
+    padding-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ps-pass-pricebar > span:first-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ps-pass-price {
+    font-size: 20px!important;
+    letter-spacing: -.5px;
+    color: #ffb300;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .ps-pass-old {
+    font-size: 11px;
+    text-decoration: line-through;
+    color: #838b9d;
+  }
+  .ps-pass-discount {
+    font-size: 10px;
+    background: rgba(53, 164, 119, 0.15);
+    color: #67c8a0;
+    border: 1px solid rgba(53, 164, 119, 0.25);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-weight: 600;
+    display: inline-block;
+  }
+  .ps-pass-select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid #414656;
+    color: #cbd0db;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all .2s ease;
+  }
+
+  /* Selection state */
+  .ps-featured-passes .ps-big-pass[aria-pressed="true"] {
+    border-color: #ffd05b!important;
+    box-shadow: inset 0 0 0 1px #ffd05b, 0 0 0 2px rgba(255, 192, 43, 0.15), 0 5px 22px rgba(255, 174, 0, 0.12)!important;
+  }
+  .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-pass-copy strong {
+    color: #ffca56!important;
+  }
+  .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-pass-image {
+    filter: drop-shadow(0 3px 9px rgba(255, 192, 43, 0.35));
+  }
+  .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-pass-select {
+    background: #ffb300;
+    color: #141820;
+    border-color: #ffb300;
+  }
+  .ps-big-pass[disabled] {
+    opacity: .45;
+    cursor: not-allowed;
+  }
+
+  /* Lightning flash emblem on featured cards */
+  .ps-featured-passes .ps-big-pass .ps-featured-flash {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    margin: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    pointer-events: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 183, 25, 0.4);
+    background: linear-gradient(135deg, rgba(255, 191, 37, 0.17), rgba(255, 136, 0, 0.07));
+    color: #ffc34d;
+    box-shadow: inset 0 1px 0 rgba(255, 228, 165, 0.1), 0 2px 8px rgba(255, 157, 0, 0.08);
+    transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .ps-featured-passes .ps-big-pass .ps-featured-flash svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    filter: drop-shadow(0 0 3px rgba(255, 154, 0, 0.25));
+  }
+  .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-featured-flash {
+    background: linear-gradient(135deg, #ffdb71, #ffb719)!important;
+    border-color: #ffe6a6!important;
+    color: #2b1d00!important;
+    box-shadow: 0 0 0 3px rgba(255, 189, 36, 0.15), 0 3px 12px rgba(255, 183, 25, 0.2)!important;
+  }
+  .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-featured-flash svg {
+    filter: none!important;
+  }
+
+  /* Flash icon & discount badges on standard products in #products-grid */
+  #products-grid .product-item {
+    position: relative;
+  }
+  #products-grid .product-item-badges {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+  #products-grid .product-item-badges .product-discount-badge {
+    position: static!important;
+    top: auto!important;
+    right: auto!important;
+    transform: none!important;
+    display: inline-flex!important;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    padding: 0 7px!important;
+    font-size: 11px!important;
+    font-weight: 700!important;
+    line-height: 1!important;
+    border-radius: 6px!important;
+    letter-spacing: 0.2px;
+    box-shadow: 0 2px 8px rgba(255, 200, 0, 0.25);
+    white-space: nowrap;
+    box-sizing: border-box;
+    margin: 0!important;
+  }
+  #products-grid .product-item-badges .ps-product-flash {
+    position: static!important;
+    top: auto!important;
+    right: auto!important;
+    margin: 0!important;
+    flex-shrink: 0;
+  }
+  /* Fallback in case badge is rendered outside wrapper */
+  #products-grid .product-item > .product-discount-badge {
+    right: 34px!important;
+    top: 8px!important;
+    height: 20px;
+    line-height: 20px;
+    padding: 0 7px!important;
+    border-radius: 6px!important;
+  }
+  #products-grid .ps-product-flash {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    box-sizing: border-box;
+    pointer-events: none;
+    border: 1px solid rgba(255, 183, 25, 0.35);
+    border-radius: 6px;
+    background: rgba(255, 174, 0, 0.06);
+    color: #eeb84d;
+    transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+  }
+  #products-grid .ps-product-flash svg {
+    width: 13px;
+    height: 13px;
+    fill: currentColor;
+  }
+  #products-grid .product-item.selected .ps-product-flash {
+    background: #ffca56;
+    border-color: #ffe6a6;
+    color: #2b1d00;
+    box-shadow: 0 0 0 2px rgba(255, 189, 36, 0.12);
+  }
+  #products-grid .product-item.product-out-of-stock .ps-product-flash {
+    color: #78818e;
+    border-color: rgba(98, 106, 117, 0.25);
+    background: rgba(255, 255, 255, 0.02);
+  }
+  #products-grid .product-item-name {
+    padding-right: 28px;
+  }
+  #products-grid .product-item:has(.product-discount-badge) .product-item-name {
+    padding-right: 75px;
+  }
+
+  /* Divider before Tüm Ürünler */
+  .ps-pass-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #949cab;
+    margin: 22px 0 14px;
+  }
+  .ps-pass-divider:after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 991px) {
+    .ps-pass-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 620px) {
+    .ps-pass-grid,
+    .ps-pass-grid.count-1,
+    .ps-pass-grid.count-2,
+    .ps-pass-grid.count-3 {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .ps-big-pass {
+      padding: 14px;
+      min-height: auto;
+      border-radius: 10px;
+    }
+    .ps-pass-top {
+      gap: 10px;
+      min-height: auto;
+    }
+    .ps-pass-image {
+      width: 48px;
+      height: 48px;
+    }
+    .ps-pass-copy strong {
+      font-size: 14px;
+    }
+    .ps-pass-copy small {
+      font-size: 10px;
+    }
+    .ps-pass-price {
+      font-size: 18px!important;
+    }
+    #products-grid .product-item-name {
+      padding-right: 28px!important;
+    }
+    #products-grid .product-item:has(.product-discount-badge) .product-item-name {
+      padding-right: 75px!important;
+    }
+  }
+
   /* --- Static Payment Section --- */
   .cd-payment-card-static {
     border: 1px solid rgba(255, 200, 0, 0.1);
@@ -1685,8 +2128,6 @@ if (!function_exists('format_category_seo_tables')) {
             </div>
             <h2 class="section-label">Ürün Seçin</h2>
           </div>
-          <div class="products-grid" id="products-grid">
-
             <?php
             $displayProducts = [];
             // If subcategories exist, filter by the active one.
@@ -1702,19 +2143,93 @@ if (!function_exists('format_category_seo_tables')) {
                 $displayProducts = $groupedProducts[$activeSubCatId];
               }
             }
+            $displayCurrency = displayCurrency($currentLocale->locale_currency ?? 'TRY');
+            $featuredProducts = [];
+            if (!empty($displayProducts)) {
+              foreach ($displayProducts as $p) {
+                if (!empty($p->product_is_featured) && (int)$p->product_is_featured === 1) {
+                  $featuredProducts[] = $p;
+                }
+              }
+              if (count($featuredProducts) > 3) {
+                $featuredProducts = array_slice($featuredProducts, 0, 3);
+              }
+            }
+            $firstAvailableProductId = 0;
+            if (!empty($displayProducts)) {
+              foreach ($displayProducts as $availableProduct) {
+                if ((int)($availableProduct->product_api_status ?? 0) === 1 && (float)$availableProduct->user_price > 0) {
+                  $firstAvailableProductId = (int)$availableProduct->product_id;
+                  break;
+                }
+              }
+            }
             ?>
 
-            <?php $displayCurrency = displayCurrency($currentLocale->locale_currency ?? 'TRY'); ?>
+          <?php if (!empty($featuredProducts)): ?>
+            <section class="ps-featured-passes" aria-label="Öne Çıkan Paketler">
+              <div class="ps-pass-heading">Öne Çıkan Paketler</div>
+              <div class="ps-pass-grid count-<?= count($featuredProducts) ?>">
+                <?php foreach ($featuredProducts as $fIdx => $fProduct): ?>
+                  <?php
+                    $fIsInStock = (int)($fProduct->product_api_status ?? 0) === 1 && (float)$fProduct->user_price > 0;
+                    $fIsSelected = (($this->input->get('p') !== null && $this->input->get('p') == $fProduct->product_id) || ($this->input->get('p') === null && (int)$fProduct->product_id === $firstAvailableProductId));
+                    $fDiscountBadge = '';
+                    if (!empty($fProduct->list_price) && $fProduct->list_price > $fProduct->user_price) {
+                      $fDiscount = round((($fProduct->list_price - $fProduct->user_price) / $fProduct->list_price) * 100);
+                      if ($fDiscount > 0) {
+                        $fDiscountBadge = '<span class="ps-pass-discount">-%' . $fDiscount . '</span>';
+                      }
+                    }
+                    $toneNum = ($fIdx % 3) + 1;
+                    $hasBadge = !empty($fProduct->product_badge);
+                  ?>
+                  <button type="button"
+                    class="ps-big-pass <?= $hasBadge ? 'ps-highlight-package' : '' ?>"
+                    data-pass-product="<?= htmlspecialchars($fProduct->product_id) ?>"
+                    data-featured-tone="<?= $toneNum ?>"
+                    aria-pressed="<?= $fIsSelected ? 'true' : 'false' ?>"
+                    <?= !$fIsInStock ? 'disabled' : '' ?>>
+                    
+                    <span class="ps-pass-top">
+                      <img class="ps-pass-image" src="<?= getenv('CDN_URL') . $fProduct->product_icon ?>" alt="<?= htmlspecialchars($fProduct->product_name) ?>" loading="lazy">
+                      <span class="ps-pass-copy">
+                        <?php if ($hasBadge): ?>
+                          <span class="ps-package-recommendation"><?= htmlspecialchars($fProduct->product_badge) ?></span>
+                        <?php endif; ?>
+                        <strong><?= htmlspecialchars($fProduct->product_name) ?></strong>
+                        <?php if (!empty($fProduct->product_short_desc)): ?>
+                          <small><?= htmlspecialchars($fProduct->product_short_desc) ?></small>
+                        <?php endif; ?>
+                      </span>
+                    </span>
+
+                    <span class="ps-pass-pricebar">
+                      <span>
+                        <?php if (!empty($fProduct->list_price) && $fProduct->list_price > $fProduct->user_price): ?>
+                          <span class="ps-pass-old"><?= number_format($fProduct->list_price, 2, ',', '.') ?> <?= $displayCurrency ?></span>
+                        <?php endif; ?>
+                        <?= $fDiscountBadge ?>
+                        <span class="ps-pass-price"><?= !$fIsInStock ? 'Stokta Yok' : number_format($fProduct->user_price, 2, ',', '.') . ' ' . $displayCurrency ?></span>
+                      </span>
+                      <span class="ps-pass-select"><?= !$fIsInStock ? 'Stokta Yok' : ($fIsSelected ? '✓ Seçildi' : 'Paketi seç') ?></span>
+                    </span>
+
+                    <span class="ps-featured-flash" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M13.6 2.8 5.8 13h5.4l-.8 8.2L18.2 11h-5.4l.8-8.2Z"></path>
+                      </svg>
+                    </span>
+                  </button>
+                <?php endforeach; ?>
+              </div>
+              <div class="ps-pass-divider">Tüm Ürünler</div>
+            </section>
+          <?php endif; ?>
+
+          <div class="products-grid" id="products-grid">
+
             <?php if (!empty($displayProducts)): ?>
-              <?php
-                $firstAvailableProductId = 0;
-                foreach ($displayProducts as $availableProduct) {
-                  if ((int)($availableProduct->product_api_status ?? 0) === 1 && (float)$availableProduct->user_price > 0) {
-                    $firstAvailableProductId = (int)$availableProduct->product_id;
-                    break;
-                  }
-                }
-              ?>
               <?php foreach ($displayProducts as $key => $product): ?>
                 <?php
                 $isInStock = (int)($product->product_api_status ?? 0) === 1 && (float)$product->user_price > 0;
@@ -1750,7 +2265,12 @@ if (!function_exists('format_category_seo_tables')) {
                     </div>
                   </div>
 
-                  <?= $discountBadge ?>
+                  <div class="product-item-badges">
+                    <?= $discountBadge ?>
+                    <span class="ps-product-flash" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false"><path d="M13.6 2.8 5.8 13h5.4l-.8 8.2L18.2 11h-5.4l.8-8.2Z"></path></svg>
+                    </span>
+                  </div>
                 </div>
               <?php endforeach; ?>
             <?php else: ?>
@@ -2217,6 +2737,19 @@ if (!function_exists('format_category_seo_tables')) {
       $totalTransfers.forEach(el => el.textContent = text);
     }
 
+    function syncFeaturedPasses() {
+      const selected = document.querySelector('.product-item.selected');
+      const selectedId = selected ? selected.dataset.product : null;
+      document.querySelectorAll('.ps-big-pass').forEach(btn => {
+        const isMatched = btn.dataset.passProduct === selectedId;
+        btn.setAttribute('aria-pressed', isMatched ? 'true' : 'false');
+        const selLabel = btn.querySelector('.ps-pass-select');
+        if (selLabel && !btn.disabled) {
+          selLabel.textContent = isMatched ? '✓ Seçildi' : 'Paketi seç';
+        }
+      });
+    }
+
     // Product item selection
     document.querySelectorAll('.product-item').forEach(item => {
       item.addEventListener('click', function () {
@@ -2228,8 +2761,22 @@ if (!function_exists('format_category_seo_tables')) {
           scrollDirection = 'down';
         }
         updateBarsVisibility();
+        syncFeaturedPasses();
       });
     });
+
+    document.querySelectorAll('.ps-big-pass').forEach(btn => {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (this.disabled) return;
+        const prodId = this.dataset.passProduct;
+        const target = document.querySelector(`.product-item[data-product="${prodId}"]`);
+        if (target) {
+          target.click();
+        }
+      });
+    });
+    syncFeaturedPasses();
 
     // Modal ID Selector logic
     document.querySelectorAll('.user-span-btn').forEach(btn => {

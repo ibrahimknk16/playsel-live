@@ -325,6 +325,45 @@
                                                     </select>
                                                 </div>
 
+                                                <div class="col-md-6">
+                                                    <label class="form-label fw-semibold">Öne Çıkan Ürün mü?</label>
+                                                    <select class="form-select form-select-solid" name="product_is_featured" data-control="select2" data-hide-search="true">
+                                                        <option value="0" <?= (empty($product->product_is_featured) || $product->product_is_featured == 0) ? 'selected' : ''; ?>>Hayır (Standart)</option>
+                                                        <option value="1" <?= (!empty($product->product_is_featured) && $product->product_is_featured == 1) ? 'selected' : ''; ?>>Evet (Öne Çıkan)</option>
+                                                    </select>
+                                                    <div class="text-muted fs-8 mt-1">Kategori sayfasında en üstteki büyük vitrin kartlarında yer alır.</div>
+                                                </div>
+
+                                                <div class="col-md-6">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <label class="form-label fw-semibold mb-0">Öne Çıkan Rozet (Badge)</label>
+                                                        <span class="text-muted fs-8"><span id="badgeCharCounter"><?= mb_strlen((string)($product->product_badge ?? '')) ?></span>/50</span>
+                                                    </div>
+                                                    <input type="text"
+                                                        name="product_badge"
+                                                        id="productBadgeInput"
+                                                        maxlength="50"
+                                                        class="form-control form-control-solid"
+                                                        placeholder="Örn: En Çok Tercih Edilen, Fırsat vb."
+                                                        value="<?= html_escape($product->product_badge ?? '') ?>">
+                                                    <div class="text-muted fs-8 mt-1">Kartın üstündeki dikkat çekici etiket metni (Maks 50 karakter).</div>
+                                                </div>
+
+                                                <div class="col-12">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <label class="form-label fw-semibold mb-0">Öne Çıkan Kısa Açıklama (Short Desc)</label>
+                                                        <span class="text-muted fs-8"><span id="shortDescCharCounter"><?= mb_strlen((string)($product->product_short_desc ?? '')) ?></span>/150</span>
+                                                    </div>
+                                                    <input type="text"
+                                                        name="product_short_desc"
+                                                        id="productShortDescInput"
+                                                        maxlength="150"
+                                                        class="form-control form-control-solid"
+                                                        placeholder="Örn: Günlük ödüller sunan haftalık paket"
+                                                        value="<?= html_escape($product->product_short_desc ?? '') ?>">
+                                                    <div class="text-muted fs-8 mt-1">Kartta ürün adının altında açıklama olarak görünür (Maks 150 karakter).</div>
+                                                </div>
+
                                             </div>
                                         </div>
 
@@ -971,7 +1010,25 @@
 
             $subSelect.empty().append(new Option("Alt Kategori Yok (Temizle)", "0"));
 
-            if (parentId) {
+        $('#productBadgeInput').on('input', function() {
+            var len = $(this).val().length;
+            if (len > 50) {
+                $(this).val($(this).val().substring(0, 50));
+                len = 50;
+            }
+            $('#badgeCharCounter').text(len);
+        });
+
+        $('#productShortDescInput').on('input', function() {
+            var len = $(this).val().length;
+            if (len > 150) {
+                $(this).val($(this).val().substring(0, 150));
+                len = 150;
+            }
+            $('#shortDescCharCounter').text(len);
+        });
+
+        if (parentId) {
                 $.ajax({
                     url: '<?= base_url("products/getSubCategories") ?>',
                     method: 'POST',

@@ -7,22 +7,31 @@
 
     .gc-slider-wrapper {
       width: 100%;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
       position: relative;
-      /* Kenarlarda yavaşça kaybolma efekti (pürüzsüz geçiş için) */
-      -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 5%, rgba(0, 0, 0, 1) 95%, rgba(0, 0, 0, 0) 100%);
-      mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 5%, rgba(0, 0, 0, 1) 95%, rgba(0, 0, 0, 0) 100%);
+      cursor: grab;
+      user-select: none;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 10px 0;
+      -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 3%, rgba(0, 0, 0, 1) 97%, rgba(0, 0, 0, 0) 100%);
+      mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 3%, rgba(0, 0, 0, 1) 97%, rgba(0, 0, 0, 0) 100%);
+    }
+
+    .gc-slider-wrapper::-webkit-scrollbar {
+      display: none;
+    }
+
+    .gc-slider-wrapper.is-dragging {
+      cursor: grabbing;
     }
 
     .gc-slider-track {
       display: flex;
       width: max-content;
-      animation: scrollMarquee 64s linear infinite;
-      padding: 10px 0;
-    }
-
-    .gc-slider-track:hover {
-      animation-play-state: paused;
+      padding: 5px 0;
     }
 
     .gc-card {
@@ -79,45 +88,23 @@
         height: 60px;
       }
     }
-
-    /* @keyframes marquee {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); } 
-    } */
-    @keyframes scrollMarquee {
-      0% {
-        transform: translateX(0);
-      }
-
-      100% {
-        transform: translateX(calc(-50% - 10px));
-      }
-    }
   </style>
 
   <div class="container">
-    <!-- <div class="section-header">
-      <h2 class="section-title"><?= $this->lang->line('index_gift_card') ?></h2>
-      <a href="#" class="btn-view-all" aria-label="view_all"><?= $this->lang->line('view_all') ?></a>
-    </div> -->
-
     <div class="gc-slider-wrapper">
       <div class="gc-slider-track">
         <?php
         if (!empty($giftCards)):
-          // Sonsuz kayan (marquee) animasyonunun kesintisiz dönebilmesi için 2 tekrar yeterlidir (13 x 2 = 26 kart)
-          for ($i = 0; $i < 2; $i++):
-            foreach ($giftCards as $card):
-              ?>
-              <a href="<?= topupcenter() . $uri . '/' . $card->category_slug ?>" class="gc-card" target="_blank">
-                <img src="<?= getenv('CDN_URL') . 'uploads/categories/' . $card->category_thumbnail ?>"
-                  alt="<?= html_escape($card->category_title) ?>" loading="lazy"
-                  onerror="this.onerror=null;this.src='https://placehold.co/80x80/161920/f8fafc?text=Playsel';">
-                <span class="gc-name"><?= html_escape($card->category_title) ?></span>
-              </a>
-            <?php
-            endforeach;
-          endfor;
+          foreach ($giftCards as $card):
+            ?>
+            <a href="<?= topupcenter() . $uri . '/' . $card->category_slug ?>" class="gc-card" target="_blank">
+              <img src="<?= getenv('CDN_URL') . 'uploads/categories/' . $card->category_thumbnail ?>"
+                alt="<?= html_escape($card->category_title) ?>" loading="lazy"
+                onerror="this.onerror=null;this.src='https://placehold.co/80x80/161920/f8fafc?text=Playsel';">
+              <span class="gc-name"><?= html_escape($card->category_title) ?></span>
+            </a>
+          <?php
+          endforeach;
         endif;
         ?>
       </div>

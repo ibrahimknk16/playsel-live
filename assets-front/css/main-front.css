@@ -684,21 +684,38 @@ body #toast-container > .toast-info,
 .pub-support-btn { display: block; width: 100%; padding: 10px 0; background: var(--yellow); border-radius: 6px; font-size: 14px; font-weight: 600; color: var(--dark); text-align: center; transition: var(--transition); border: none; }
 .pub-support-btn:hover { /*background: var(--accent-hover);*/ transform:scale(1.05); box-shadow: 0 4px 15px rgba(255,200,0,0.3) }
 
-/* ===== REVIEWS (YORUMLAR AUTOMATIC MARQUEE SLIDER) ===== */
+/* ===== REVIEWS (YORUMLAR HORIZONTAL DRAG SLIDER) ===== */
 .reviews-section { width: 100%; overflow: hidden; padding-bottom: 20px;}
 
-.reviews-marquee-wrapper { position: relative; display: flex;overflow: hidden; width: 100%;}
+.reviews-marquee-wrapper { 
+  position: relative; 
+  display: flex;
+  overflow-x: auto; 
+  overflow-y: hidden;
+  width: 100%;
+  cursor: grab;
+  user-select: none;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 4%, rgba(0,0,0,1) 96%, rgba(0,0,0,0) 100%);
+  mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 4%, rgba(0,0,0,1) 96%, rgba(0,0,0,0) 100%);
+}
+.reviews-marquee-wrapper::-webkit-scrollbar {
+  display: none;
+}
+.reviews-marquee-wrapper.is-dragging {
+  cursor: grabbing;
+}
+.reviews-marquee-wrapper::before, .reviews-marquee-wrapper::after { display: none; }
 
-/* Sağ ve soldaki buzlu silinme geçiş maskesi */
-.reviews-marquee-wrapper::before, .reviews-marquee-wrapper::after { content: ''; position: absolute; top: 0; bottom: 0; width: 100px; z-index: 5; pointer-events: none; }
-.reviews-marquee-wrapper::before { left: 0; background: linear-gradient(90deg, var(--bg-primary) 0%, transparent 100%); }
-.reviews-marquee-wrapper::after { right: 0; background: linear-gradient(270deg, var(--bg-primary) 0%, transparent 100%); }
-
-/* Sonsuz Marquee Akış İskeleti */
-.reviews-marquee-track { display: flex; gap: 20px; width: max-content; animation: scrollMarquee 32s linear infinite; /* Hız ayarı */padding: 10px 0; }
-.reviews-marquee-track:hover { animation-play-state: paused; } /* Üstüne gelince akışı durdurur */
-
-@keyframes scrollMarquee {0% { transform: translateX(0); }100% { transform: translateX(calc(-50% - 10px)); }}
+.reviews-marquee-track { 
+  display: flex; 
+  gap: 20px; 
+  width: max-content; 
+  animation: none !important; 
+  padding: 10px 0; 
+}
 
 .review-card { width: 100%; max-width: 380px; background: var(--bg-secondary); border-radius: 12px; padding: 20px; flex-shrink: 0; transition: var(--transition); border: 1px solid rgba(255,255,255,0.05);}
 .review-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); border-color: rgba(255,255,255,0.1);}

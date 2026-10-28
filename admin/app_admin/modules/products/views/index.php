@@ -99,10 +99,42 @@ $productCounts = isset($product_counts) && is_array($product_counts)
         opacity: .6;
     }
 
-    .status-wrap {
+    .status-grid {
+        display: grid;
+        grid-template-columns: minmax(110px, auto) minmax(130px, auto);
+        gap: 6px 14px;
+        align-items: center;
+        width: fit-content;
+    }
+
+    .status-item {
         display: inline-flex;
         align-items: center;
-        gap: 10px;
+        gap: 7px;
+        white-space: nowrap;
+    }
+
+    .status-item .badge,
+    .status-wrap .badge {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+        font-weight: 600;
+        min-width: 60px;
+        text-align: center;
+    }
+
+    .status-item .form-check-input,
+    .status-wrap .form-check-input {
+        width: 2.2rem !important;
+        height: 1.25rem !important;
+        min-height: 1.25rem !important;
+        cursor: pointer;
+        margin: 0 !important;
+    }
+
+    .status-sub-info {
+        font-size: 11.5px;
+        color: var(--bs-secondary-color);
         white-space: nowrap;
     }
 
@@ -261,7 +293,7 @@ $productCounts = isset($product_counts) && is_array($product_counts)
                             <th class="min-w-320px">Ürün</th>
                             <th class="min-w-240px">Kategori</th>
                             <th class="min-w-240px">Alt Kategori</th>
-                            <th class="min-w-220px">Durum</th>
+                            <th class="min-w-260px">Durum</th>
                             <th class="text-end min-w-120px">İşlemler</th>
                         </tr>
                     </thead>
@@ -270,6 +302,7 @@ $productCounts = isset($product_counts) && is_array($product_counts)
                         <?php foreach ($products as $product): ?>
                             <?php
                             $isActive = ((int)($product->product_status ?? 0) === 1);
+                            $isFeatured = ((int)($product->product_is_featured ?? 0) === 1);
                             $isApiActive = ((int)($product->product_api_status ?? 0) === 1);
                             $categoryTitle = trim((string)($product->category_title ?? '-'));
                             $subCategoryTitle = trim((string)($product->sub_category_title ?? 'Alt Kategori Yok'));
@@ -356,6 +389,18 @@ $productCounts = isset($product_counts) && is_array($product_counts)
                                                 type="checkbox"
                                                 data-product-id="<?= (int)$product->product_id ?>"
                                                 <?= $isActive ? 'checked' : '' ?>>
+                                        </div>
+                                    </div>
+                                    <div class="status-wrap mb-2">
+                                        <span class="badge <?= $isFeatured ? 'badge-light-warning' : 'badge-light-secondary' ?> fw-semibold js-product-featured-badge">
+                                            <?= $isFeatured ? 'Öne Çıkan' : 'Standart' ?>
+                                        </span>
+
+                                        <div class="form-check form-switch form-check-custom form-check-solid m-0">
+                                            <input class="form-check-input js-product-featured-switch"
+                                                type="checkbox"
+                                                data-product-id="<?= (int)$product->product_id ?>"
+                                                <?= $isFeatured ? 'checked' : '' ?>>
                                         </div>
                                     </div>
 
@@ -646,6 +691,58 @@ $productCounts = isset($product_counts) && is_array($product_counts)
             },
             error: function() {
                 $sw.prop('checked', !newStatus);
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('Sunucu hatası. Tekrar deneyin.');
+                }
+            },
+            complete: function() {
+                $sw.data('busy', false).prop('disabled', false);
+            }
+        });
+    });
+
+    $(document).on('change', '.js-product-featured-switch', function() {
+        const $sw = $(this);
+        const productId = $sw.data('product-id');
+        const newFeatured = $sw.is(':checked') ? 1 : 0;
+
+        if ($sw.data('busy')) {
+            return;
+        }
+        $sw.data('busy', true).prop('disabled', true);
+
+        $.ajax({
+            url: '<?= site_url('products/changeFeaturedStatus') ?>',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                product_id: productId,
+                product_is_featured: newFeatured
+            },
+            success: function(res) {
+                if (res && res.status === 'success') {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(res.message || 'Güncellendi');
+                    }
+
+                    const $cell = $sw.closest('td');
+                    const $badge = $cell.find('.js-product-featured-badge');
+                    $badge
+                        .removeClass('badge-light-warning badge-light-secondary')
+                        .addClass(newFeatured === 1 ? 'badge-light-warning' : 'badge-light-secondary')
+                        .text(newFeatured === 1 ? 'Öne Çıkan' : 'Standart');
+
+                    const $row = $sw.closest('tr');
+                    $row.attr('data-product-featured', newFeatured);
+                } else {
+                    $sw.prop('checked', !newFeatured);
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error((res && res.message) ? res.message : 'Güncellenemedi');
+                    }
+                }
+            },
+            error: function() {
+                $sw.prop('checked', !newFeatured);
                 if (typeof toastr !== 'undefined') {
                     toastr.error('Sunucu hatası. Tekrar deneyin.');
                 }

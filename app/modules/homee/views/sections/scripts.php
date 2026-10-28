@@ -523,5 +523,52 @@
           });
         });
       });
+
+      // ===== Mouse Drag-to-Scroll (Tut-Çek ile Sağa/Sola Kaydırma) =====
+      function initHorizontalDragScroll(selector) {
+        document.querySelectorAll(selector).forEach(slider => {
+          let isDown = false;
+          let startX = 0;
+          let scrollLeft = 0;
+          let hasMoved = false;
+
+          slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            hasMoved = false;
+            slider.classList.add('is-dragging');
+            startX = e.pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+          });
+
+          window.addEventListener('mouseup', () => {
+            if (!isDown) return;
+            isDown = false;
+            slider.classList.remove('is-dragging');
+          });
+
+          slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            if (Math.abs(walk) > 4) {
+              hasMoved = true;
+            }
+            slider.scrollLeft = scrollLeft - walk;
+          });
+
+          // Sürüklerken kart linklerine yanlışlıkla tıklanmasını engelle
+          slider.addEventListener('click', (e) => {
+            if (hasMoved) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }, true);
+        });
+      }
+
+      initHorizontalDragScroll('.gc-slider-wrapper');
+      initHorizontalDragScroll('.reviews-marquee-wrapper');
+      initHorizontalDragScroll('.marquee-track');
     })();
   </script>

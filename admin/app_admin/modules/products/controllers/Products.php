@@ -358,6 +358,7 @@ class Products extends MY_Controller
 		$data = [];
 		foreach ($products as $product) {
 			$active = (int) $product->product_status === 1;
+			$featured = (int) ($product->product_is_featured ?? 0) === 1;
 			$apiActive = (int) $product->product_api_status === 1;
 			$name = html_escape($product->product_name ?: '-');
 			$category = html_escape($product->category_title ?: '-');
@@ -367,7 +368,7 @@ class Products extends MY_Controller
 				'<div class="p-row"><div class="p-symbol">' . (!empty($product->product_image) ? '<img src="' . html_escape(getenv('CDN_URL') . $product->product_image) . '" alt="">' : '<div class="symbol-label bg-light-info text-info fw-bold">' . html_escape(mb_strtoupper(mb_substr($name, 0, 1))) . '</div>') . '</div><div class="p-info"><div class="p-name text-gray-900 fw-bold text-hover-primary"><a href="' . base_url('products/edit/' . (int) $product->product_id) . '">' . $name . '</a> <span class="text-muted fs-7">#' . (int) $product->product_id . '</span></div><div class="p-sub">' . ($product->supplier_name ? '<span class="badge badge-light-info">' . html_escape($product->supplier_name) . '</span>' : '<span class="text-muted">Tedarikçi yok</span>') . '</div></div></div>',
 				'<div class="text-gray-800 fw-bold">' . $category . ' <span class="text-muted">#' . (int) $product->product_category_id . '</span></div>',
 				'<div class="text-gray-800 fw-bold">' . $sub . '</div>',
-				'<div class="status-wrap mb-2"><span class="badge ' . ($active ? 'badge-light-success' : 'badge-light-danger') . ' fw-semibold js-product-status-badge">' . ($active ? 'Aktif' : 'Pasif') . '</span><div class="form-check form-switch form-check-custom form-check-solid m-0"><input class="form-check-input js-product-status-switch" type="checkbox" data-product-id="' . (int) $product->product_id . '"' . ($active ? ' checked' : '') . '></div></div><div class="status-wrap mb-2"><span class="badge ' . ($apiActive ? 'badge-light-success' : 'badge-light-danger') . ' fw-semibold js-product-api-status-badge">' . ($apiActive ? 'API Aktif' : 'API Pasif') . '</span><div class="form-check form-switch form-check-custom form-check-solid m-0"><input class="form-check-input js-product-api-status-switch" type="checkbox" data-product-id="' . (int) $product->product_id . '"' . ($apiActive ? ' checked' : '') . '></div></div><div class="p-sub">Kategori API: ' . ((int) $product->category_api_status === 1 ? 'Aktif' : 'Pasif') . '</div>',
+				'<div class="status-grid"><div class="status-item"><span class="badge ' . ($active ? 'badge-light-success' : 'badge-light-danger') . ' fw-semibold js-product-status-badge">' . ($active ? 'Aktif' : 'Pasif') . '</span><div class="form-check form-switch form-check-custom form-check-solid m-0"><input class="form-check-input js-product-status-switch" type="checkbox" data-product-id="' . (int) $product->product_id . '"' . ($active ? ' checked' : '') . '></div></div><div class="status-item"><span class="badge ' . ($featured ? 'badge-light-warning' : 'badge-light-secondary') . ' fw-semibold js-product-featured-badge">' . ($featured ? 'Öne Çıkan' : 'Standart') . '</span><div class="form-check form-switch form-check-custom form-check-solid m-0"><input class="form-check-input js-product-featured-switch" type="checkbox" data-product-id="' . (int) $product->product_id . '"' . ($featured ? ' checked' : '') . '></div></div><div class="status-item"><span class="badge ' . ($apiActive ? 'badge-light-success' : 'badge-light-danger') . ' fw-semibold js-product-api-status-badge">' . ($apiActive ? 'API Aktif' : 'API Pasif') . '</span><div class="form-check form-switch form-check-custom form-check-solid m-0"><input class="form-check-input js-product-api-status-switch" type="checkbox" data-product-id="' . (int) $product->product_id . '"' . ($apiActive ? ' checked' : '') . '></div></div><div class="status-sub-info">Kat. API: ' . ((int) $product->category_api_status === 1 ? '<span class="text-success fw-bold">Aktif</span>' : '<span class="text-danger fw-bold">Pasif</span>') . '</div></div>',
 				'<div class="actions-wrap"><a href="' . base_url('products/edit/' . (int) $product->product_id) . '" class="btn btn-sm btn-light-primary">Düzenle</a><a href="' . base_url('products/delete/' . (int) $product->product_id) . '" class="btn btn-sm btn-light-danger">Sil</a></div>',
 			];
 		}
@@ -462,8 +463,9 @@ class Products extends MY_Controller
 			// countries
 			'product_countries' => isset($post['locales']) ? json_encode((array) $post['locales']) : json_encode(["TR"]),
 			'product_type' => $productType,
-
-
+			'product_is_featured' => isset($post['product_is_featured']) ? (int) $post['product_is_featured'] : 0,
+			'product_badge' => !empty($post['product_badge']) ? mb_substr(trim((string) $post['product_badge']), 0, 50) : null,
+			'product_short_desc' => !empty($post['product_short_desc']) ? mb_substr(trim((string) $post['product_short_desc']), 0, 150) : null,
 		];
 
 		$log = [
@@ -715,6 +717,9 @@ class Products extends MY_Controller
 			'product_countries' => isset($post['locales']) ? json_encode($post['locales']) : json_encode([]),
 			'product_type' => $post['product_type'],
 			'product_bundle_items' => $product_bundle_items_json,
+			'product_is_featured' => isset($post['product_is_featured']) ? (int) $post['product_is_featured'] : 0,
+			'product_badge' => !empty($post['product_badge']) ? mb_substr(trim((string) $post['product_badge']), 0, 50) : null,
+			'product_short_desc' => !empty($post['product_short_desc']) ? mb_substr(trim((string) $post['product_short_desc']), 0, 150) : null,
 		];
 		$log = [
 			'log_controller' => 'update-product',
@@ -1143,6 +1148,54 @@ class Products extends MY_Controller
 			'data' => [
 				'product_id' => $productId,
 				'product_api_status' => $apiStatus
+			]
+		], 200);
+	}
+
+	public function changeFeaturedStatus()
+	{
+		$post = $this->input->post();
+
+		$productId = (int) ($post['product_id'] ?? 0);
+		$featuredStatus = isset($post['product_is_featured']) ? (int) $post['product_is_featured'] : null;
+
+		if ($productId <= 0 || ($featuredStatus !== 0 && $featuredStatus !== 1)) {
+			return json(['status' => 'error', 'message' => 'Geçersiz istek'], 400);
+		}
+
+		$exists = $this->db->select('product_id')
+			->from('products')
+			->where('product_id', $productId)
+			->get()->row();
+
+		if (!$exists) {
+			return json(['status' => 'error', 'message' => 'Ürün bulunamadı'], 404);
+		}
+
+		$this->db->trans_start();
+		$this->db->update('products', [
+			'product_is_featured' => $featuredStatus
+		], ['product_id' => $productId]);
+
+		$log = [
+			'log_controller' => 'change-product-featured',
+			'log_message' => "{$productId} ID'li ürün öne çıkarılma durumu " . ($featuredStatus ? 'öne çıkan' : 'standart') . " yapıldı. Güncelleyen: " . $this->session->userdata('user_id'),
+			'log_error_code' => 'PRO_FEATURED',
+			'log_created_at' => date('Y-m-d H:i:s'),
+		];
+		$this->db->insert('logs', $log);
+
+		$this->db->trans_complete();
+
+		if ($this->db->trans_status() === FALSE) {
+			return json(['status' => 'error', 'message' => 'Güncelleme sırasında hata oluştu'], 500);
+		}
+		return json([
+			'status' => 'success',
+			'message' => 'Öne çıkarılma durumu güncellendi',
+			'data' => [
+				'product_id' => $productId,
+				'product_is_featured' => $featuredStatus
 			]
 		], 200);
 	}

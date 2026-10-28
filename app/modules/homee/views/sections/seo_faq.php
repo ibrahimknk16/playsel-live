@@ -369,62 +369,42 @@
         line-height: 1.5;
     }
 
-    /* KAYAN LOGO SİSTEMİ */
+    /* LOGO SİSTEMİ (MOUSE İLE SAĞA SOLA KAYDIRMA) */
     .marquee-container {
         display: flex;
         flex-direction: column;
         gap: 12px;
-        -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-        mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+        mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
     }
 
     .marquee-track {
         display: flex;
-        width: max-content;
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
         gap: 12px;
-        will-change: transform;
-        transform: translateZ(0);
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
-        -webkit-perspective: 1000;
-        perspective: 1000;
+        cursor: grab;
+        user-select: none;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding-bottom: 4px;
+        animation: none !important;
     }
 
-    .marquee-track:hover {
-        animation-play-state: paused !important;
+    .marquee-track::-webkit-scrollbar {
+        display: none;
+    }
+
+    .marquee-track.is-dragging {
+        cursor: grabbing;
     }
 
     .marquee-group {
         display: flex;
         gap: 12px;
-    }
-
-    .track-left {
-        animation: scroll-left 25s linear infinite;
-    }
-
-    .track-right {
-        animation: scroll-right 25s linear infinite;
-    }
-
-    @keyframes scroll-left {
-        0% {
-            transform: translate3d(0, 0, 0);
-        }
-
-        100% {
-            transform: translate3d(calc(-50% - 6px), 0, 0);
-        }
-    }
-
-    @keyframes scroll-right {
-        0% {
-            transform: translate3d(calc(-50% - 6px), 0, 0);
-        }
-
-        100% {
-            transform: translate3d(0, 0, 0);
-        }
+        flex-shrink: 0;
     }
 
     /* Kutu Görünümleri (Kenarlıksız, Hafif Gölgeli) */
