@@ -14,7 +14,7 @@ if (!empty($alert) && is_array($alert)):
         $toastClass = 'ps-toast-success';
         $toastIcon = 'fa-solid fa-circle-check';
     }
-?>
+    ?>
     <div class="ps-toast-container">
         <div class="ps-toast <?= $toastClass ?>">
             <div class="ps-toast-icon">
@@ -55,7 +55,8 @@ if (!empty($alert) && is_array($alert)):
         <div class="nav-left">
             <div class="header-logo-area">
                 <a href="/<?= $uri ?>" rel="home" class="main-logo">
-                    <img id="logo_header" src="<?= html_escape(site_setting('site_logo_url', topupcenter() . 'assets-front/images/logo/playsel-beyaz.webp')) ?>"
+                    <img id="logo_header"
+                        src="<?= html_escape(site_setting('site_logo_url', topupcenter() . 'assets-front/images/logo/playsel-beyaz.webp')) ?>"
                         alt="<?= html_escape(site_setting('site_name', getenv('SITE_NAME') ?: 'Playsel') . '-Logo') ?>">
                 </a>
             </div>
@@ -71,20 +72,21 @@ if (!empty($alert) && is_array($alert)):
                     <div class="cat-dropdown-main">
                         <div class="cat-dropdown-header">
                             <div class="cat-dropdown-title">
-                                <i class="fa-solid fa-fire" style="color: #f2f2f2; margin-right: 8px;"></i> <?= $this->lang->line('popular_categories') ?>
+                                <i class="fa-solid fa-fire" style="color: #f2f2f2; margin-right: 8px;"></i>
+                                <?= $this->lang->line('popular_categories') ?>
                             </div>
-                            <a href="<?= topupcenter() . $uri . '/categories' ?>" class="cat-dropdown-view-all"><?= $this->lang->line('view_all') ?></a>
+                            <a href="<?= topupcenter() . $uri . '/categories' ?>"
+                                class="cat-dropdown-view-all"><?= $this->lang->line('view_all') ?></a>
                         </div>
                         <div class="cat-dropdown-grid">
-                            <?php if (!empty($header_categories)): foreach ($header_categories as $cat):
+                            <?php if (!empty($header_categories)):
+                                foreach ($header_categories as $cat):
                                     $catUrl = topupcenter() . $uri . '/' . $cat->category_slug;
                                     $hasSub = !empty($cat->sub_categories);
-                            ?>
-                                    <a href="<?= htmlspecialchars($catUrl) ?>"
-                                        class="cat-grid-item"
-                                        id="grid-cat-item-<?= $cat->category_id ?>"
-                                        <?php if ($hasSub): ?>
-                                        onclick="openSubCategoryFlyout(<?= $cat->category_id ?>, event); event.preventDefault();"
+                                    ?>
+                                    <a href="<?= htmlspecialchars($catUrl) ?>" class="cat-grid-item"
+                                        id="grid-cat-item-<?= $cat->category_id ?>" <?php if ($hasSub): ?>
+                                            onclick="openSubCategoryFlyout(<?= $cat->category_id ?>, event); event.preventDefault();"
                                         <?php endif; ?>>
 
                                         <?php if (!empty($cat->category_thumbnail)): ?>
@@ -96,23 +98,26 @@ if (!empty($alert) && is_array($alert)):
 
                                         <span><?= htmlspecialchars($cat->category_title) ?></span>
                                     </a>
-                            <?php endforeach;
+                                <?php endforeach;
                             endif; ?>
                         </div>
                     </div>
 
                     <!-- Sub Category Flyout -->
                     <div class="cat-dropdown-flyout cat-dropdown-hidden" id="cat-dropdown-flyout">
-                        <?php if (!empty($header_categories)): foreach ($header_categories as $cat): if (!empty($cat->sub_categories)): ?>
+                        <?php if (!empty($header_categories)):
+                            foreach ($header_categories as $cat):
+                                if (!empty($cat->sub_categories)): ?>
                                     <div class="cat-sub-group" id="sub-group-<?= $cat->category_id ?>" style="display: none;">
                                         <div class="cat-sub-title"><?= htmlspecialchars($cat->category_title) ?></div>
                                         <div class="cat-sub-list">
                                             <?php foreach ($cat->sub_categories as $sub):
                                                 $subUrl = topupcenter() . $uri . '/' . $sub->category_slug;
-                                            ?>
+                                                ?>
                                                 <a href="<?= $subUrl ?>" class="cat-sub-item">
                                                     <?php if (!empty($sub->category_thumbnail)): ?>
-                                                        <img src="<?= getenv('CDN_URL') . 'uploads/categories/' . $sub->category_thumbnail ?>" alt="<?= htmlspecialchars($sub->category_title) ?>">
+                                                        <img src="<?= getenv('CDN_URL') . 'uploads/categories/' . $sub->category_thumbnail ?>"
+                                                            alt="<?= htmlspecialchars($sub->category_title) ?>">
                                                     <?php else: ?>
                                                         <div style="width: 32px; height: 32px; background: #333; border-radius: 4px;"></div>
                                                     <?php endif; ?>
@@ -121,7 +126,7 @@ if (!empty($alert) && is_array($alert)):
                                             <?php endforeach; ?>
                                         </div>
                                     </div>
-                        <?php endif;
+                                <?php endif;
                             endforeach;
                         endif; ?>
                     </div>
@@ -132,7 +137,8 @@ if (!empty($alert) && is_array($alert)):
         </div>
         <?php if ($this->uri->segment(2) !== 'checkout' && $this->uri->segment(3) !== 'checkout'): ?>
             <div class="search-bar" id="search-bar" style="position: relative;">
-                <input type="text" aria-label="Arama" placeholder="<?= $this->lang->line('search') ?>" id="search-input" autocomplete="off">
+                <input type="text" aria-label="Arama" placeholder="<?= $this->lang->line('search') ?>" id="search-input"
+                    autocomplete="off">
                 <img src="<?= topupcenter() . 'assets-front/images/icons/search-icon.svg' ?>" alt="">
 
                 <!-- Search Results Dropdown -->
@@ -289,11 +295,11 @@ if (!empty($alert) && is_array($alert)):
 
         <div class="nav-right">
             <?php if ($this->uri->segment(2) !== 'checkout' && $this->uri->segment(3) !== 'checkout'): ?>
-                <button type="button" class="btn-lang" id="openRegionModal"><?= strtoupper($country) ?> / <?= strtoupper($lang) ?></button>
+                <button type="button" class="btn-lang" id="openRegionModal"><?= strtoupper($country) ?> /
+                    <?= strtoupper($lang) ?></button>
             <?php endif; ?>
             <?php if ($this->session->userdata('user')): ?>
-                <a href="<?= topupcenter() . $uri . '/profile'  ?>" class="btn-auth"
-                    id="btn-auth">
+                <a href="<?= topupcenter() . $uri . '/profile' ?>" class="btn-auth" id="btn-auth">
                     <svg viewBox="0 0 24 24">
                         <path
                             d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
@@ -302,7 +308,7 @@ if (!empty($alert) && is_array($alert)):
                     <span class="btn-auth-text"><?= $this->lang->line('my_accounts') ?></span>
                 </a>
             <?php else: ?>
-                <a href="<?= topupcenter() . $uri . '/login'  ?>" class="btn-auth" id="btn-auth" aria-label="Login">
+                <a href="<?= topupcenter() . $uri . '/login' ?>" class="btn-auth" id="btn-auth" aria-label="Login">
                     <svg viewBox="0 0 24 24">
                         <path
                             d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
@@ -352,8 +358,10 @@ foreach ($groupedCountries as $gc) {
         break;
     }
 }
-if (empty($currentCountryName)) $currentCountryName = 'Türkiye';
-if (empty($currentLangName)) $currentLangName = 'Türkçe - TR';
+if (empty($currentCountryName))
+    $currentCountryName = 'Türkiye';
+if (empty($currentLangName))
+    $currentLangName = 'Türkçe - TR';
 ?>
 <div id="regionModal" class="region-modal">
     <div class="region-modal-overlay"></div>
@@ -444,14 +452,14 @@ if (empty($currentLangName)) $currentLangName = 'Türkçe - TR';
     const categoriesDropdown = document.getElementById('categories-dropdown');
 
     if (btnCategories) {
-        btnCategories.addEventListener('mouseenter', function() {
+        btnCategories.addEventListener('mouseenter', function () {
             resetCategoryDropdown();
         });
     }
 
     // Create a wrapper or just use mouseleave on the dropdown to reset its internal state
     if (categoriesDropdown) {
-        categoriesDropdown.addEventListener('mouseleave', function() {
+        categoriesDropdown.addEventListener('mouseleave', function () {
             resetCategoryDropdown();
         });
     }
@@ -485,10 +493,13 @@ if (empty($currentLangName)) $currentLangName = 'Türkçe - TR';
             image.src = src || '';
             image.alt = alt || '';
             image.className = className;
+            image.onerror = function () {
+                this.style.opacity = '0';
+            };
             parent.appendChild(image);
         }
 
-        searchInput.addEventListener('input', function() {
+        searchInput.addEventListener('input', function () {
             const keyword = this.value.trim().toLocaleLowerCase('tr-TR');
 
             if (keyword.length > 0) {
@@ -510,7 +521,7 @@ if (empty($currentLangName)) $currentLangName = 'Türkçe - TR';
                 searchTimeout = setTimeout(() => {
                     const requestId = ++searchRequestId;
                     searchController = new AbortController();
-                    fetch(`<?= topupcenter() ?>test/search?q=${encodeURIComponent(keyword)}`, {
+                    fetch(`<?= topupcenter() ?>test/search?q=${encodeURIComponent(keyword)}&country=<?= strtoupper($country ?? 'TR') ?>`, {
                         signal: searchController.signal
                     })
                         .then(response => {
@@ -536,7 +547,9 @@ if (empty($currentLangName)) $currentLangName = 'Türkçe - TR';
                                         const link = document.createElement('a');
                                         link.href = `<?= topupcenter() . $uri . '/' ?>${encodeURIComponent(c.category_slug || '')}`;
                                         link.className = 'search-category-item';
-                                        renderSearchImage(link, `<?= getenv('CDN_URL') . 'uploads/categories/' ?>${encodeURIComponent(c.category_image || '')}`, c.category_title, 'search-category-image');
+                                        const imgName = c.category_image || c.category_thumbnail || '';
+                                        const imgSrc = imgName.startsWith('http') ? imgName : `<?= rtrim((string) getenv('CDN_URL'), '/') ?>/uploads/categories/${encodeURIComponent(imgName)}`;
+                                        renderSearchImage(link, imgSrc, c.category_title, 'search-category-image');
                                         appendTextElement(link, 'span', '', c.category_title);
                                         catList.appendChild(link);
                                     });
@@ -548,11 +561,13 @@ if (empty($currentLangName)) $currentLangName = 'Türkçe - TR';
                                     prodList.replaceChildren();
                                     products.forEach(p => {
                                         const cat = categories.find(c => c.category_id === p.product_category_id);
-                                        const catTitle = cat ? cat.category_title : p.category_slug.replace(/-/g, ' ');
+                                        const catTitle = cat ? cat.category_title : (p.category_slug || '').replace(/-/g, ' ');
                                         const link = document.createElement('a');
                                         link.href = `<?= topupcenter() . $uri . '/' ?>${encodeURIComponent(p.category_slug || '')}`;
                                         link.className = 'search-product-item';
-                                        renderSearchImage(link, `<?= getenv('CDN_URL') ?>${p.product_image || ''}`, p.product_name, 'search-product-image');
+                                        const pImg = p.product_image || '';
+                                        const pImgSrc = pImg.startsWith('http') ? pImg : `<?= rtrim((string) getenv('CDN_URL'), '/') ?>/${pImg}`;
+                                        renderSearchImage(link, pImgSrc, p.product_name, 'search-product-image');
                                         const info = document.createElement('div');
                                         info.className = 'search-product-info';
                                         appendTextElement(info, 'span', 'search-product-name', p.product_name);
@@ -579,7 +594,7 @@ if (empty($currentLangName)) $currentLangName = 'Türkçe - TR';
         });
 
         // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
                 searchDropdown.style.display = 'none';
             }

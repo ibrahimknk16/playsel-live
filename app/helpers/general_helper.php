@@ -58,7 +58,7 @@ function ensure_user_nickname($user)
 function ensure_user_bank_reference($userId)
 {
 	$ci = &get_instance();
-	$userId = (int)$userId;
+	$userId = (int) $userId;
 	if ($userId <= 0) {
 		return '';
 	}
@@ -67,7 +67,7 @@ function ensure_user_bank_reference($userId)
 	if (!$current) {
 		return '';
 	}
-	$existing = trim((string)$current->user_bank_referance_number);
+	$existing = trim((string) $current->user_bank_referance_number);
 	if ($existing !== '') {
 		return $existing;
 	}
@@ -85,7 +85,7 @@ function ensure_user_bank_reference($userId)
 	}
 
 	$final = $ci->db->select('user_bank_referance_number')->where('user_id', $userId)->get('users')->row();
-	return $final ? trim((string)$final->user_bank_referance_number) : '';
+	return $final ? trim((string) $final->user_bank_referance_number) : '';
 }
 
 function json($data, $code = 200)
@@ -166,8 +166,8 @@ function getIp()
 function getClientPort()
 {
 	foreach (['HTTP_TRUE_CLIENT_PORT', 'HTTP_CF_CONNECTING_PORT', 'REMOTE_PORT'] as $key) {
-		if (!empty($_SERVER[$key]) && ctype_digit((string)$_SERVER[$key])) {
-			return (int)$_SERVER[$key];
+		if (!empty($_SERVER[$key]) && ctype_digit((string) $_SERVER[$key])) {
+			return (int) $_SERVER[$key];
 		}
 	}
 	return 0;
@@ -201,7 +201,7 @@ function nFormat($amount, $digit = 2, $parse1 = ',', $parse2 = '.')
 
 function displayCurrency($currency)
 {
-	return strtoupper((string)$currency) === 'TRY' ? 'TL' : (string)$currency;
+	return strtoupper((string) $currency) === 'TRY' ? 'TL' : (string) $currency;
 }
 
 function validateDate($str, $format = 'Y-m-d H:i:s')
@@ -382,7 +382,7 @@ function userCheck()
 function customerRestriction($userId, $scope = 'all')
 {
 	$ci = &get_instance();
-	$userId = (int)$userId;
+	$userId = (int) $userId;
 	if ($userId <= 0 || !$ci->db->table_exists('customer_restrictions')) {
 		return null;
 	}
@@ -392,12 +392,12 @@ function customerRestriction($userId, $scope = 'all')
 		->where('restriction_status', 1)
 		->where('restriction_starts_at <=', $now)
 		->group_start()
-			->where('restriction_expires_at IS NULL', null, false)
-			->or_where('restriction_expires_at >', $now)
+		->where('restriction_expires_at IS NULL', null, false)
+		->or_where('restriction_expires_at >', $now)
 		->group_end()
 		->group_start()
-			->where('restriction_scope', 'all')
-			->or_where('restriction_scope', $scope)
+		->where('restriction_scope', 'all')
+		->or_where('restriction_scope', $scope)
 		->group_end()
 		->order_by('restriction_id', 'DESC');
 
@@ -407,14 +407,14 @@ function customerRestriction($userId, $scope = 'all')
 function customerRestrictionMessage($userId, $scope = 'all')
 {
 	$restriction = customerRestriction($userId, $scope);
-	return $restriction ? trim((string)$restriction->restriction_customer_reason) : '';
+	return $restriction ? trim((string) $restriction->restriction_customer_reason) : '';
 }
 
 // Kısıtlı üyeye gösterilecek bildirim (toast HTML basıldığı için sebep escape edilir).
 function restrictedAccountMessage($restriction = null)
 {
 	$message = 'Üyeliğiniz kısıtlanmıştır. Canlı destek ile iletişime geçebilirsiniz.';
-	$reason = $restriction ? trim((string)($restriction->restriction_customer_reason ?? '')) : '';
+	$reason = $restriction ? trim((string) ($restriction->restriction_customer_reason ?? '')) : '';
 	if ($reason !== '') {
 		$message .= '<br><small>' . html_escape($reason) . '</small>';
 	}
@@ -435,7 +435,7 @@ function xhrCheck()
 // Türkiye numaralarını +905XXXXXXXXX biçimine çevirir; yabancı (+ ile başlayan) numaralar +rakamlar olarak korunur.
 function normalizePhoneE164($phoneNumber)
 {
-	$raw = trim((string)$phoneNumber);
+	$raw = trim((string) $phoneNumber);
 	$digits = preg_replace('/\D+/', '', $raw);
 	if ($digits === '') {
 		return '';
@@ -608,7 +608,8 @@ function prodctPricesChangeLocationCurrency($products, $currency = 'TRY')
 function prodctPricesChangeLocationCurrency2($products, $currency = 'TRY', $userTier = 1, $userLocale = 'TR')
 {
 	$CI = &get_instance();
-	if (empty($products)) return [];
+	if (empty($products))
+		return [];
 
 	$productIds = [];
 	foreach ($products as $p) {
@@ -645,7 +646,8 @@ function prodctPricesChangeLocationCurrency2($products, $currency = 'TRY', $user
 			$prod['user_price'] = 0;
 		}
 
-		if (!isset($map[$id])) continue;
+		if (!isset($map[$id]))
+			continue;
 
 		$row = $map[$id];
 
@@ -672,10 +674,10 @@ function prodctPricesChangeLocationCurrency2($products, $currency = 'TRY', $user
 function userPrice($productID, $userLocale, $userTier)
 {
 	$ci = &get_instance();
-	$productID  = (int)$productID;
-	$userLocale = strtoupper(trim((string)$userLocale));
+	$productID = (int) $productID;
+	$userLocale = strtoupper(trim((string) $userLocale));
 	$userLocale = $userLocale !== '' ? $userLocale : 'TR';
-	$userTier   = (int)$userTier; // 1: standart, 2: silver, 3: gold, 4: vip
+	$userTier = (int) $userTier; // 1: standart, 2: silver, 3: gold, 4: vip
 	if ($userTier < 1 || $userTier > 6) {
 		$userTier = 1;
 	}
@@ -701,27 +703,27 @@ function userPrice($productID, $userLocale, $userTier)
 	}
 	$priceFields = [
 		1 => [
-			'price'      => 'product_price_standart_price',
+			'price' => 'product_price_standart_price',
 			'multiplier' => 'product_price_standart_price_multiplier',
 		],
 		2 => [
-			'price'      => 'product_price_silver_user',
+			'price' => 'product_price_silver_user',
 			'multiplier' => 'product_price_silver_user_multiplier',
 		],
 		3 => [
-			'price'      => 'product_price_gold_user',
+			'price' => 'product_price_gold_user',
 			'multiplier' => 'product_price_gold_user_multiplier',
 		],
 		4 => [
-			'price'      => 'product_price_vip_user',
+			'price' => 'product_price_vip_user',
 			'multiplier' => 'product_price_vip_user_multiplier',
 		],
 		5 => [
-			'price'      => 'product_price_playsel',
+			'price' => 'product_price_playsel',
 			'multiplier' => 'product_price_playsel_multiplier',
 		],
 		6 => [
-			'price'      => 'product_price_payment',
+			'price' => 'product_price_payment',
 			'multiplier' => 'product_price_payment_multiplier',
 		],
 	];
@@ -737,9 +739,12 @@ function userPriceCost($productID, $userLocale, $userTier)
 {
 	$ci = &get_instance();
 
-	if (empty($userLocale)) $userLocale = 'TR';
-	if (empty($userTier) || $userTier < 1 || $userTier > 6) $userTier = 1;
-	if (empty($productID)) return 0;
+	if (empty($userLocale))
+		$userLocale = 'TR';
+	if (empty($userTier) || $userTier < 1 || $userTier > 6)
+		$userTier = 1;
+	if (empty($productID))
+		return 0;
 
 	$price = $ci->db->select('
 			pp.product_price_cost,
@@ -750,12 +755,12 @@ function userPriceCost($productID, $userLocale, $userTier)
 		->from('product_prices as pp')
 		->join('products as product', 'product.product_id = pp.product_price_product_id', 'left')
 		->join('provider_products as provider', 'provider.provider_product_id = product.product_provider_id', 'left')
-		->where('pp.product_price_product_id', (int)$productID)
-		->where('pp.product_price_country', strtolower(trim((string)$userLocale)))
+		->where('pp.product_price_product_id', (int) $productID)
+		->where('pp.product_price_country', strtolower(trim((string) $userLocale)))
 		->get()
 		->row();
 
-	if (!$price && strtolower(trim((string)$userLocale)) !== 'tr') {
+	if (!$price && strtolower(trim((string) $userLocale)) !== 'tr') {
 		$price = $ci->db->select('
 				pp.product_price_cost,
 				pp.product_price_currency,
@@ -765,28 +770,29 @@ function userPriceCost($productID, $userLocale, $userTier)
 			->from('product_prices as pp')
 			->join('products as product', 'product.product_id = pp.product_price_product_id', 'left')
 			->join('provider_products as provider', 'provider.provider_product_id = product.product_provider_id', 'left')
-			->where('pp.product_price_product_id', (int)$productID)
+			->where('pp.product_price_product_id', (int) $productID)
 			->where('pp.product_price_country', 'tr')
 			->get()
 			->row();
 	}
 
-	if (!$price) return null;
+	if (!$price)
+		return null;
 
 	$cost = $price->product_price_cost;
 	$currency = $price->product_price_currency;
-	if (!is_numeric($cost) || (float)$cost <= 0) {
+	if (!is_numeric($cost) || (float) $cost <= 0) {
 		$cost = $price->provider_product_product_cost;
 		$currency = $price->provider_product_product_cost_currency ?: $currency;
 	}
 
-	if (!is_numeric($cost) || (float)$cost <= 0) {
-		log_message('error', 'Order cost is missing for product: ' . (int)$productID);
+	if (!is_numeric($cost) || (float) $cost <= 0) {
+		log_message('error', 'Order cost is missing for product: ' . (int) $productID);
 		return null;
 	}
 
 	return [
-		'cost' => (float)$cost,
+		'cost' => (float) $cost,
 		'currency' => $currency
 	];
 }
@@ -796,7 +802,11 @@ function userPriceCost($productID, $userLocale, $userTier)
 
 function topupcenter()
 {
-	return getenv('SITE_URL'); // Topupcenter URL
+	$url = getenv('SITE_URL');
+	if (!empty($url)) {
+		return rtrim($url, '/') . '/';
+	}
+	return function_exists('base_url') ? rtrim(base_url(), '/') . '/' : '/';
 }
 
 function userTier($tier)
@@ -817,16 +827,16 @@ function sendEmail($to, $subject, $message, $from = 'noreply@playsel.com')
 	$CI = &get_instance();
 	$CI->load->library('email');
 	$config = array(
-		'protocol'    => 'smtp', // SMTP kullanıyorsanız
-		'smtp_host'   => 'email-smtp.eu-north-1.amazonaws.com', // Örnek: smtp.gmail.com
-		'smtp_port'   => 587, // Genelde 587 veya 465
-		'smtp_user'   => getenv('SMTP_USER'),
-		'smtp_pass'   => getenv('SMTP_PASSWORD'),
+		'protocol' => 'smtp', // SMTP kullanıyorsanız
+		'smtp_host' => 'email-smtp.eu-north-1.amazonaws.com', // Örnek: smtp.gmail.com
+		'smtp_port' => 587, // Genelde 587 veya 465
+		'smtp_user' => getenv('SMTP_USER'),
+		'smtp_pass' => getenv('SMTP_PASSWORD'),
 		'smtp_crypto' => 'tls',
-		'mailtype'    => 'html', // HTML formatında mail
-		'charset'     => 'utf-8', // Türkçe karakterler için
-		'newline'     => "\r\n",
-		'crlf'        => "\r\n",
+		'mailtype' => 'html', // HTML formatında mail
+		'charset' => 'utf-8', // Türkçe karakterler için
+		'newline' => "\r\n",
+		'crlf' => "\r\n",
 	);
 	$CI->email->initialize($config);
 	if (empty($from)) {
@@ -858,18 +868,18 @@ function sendSms2($phoneNumber, $message)
 	}
 
 	// 2. API Bilgileri
-	$username    = getenv('SMS_USERNAME');
-	$password    = getenv('SMS_PASSWORD');
-	$sourceAddr  = getenv('SMS_SOURCE') ?: 'PLAYSEL';
+	$username = getenv('SMS_USERNAME');
+	$password = getenv('SMS_PASSWORD');
+	$sourceAddr = getenv('SMS_SOURCE') ?: 'PLAYSEL';
 
 	$payload = [
-		'username'    => $username,
-		'password'    => $password,
+		'username' => $username,
+		'password' => $password,
 		'source_addr' => $sourceAddr,
-		'custom_id'   => uniqid('sms_'),
-		'messages'    => [
+		'custom_id' => uniqid('sms_'),
+		'messages' => [
 			[
-				'msg'  => $message,
+				'msg' => $message,
 				'dest' => $cleanNumber
 			]
 		]
@@ -913,13 +923,13 @@ function sendSms2($phoneNumber, $message)
 
 	if ($httpCode === 200 && !empty($response)) {
 		return [
-			'status'   => true,
+			'status' => true,
 			'response' => $response
 		];
 	}
 
 	return [
-		'status'   => false,
+		'status' => false,
 		'response' => !empty($curlError) ? 'cURL Error: ' . $curlError : 'HTTP_CODE_' . $httpCode
 	];
 }
@@ -958,13 +968,13 @@ function errorMessages($message)
 function costToText($number)
 {
 	$birler = ["", "Bir", "İki", "Üç", "Dört", "Beş", "Altı", "Yedi", "Sekiz", "Dokuz"];
-	$onlar  = ["", "On", "Yirmi", "Otuz", "Kırk", "Elli", "Altmış", "Yetmiş", "Seksen", "Doksan"];
+	$onlar = ["", "On", "Yirmi", "Otuz", "Kırk", "Elli", "Altmış", "Yetmiş", "Seksen", "Doksan"];
 	$basamak = ["", "Bin", "Milyon", "Milyar", "Trilyon"];
 
 	$number = str_replace(",", ".", $number);
-	$parts  = explode(".", $number);
+	$parts = explode(".", $number);
 
-	$tam   = preg_replace('/[^0-9]/', '', $parts[0]);
+	$tam = preg_replace('/[^0-9]/', '', $parts[0]);
 	$kurus = isset($parts[1]) ? substr(str_pad($parts[1], 2, "0"), 0, 2) : "00";
 
 	if ($tam == "" || intval($tam) == 0) {
@@ -980,10 +990,11 @@ function costToText($number)
 		foreach ($groups as $index => $groupRaw) {
 
 			$group = intval($groupRaw);
-			if ($group == 0) continue;
+			if ($group == 0)
+				continue;
 
 			$yuz = intval($group / 100);
-			$on  = intval(($group % 100) / 10);
+			$on = intval(($group % 100) / 10);
 			$bir = $group % 10;
 
 			$basamakIndex = $groupCount - $index - 1;
@@ -1011,7 +1022,7 @@ function costToText($number)
 
 	if (intval($kurus) > 0) {
 		$k = intval($kurus);
-		$on  = intval($k / 10);
+		$on = intval($k / 10);
 		$bir = $k % 10;
 
 		if ($on > 0)

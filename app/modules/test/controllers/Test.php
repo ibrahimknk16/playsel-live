@@ -15,8 +15,8 @@ class Test extends MY_Controller
 			$lang = 'en'; // Default language if not specified
 			$country = 'US'; // Default country if not specified
 		} else {
-			$country = preg_replace('/[^A-Za-z]/', '', (string)$uri[1]);
-			$lang = preg_replace('/[^A-Za-z]/', '', (string)$uri[0]);
+			$country = preg_replace('/[^A-Za-z]/', '', (string) $uri[1]);
+			$lang = preg_replace('/[^A-Za-z]/', '', (string) $uri[0]);
 		}
 		$this->lang->load('custom', $lang);
 		$this->data['currentLocale'] = $this->db->get_where('locales', ['locale_lang_code' => $lang, 'locale_code' => $country])->row();
@@ -24,8 +24,8 @@ class Test extends MY_Controller
 		$this->data['lang'] = $lang;
 		$this->data['country'] = $country;
 
-		// analyticsReplay kendi ANALYTICS_REPLAY_KEY kontrolünü yapar; diğer tüm uçlar iç anahtar ister.
-		if ($this->router->fetch_method() !== 'analyticsReplay') {
+		// analyticsReplay kendi ANALYTICS_REPLAY_KEY kontrolunu yapar; search uclari herkese aciktir.
+		if (!in_array($this->router->fetch_method(), ['analyticsReplay', 'search', 'buildSearchIndex'], true)) {
 			$this->requireInternalAccessKey('TOOLS_ACCESS_KEY', 'X-Tools-Key', 'tools_key');
 		}
 	}
@@ -53,8 +53,12 @@ class Test extends MY_Controller
 		$indexFilePath = FCPATH . 'uploads/search_index.json';
 		$tmpFilePath = FCPATH . 'uploads/search_index.tmp.json';
 
+		if (!is_dir(FCPATH . 'uploads')) {
+			@mkdir(FCPATH . 'uploads', 0755, true);
+		}
+
 		// 1. Kategorileri önce alalım (Mapping için)
-		$dbCategories = $this->db->select('category_id, category_title, category_slug, category_image, category_countries')
+		$dbCategories = $this->db->select('category_id, category_title, category_slug, category_image, category_thumbnail, category_countries')
 			->where('category_status', 1)
 			->where('category_api_status', 1)
 			->order_by('category_sort_id', 'ASC')
@@ -62,6 +66,9 @@ class Test extends MY_Controller
 
 		$categoriesMap = [];
 		foreach ($dbCategories as $cat) {
+			if (empty($cat['category_image']) && !empty($cat['category_thumbnail'])) {
+				$cat['category_image'] = $cat['category_thumbnail'];
+			}
 			$categoriesMap[$cat['category_id']] = $cat;
 		}
 
@@ -77,7 +84,6 @@ class Test extends MY_Controller
 		$productsData = [];
 
 		foreach ($products as $p) {
-			// Ürüne kategori bilgilerini ekle (Slug ve image)
 			$catId = $p['product_category_id'];
 			$p['category_slug'] = isset($categoriesMap[$catId]) ? $categoriesMap[$catId]['category_slug'] : '#';
 			$p['category_image'] = isset($categoriesMap[$catId]) ? $categoriesMap[$catId]['category_image'] : '';
@@ -98,19 +104,23 @@ class Test extends MY_Controller
 			'index' => $index,
 			'products' => $productsData,
 			'categories' => $categoriesMap
-		]);
+		], JSON_UNESCAPED_UNICODE);
 
 		// 4. Atomik Yazma
-		$fp = fopen($tmpFilePath, 'w');
-		if (flock($fp, LOCK_EX)) {
+		$fp = @fopen($tmpFilePath, 'w');
+		if ($fp && flock($fp, LOCK_EX)) {
 			fwrite($fp, $payload);
 			fflush($fp);
 			flock($fp, LOCK_UN);
 			fclose($fp);
-			rename($tmpFilePath, $indexFilePath);
-		} else {
+			@rename($tmpFilePath, $indexFilePath);
+		} elseif ($fp) {
 			fclose($fp);
+		} else {
+			@file_put_contents($indexFilePath, $payload, LOCK_EX);
 		}
+
+		return true;
 	}
 
 	private function _add_to_index(array|object &$index, string $title, string $idWithPrefix)
@@ -118,8 +128,9 @@ class Test extends MY_Controller
 		$name = $this->_normalize($title);
 		$words = explode(' ', $name);
 		foreach ($words as $word) {
-			if (strlen($word) < 2) continue;
-			for ($len = 3; $len <= strlen($word); $len++) {
+			if (strlen($word) < 2)
+				continue;
+			for ($len = 2; $len <= strlen($word); $len++) {
 				$sub = substr($word, 0, $len);
 				$index[$sub][] = $idWithPrefix;
 			}
@@ -129,64 +140,73 @@ class Test extends MY_Controller
 	private function _normalize(string $string): string
 	{
 		$string = mb_strtolower($string, 'UTF-8');
-		$tr = ['ı', 'ğ', 'ü', 'ş', 'ö', 'ç'];
-		$en = ['i', 'g', 'u', 's', 'o', 'c'];
+		$tr = ['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'i̇'];
+		$en = ['i', 'g', 'u', 's', 'o', 'c', 'i'];
 		$string = str_replace($tr, $en, $string);
-		return preg_replace('/[^a-z0-9 ]+/', '', $string);
+		return trim(preg_replace('/[^a-z0-9 ]+/', '', $string));
 	}
 
 	public function search()
 	{
-		$q = $this->_normalize($this->input->get('q', true));
-		$data = json_decode(
-			file_get_contents(FCPATH . 'uploads/search_index.json'),
-			true
-		);
+		$rawQ = (string) $this->input->get('q', true);
+		$q = $this->_normalize($rawQ);
+		$country = strtoupper(trim((string) ($this->input->get('country', true) ?: ($this->data['country'] ?? 'TR'))));
 
 		$results = [
 			'categories' => [],
 			'products' => []
 		];
 
-		$words = array_filter(explode(' ', $q));
+		if (empty($q)) {
+			return json($results);
+		}
 
+		$indexFilePath = FCPATH . 'uploads/search_index.json';
+		if (!file_exists($indexFilePath) || filesize($indexFilePath) < 10) {
+			$this->buildSearchIndex();
+		}
+
+		$data = null;
+		if (file_exists($indexFilePath)) {
+			$content = @file_get_contents($indexFilePath);
+			if (!empty($content)) {
+				$data = json_decode($content, true);
+			}
+		}
+
+		// Fallback to database search if index could not be loaded or parsed
+		if (empty($data) || empty($data['index'])) {
+			return $this->_dbSearchFallback($rawQ, $country);
+		}
+
+		$words = array_filter(explode(' ', $q));
 		if (empty($words)) {
 			return json($results);
 		}
 
 		$matchSets = [];
-
 		foreach ($words as $word) {
-
-			if (strlen($word) < 3) {
+			if (strlen($word) < 2) {
 				continue;
 			}
-
-			// Kelimenin prefix indexindeki sonuçları al
 			$matches = $data['index'][$word] ?? [];
-
-			// Hiç sonuç yoksa direkt boş dön
 			if (empty($matches)) {
-				return json($results);
+				return $this->_dbSearchFallback($rawQ, $country);
 			}
-
 			$matchSets[] = array_unique($matches);
 		}
 
 		if (empty($matchSets)) {
-			return json($results);
+			return $this->_dbSearchFallback($rawQ, $country);
 		}
 
-		// En küçük kümeyi önce kullanmak performans açısından daha iyi
 		usort($matchSets, function ($a, $b) {
 			return count($a) <=> count($b);
 		});
 
 		$matches = array_shift($matchSets);
-
 		foreach ($matchSets as $set) {
 			$matches = array_intersect($matches, $set);
-
 			if (empty($matches)) {
 				break;
 			}
@@ -194,31 +214,84 @@ class Test extends MY_Controller
 
 		$matches = array_unique($matches);
 
-		$country = $this->data['country'] ?? 'tr';
-		$countrySearchStr = '"' . $country . '"';
+		$countryUpper = '"' . $country . '"';
+		$countryLower = '"' . strtolower($country) . '"';
 
 		foreach ($matches as $match) {
-
 			if (strpos($match, 'c_') === 0) {
-
 				$id = substr($match, 2);
-
 				if (isset($data['categories'][$id])) {
 					$cat = $data['categories'][$id];
-					if (empty($cat['category_countries']) || strpos($cat['category_countries'], $countrySearchStr) !== false) {
+					$catCountries = (string) ($cat['category_countries'] ?? '');
+					if (empty($catCountries) || $catCountries === '[]' || strpos($catCountries, $countryUpper) !== false || strpos($catCountries, $countryLower) !== false) {
 						$results['categories'][] = $cat;
 					}
 				}
 			} elseif (strpos($match, 'p_') === 0) {
-
 				$id = substr($match, 2);
-
 				if (isset($data['products'][$id])) {
 					$prod = $data['products'][$id];
-					if (empty($prod['product_countries']) || strpos($prod['product_countries'], $countrySearchStr) !== false) {
+					$prodCountries = (string) ($prod['product_countries'] ?? '');
+					if (empty($prodCountries) || $prodCountries === '[]' || strpos($prodCountries, $countryUpper) !== false || strpos($prodCountries, $countryLower) !== false) {
 						$results['products'][] = $prod;
 					}
 				}
+			}
+		}
+
+		if (empty($results['categories']) && empty($results['products'])) {
+			return $this->_dbSearchFallback($rawQ, $country);
+		}
+
+		$results['categories'] = array_slice($results['categories'], 0, 10);
+		$results['products'] = array_slice($results['products'], 0, 20);
+
+		return json($results);
+	}
+
+	private function _dbSearchFallback($rawQ, $country)
+	{
+		$results = [
+			'categories' => [],
+			'products' => []
+		];
+		$term = trim($rawQ);
+		if (strlen($term) < 2) {
+			return json($results);
+		}
+
+		$countryUpper = '"' . $country . '"';
+		$countryLower = '"' . strtolower($country) . '"';
+
+		$catQuery = $this->db->select('category_id, category_title, category_slug, category_image, category_thumbnail, category_countries')
+			->where('category_status', 1)
+			->where('category_api_status', 1)
+			->like('category_title', $term)
+			->order_by('category_sort_id', 'ASC')
+			->limit(10)
+			->get('categories')->result_array();
+
+		foreach ($catQuery as $cat) {
+			$catCountries = (string) ($cat['category_countries'] ?? '');
+			if (empty($catCountries) || $catCountries === '[]' || strpos($catCountries, $countryUpper) !== false || strpos($catCountries, $countryLower) !== false) {
+				$cat['category_image'] = !empty($cat['category_image']) ? $cat['category_image'] : ($cat['category_thumbnail'] ?? '');
+				$results['categories'][] = $cat;
+			}
+		}
+
+		$prodQuery = $this->db->select('products.product_id, products.product_name, products.product_category_id, products.product_image, products.product_countries, categories.category_slug')
+			->join('categories', 'categories.category_id = products.product_category_id', 'left')
+			->where('products.product_status', 1)
+			->where('products.product_api_status', 1)
+			->like('products.product_name', $term)
+			->order_by('products.product_sort_id', 'ASC')
+			->limit(20)
+			->get('products')->result_array();
+
+		foreach ($prodQuery as $prod) {
+			$prodCountries = (string) ($prod['product_countries'] ?? '');
+			if (empty($prodCountries) || $prodCountries === '[]' || strpos($prodCountries, $countryUpper) !== false || strpos($prodCountries, $countryLower) !== false) {
+				$results['products'][] = $prod;
 			}
 		}
 
@@ -252,8 +325,8 @@ class Test extends MY_Controller
 	// ?since=YYYY-MM-DD: bu tarihten beri kaydedilen gönderim kayıtları sıfırlanır (varsayılan 2026-10-26).
 	public function analyticsReplay()
 	{
-		$expected = (string)getenv('ANALYTICS_REPLAY_KEY');
-		$given = (string)$this->input->get('key');
+		$expected = (string) getenv('ANALYTICS_REPLAY_KEY');
+		$given = (string) $this->input->get('key');
 		if ($expected === '' || !hash_equals($expected, $given)) {
 			return $this->legacyBanRespond(['status' => 'error', 'message' => 'Yetkisiz.'], 403);
 		}
@@ -261,18 +334,18 @@ class Test extends MY_Controller
 			return $this->legacyBanRespond(['status' => 'error', 'message' => 'analytics_events_sent tablosu veya orders.order_tracking sütunu yok; önce SQL çalıştırılmalı.'], 409);
 		}
 
-		$since = (string)$this->input->get('since');
+		$since = (string) $this->input->get('since');
 		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $since)) {
 			$since = '2026-10-26';
 		}
-		$apply = (string)$this->input->get('apply') === '1';
+		$apply = (string) $this->input->get('apply') === '1';
 		$sinceStart = $since . ' 00:00:00';
 
 		$sent = $this->db->select('event_key, COUNT(*) AS total', false)
 			->where('created_at >=', $sinceStart)
 			->group_by('event_key')->get('analytics_events_sent')->result_array();
-		$deliverable = (int)$this->db->where('order_status', 1)->where('order_tracking IS NOT NULL', null, false)->count_all_results('orders');
-		$cancelled = (int)$this->db->where('order_status', 2)->where('order_tracking IS NOT NULL', null, false)->count_all_results('orders');
+		$deliverable = (int) $this->db->where('order_status', 1)->where('order_tracking IS NOT NULL', null, false)->count_all_results('orders');
+		$cancelled = (int) $this->db->where('order_status', 2)->where('order_tracking IS NOT NULL', null, false)->count_all_results('orders');
 
 		$result = [
 			'status' => 'success',
@@ -284,22 +357,22 @@ class Test extends MY_Controller
 		$this->load->library('analytics_tracker');
 		$result['channels_configured'] = $this->analytics_tracker->channelStatus();
 
-		if ((string)$this->input->get('status') === '1') {
+		if ((string) $this->input->get('status') === '1') {
 			$result['mode'] = 'status';
 			$result['status_report'] = $this->analytics_tracker->status();
 			return $this->legacyBanRespond($result, 200);
 		}
 
-		if ((string)$this->input->get('live') === '1') {
+		if ((string) $this->input->get('live') === '1') {
 			$result['mode'] = 'live_ping';
 			$result['live_ping'] = $this->analytics_tracker->livePing();
 			return $this->legacyBanRespond($result, 200);
 		}
 
 		// ?debug=1: kayıt yazmadan GA4 doğrulama ucuna ve (varsa ?meta_test=TEST123) Meta'ya örnek gönderir.
-		if ((string)$this->input->get('debug') === '1') {
+		if ((string) $this->input->get('debug') === '1') {
 			$this->analytics_tracker->ga4Debug = true;
-			$this->analytics_tracker->metaTestCode = preg_replace('/[^A-Za-z0-9_-]/', '', (string)$this->input->get('meta_test'));
+			$this->analytics_tracker->metaTestCode = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $this->input->get('meta_test'));
 			$result['mode'] = 'debug';
 			$result['diagnose'] = $this->analytics_tracker->diagnose(2);
 			return $this->legacyBanRespond($result, 200);
@@ -307,13 +380,13 @@ class Test extends MY_Controller
 
 		if ($apply) {
 			$this->db->where('created_at >=', $sinceStart)->delete('analytics_events_sent');
-			$result['records_deleted'] = (int)$this->db->affected_rows();
+			$result['records_deleted'] = (int) $this->db->affected_rows();
 
 			$this->analytics_tracker->useOrderTime = true;
 			$processed = 0;
 			// Her tur en fazla 50 kayıt işler; başarısız gönderimler bir sonraki turda yeniden denenir.
 			for ($i = 0; $i < 10; $i++) {
-				$count = (int)$this->analytics_tracker->processPending(50);
+				$count = (int) $this->analytics_tracker->processPending(50);
 				$processed += $count;
 				if ($count === 0) {
 					break;
@@ -329,7 +402,7 @@ class Test extends MY_Controller
 
 	public function legacyBan()
 	{
-		$apply = (string)$this->input->get('apply') === '1';
+		$apply = (string) $this->input->get('apply') === '1';
 
 		$missing = [];
 		foreach (['user_eski_ban', 'customer_restrictions', 'users'] as $table) {
@@ -362,17 +435,17 @@ class Test extends MY_Controller
 				->get('users')->result();
 			if (count($users) === 0) {
 				$counts['no_match']++;
-				$problemIds['no_match'][] = (int)$row->id;
+				$problemIds['no_match'][] = (int) $row->id;
 				$this->legacyBanMark($apply, $row->id, 'no_match', null, null);
 				continue;
 			}
 			if (count($users) > 1) {
 				$counts['ambiguous']++;
-				$problemIds['ambiguous'][] = (int)$row->id;
+				$problemIds['ambiguous'][] = (int) $row->id;
 				$this->legacyBanMark($apply, $row->id, 'ambiguous', null, null);
 				continue;
 			}
-			$userId = (int)$users[0]->user_id;
+			$userId = (int) $users[0]->user_id;
 
 			$existing = $this->db->select('restriction_id')
 				->where('restriction_user_id', $userId)
@@ -381,7 +454,7 @@ class Test extends MY_Controller
 				->get('customer_restrictions')->row();
 			if ($existing) {
 				$counts['already']++;
-				$this->legacyBanMark($apply, $row->id, 'done', $userId, (int)$existing->restriction_id);
+				$this->legacyBanMark($apply, $row->id, 'done', $userId, (int) $existing->restriction_id);
 				continue;
 			}
 
@@ -400,7 +473,7 @@ class Test extends MY_Controller
 				'restriction_expires_at' => empty($row->expires_at) ? null : $row->expires_at,
 				'restriction_status' => 1,
 			]);
-			$restrictionId = (int)$this->db->insert_id();
+			$restrictionId = (int) $this->db->insert_id();
 			$this->db->set('user_session_version', 'user_session_version + 1', false)
 				->where('user_id', $userId)->update('users');
 			$this->db->where('id', $row->id)->update('user_eski_ban', [
@@ -413,7 +486,7 @@ class Test extends MY_Controller
 
 			if ($this->db->trans_status() === false || $restrictionId <= 0) {
 				$counts['error']++;
-				$problemIds['error'][] = (int)$row->id;
+				$problemIds['error'][] = (int) $row->id;
 				continue;
 			}
 			$counts['inserted']++;
@@ -454,7 +527,7 @@ class Test extends MY_Controller
 			return $this->legacyBanRespond(['status' => 'error', 'message' => 'legacy_orders tablosu yok'], 409);
 		}
 
-		$since = (string)$this->input->get('since');
+		$since = (string) $this->input->get('since');
 		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $since)) {
 			$since = '2025-01-01';
 		}
@@ -473,19 +546,19 @@ class Test extends MY_Controller
 		$invalidPhones = 0;
 		foreach ($rows as $r) {
 			// Geçerli: +905XXXXXXXXX, 905XXXXXXXXX veya 05XXXXXXXXX (boşluk/tire vb. temizlenir).
-			$phone = trim((string)$r->user_phone);
+			$phone = trim((string) $r->user_phone);
 			$digits = preg_replace('/\D+/', '', $phone);
-			$valid = (bool)preg_match('/^(?:90|0)5\d{9}$/', $digits);
+			$valid = (bool) preg_match('/^(?:90|0)5\d{9}$/', $digits);
 			if (!$valid) {
 				$invalidPhones++;
 				continue;
 			}
 			$customers[] = [
-				'user_id' => (int)$r->target_user_id,
+				'user_id' => (int) $r->target_user_id,
 				'email' => $r->user_email,
 				'phone' => $phone,
-				'order_count' => (int)$r->order_count,
-				'total_spent' => round((float)$r->total_spent, 2),
+				'order_count' => (int) $r->order_count,
+				'total_spent' => round((float) $r->total_spent, 2),
 				'currency' => $r->currency,
 				'first_order_date' => $r->first_order_date,
 				'last_order_date' => $r->last_order_date,

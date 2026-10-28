@@ -31,12 +31,12 @@ function lang_redirect()
     $localeSlugs = [];
     $localesByCountry = [];
     foreach ($locales as $locale) {
-        $slug = strtolower((string)$locale->locale_lang_code) . '-' . strtoupper((string)$locale->locale_code);
+        $slug = strtolower((string) $locale->locale_lang_code) . '-' . strtoupper((string) $locale->locale_code);
         $localeSlugs[$slug] = $slug;
-        $country = strtoupper((string)$locale->locale_code);
+        $country = strtoupper((string) $locale->locale_code);
         $localesByCountry[$country][] = [
             'slug' => $slug,
-            'language' => strtolower((string)$locale->locale_lang_code),
+            'language' => strtolower((string) $locale->locale_lang_code),
         ];
     }
 
@@ -78,9 +78,9 @@ function lang_redirect()
         $targetLocale = $defaultLocale;
     } else {
         $restSegments = $segments;
-        $country = strtoupper((string)$CI->input->server('HTTP_CF_IPCOUNTRY'));
+        $country = strtoupper((string) $CI->input->server('HTTP_CF_IPCOUNTRY'));
         $countryLocales = $localesByCountry[$country] ?? [];
-        $acceptLanguage = strtolower((string)$CI->input->server('HTTP_ACCEPT_LANGUAGE'));
+        $acceptLanguage = strtolower((string) $CI->input->server('HTTP_ACCEPT_LANGUAGE'));
 
         foreach ($countryLocales as $countryLocale) {
             if ($acceptLanguage !== '' && strpos($acceptLanguage, $countryLocale['language']) !== false) {

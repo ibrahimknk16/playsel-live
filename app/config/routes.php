@@ -16,7 +16,8 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $route['auth/googleLogin'] = 'auth/googleLogin';
 $route['auth/googleCallback'] = 'auth/googleCallback';
 $route['feeds/googleMerchantFeed.xml'] = 'feeds/googleMerchantFeed';
-$route['(home|v1|callback|payment|feeds|cron|cron2)(/.*)?'] = '$0';
+$route['(home|v1|callback|payment|feeds|cron|cron2|test)(/.*)?'] = '$0';
+$route['search'] = 'test/search';
 
 // The redirect hook validates this pattern against active locales in the DB.
 // Keeping the route generic allows a newly activated locale to work without
@@ -29,9 +30,7 @@ $route['sitemap_index.xml'] = 'feeds/sitemaps';
 $route['sitemap'] = 'feeds/sitemaps';
 $route['news.xml'] = 'feeds/newsSitemap';
 $route['google-merchant-feed.xml'] = 'feeds/googleMerchantFeed';
-$route['contact-us'] = 'home/contactUs';
-
-{
+$route['contact-us'] = 'home/contactUs'; {
     // 1. STATİK VE NET URL'LER (Öncelikli grup, performans için en başa)
     $route["{$lang}/404"] = "homee/error404";
     $route["{$lang}/user-agreement"] = "homee/staticPages";
@@ -42,10 +41,12 @@ $route['contact-us'] = 'home/contactUs';
     $route["{$lang}/kvkk-policy"] = "homee/staticPages";
     $route["{$lang}/distance-sales-agreement"] = "homee/staticPages";
     $route["{$lang}/about-us"] = "homee/staticPages";
-    $route["{$lang}/contact"] = "homee/contactUs"; 
-    
+    $route["{$lang}/contact"] = "homee/contactUs";
+
     // $route["{$lang}/terms-conditions"] = "home/staticPages";
     $route["{$lang}/check-user"] = "categoriess/checkUser";
+    $route["{$lang}/test/search"] = "test/search";
+    $route["{$lang}/search"] = "test/search";
     // $route["{$lang}/faq"] = "home/staticPages";
     $route["{$lang}/login"] = "auth/login";
     $route["{$lang}/login/google"] = "auth/googleLogin";
@@ -74,7 +75,7 @@ $route['contact-us'] = 'home/contactUs';
     $route["{$lang}/categories"] = "categoriess/index/$2";
     // $route["{$lang}/(:any)"] = "categories/categoryDetail/$1";
     $route["{$lang}/(:any)"] = "categoriess/categoryDetail/$1";
-    $route[$lang]          = 'homee';
+    $route[$lang] = 'homee';
     $route["{$lang}/(.+)"] = '$1';
 }
 
@@ -83,6 +84,6 @@ $route['contact-us'] = 'home/contactUs';
 | 3) Standart fallback
 |--------------------------------------------------------------------------
 */
-$route['default_controller']   = 'homee';
-$route['404_override']         = 'homee/error404';
+$route['default_controller'] = 'homee';
+$route['404_override'] = 'homee/error404';
 $route['translate_uri_dashes'] = FALSE;

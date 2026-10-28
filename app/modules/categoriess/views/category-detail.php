@@ -21,17 +21,18 @@ if (!empty($category->category_requires)) {
 }
 
 if (!function_exists('format_category_seo_tables')) {
-  function format_category_seo_tables($html) {
+  function format_category_seo_tables($html)
+  {
     if (empty($html) || stripos($html, '<table') === false) {
       return $html;
     }
     // 1. Unwrap figure.table if present
-    $html = preg_replace_callback('/<figure\b[^>]*class=["\'][^"\']*table[^"\']*["\'][^>]*>\s*(<table\b.*?<\/table>)\s*<\/figure>/is', function($m) {
+    $html = preg_replace_callback('/<figure\b[^>]*class=["\'][^"\']*table[^"\']*["\'][^>]*>\s*(<table\b.*?<\/table>)\s*<\/figure>/is', function ($m) {
       return '<div class="seo-table-responsive">' . $m[1] . '</div>';
     }, $html);
 
     // 2. Wrap and ensure proper thead
-    $html = preg_replace_callback('/(<div\s+class=["\'][^"\']*seo-table-responsive[^"\']*["\'][^>]*>)?\s*(<table\b.*?<\/table>)\s*(<\/div>)?/is', function($m) {
+    $html = preg_replace_callback('/(<div\s+class=["\'][^"\']*seo-table-responsive[^"\']*["\'][^>]*>)?\s*(<table\b.*?<\/table>)\s*(<\/div>)?/is', function ($m) {
       $tableHtml = $m[2];
       if (stripos($tableHtml, '<th') === false) {
         if (preg_match('/<tr\b[^>]*>(.*?)<\/tr>/is', $tableHtml, $trMatch)) {
@@ -44,7 +45,7 @@ if (!function_exists('format_category_seo_tables')) {
           $tableHtml = preg_replace('/(<table\b[^>]*>)/i', '$1<thead>' . $headerTr . '</thead>', $tableHtml, 1);
         }
       } else {
-        $tableHtml = preg_replace_callback('/<thead\b[^>]*>(.*?)<\/thead>/is', function($theadMatch) {
+        $tableHtml = preg_replace_callback('/<thead\b[^>]*>(.*?)<\/thead>/is', function ($theadMatch) {
           return preg_replace('/<(\/?)td\b/i', '<$1th', $theadMatch[0]);
         }, $tableHtml);
       }
@@ -506,6 +507,7 @@ if (!function_exists('format_category_seo_tables')) {
   .ps-featured-passes {
     margin: 6px 0 22px;
   }
+
   .ps-pass-heading {
     display: flex;
     align-items: center;
@@ -515,6 +517,7 @@ if (!function_exists('format_category_seo_tables')) {
     font-size: 14px;
     font-weight: 600;
   }
+
   .ps-pass-heading:before {
     content: "";
     width: 3px;
@@ -522,17 +525,21 @@ if (!function_exists('format_category_seo_tables')) {
     border-radius: 3px;
     background: #ffb300;
   }
+
   .ps-pass-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
   }
+
   .ps-pass-grid.count-1 {
     grid-template-columns: minmax(280px, 460px);
   }
+
   .ps-pass-grid.count-2 {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .ps-pass-grid.count-3 {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -556,13 +563,15 @@ if (!function_exists('format_category_seo_tables')) {
     isolation: isolate;
     transition: border-color .2s, background .2s, transform .2s, box-shadow .2s;
   }
+
   .ps-big-pass:hover {
     border-color: #646b78;
     transform: translateY(-2px);
   }
+
   .ps-big-pass:focus-visible {
-    outline: 2px solid #fff1c5!important;
-    outline-offset: 4px!important;
+    outline: 2px solid #fff1c5 !important;
+    outline-offset: 4px !important;
   }
 
   /* Staggered Playsel wave on featured packages */
@@ -576,21 +585,39 @@ if (!function_exists('format_category_seo_tables')) {
     pointer-events: none;
     z-index: 0;
     opacity: 0;
-    background: linear-gradient(45deg, transparent 30%, rgba(255,184,23,.02) 36%, rgba(255,184,23,.09) 41%, rgba(255,190,35,.27) 45%, rgba(255,145,0,.2) 49%, rgba(255,145,0,.14) 54%, rgba(255,145,0,.08) 61%, rgba(255,145,0,.03) 69%, transparent 79%);
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 184, 23, .02) 36%, rgba(255, 184, 23, .09) 41%, rgba(255, 190, 35, .27) 45%, rgba(255, 145, 0, .2) 49%, rgba(255, 145, 0, .14) 54%, rgba(255, 145, 0, .08) 61%, rgba(255, 145, 0, .03) 69%, transparent 79%);
     transform: translate(60%, -60%);
     animation: playsel-elite-wave 18s linear infinite;
   }
+
   .ps-featured-passes .ps-pass-top,
   .ps-featured-passes .ps-pass-pricebar {
     position: relative;
     z-index: 1;
   }
+
   @keyframes playsel-elite-wave {
-    0% { transform: translate(60%, -60%); opacity: 0; }
-    2% { opacity: 1; }
-    35% { transform: translate(-60%, 60%); opacity: 1; }
-    39%, 100% { transform: translate(-60%, 60%); opacity: 0; }
+    0% {
+      transform: translate(60%, -60%);
+      opacity: 0;
+    }
+
+    2% {
+      opacity: 1;
+    }
+
+    35% {
+      transform: translate(-60%, 60%);
+      opacity: 1;
+    }
+
+    39%,
+    100% {
+      transform: translate(-60%, 60%);
+      opacity: 0;
+    }
   }
+
   @media (prefers-reduced-motion: reduce) {
     .ps-featured-passes .ps-big-pass::before {
       animation: none;
@@ -600,33 +627,50 @@ if (!function_exists('format_category_seo_tables')) {
 
   /* Tone styles and sequential animation delay (0s, 6s, 12s) */
   .ps-featured-passes .ps-big-pass[data-featured-tone="1"] {
-    background: radial-gradient(ellipse at 95% 0%, #3587bf25, transparent 65%), linear-gradient(125deg, #203342, #1c252f 70%)!important;
-    border-color: #52748a!important;
-  }
-  .ps-featured-passes .ps-big-pass[data-featured-tone="2"] {
-    background: radial-gradient(ellipse at 95% 0%, #39a79820, transparent 65%), linear-gradient(125deg, #203a37, #1c2b2b 70%)!important;
-    border-color: #4c8377!important;
-  }
-  .ps-featured-passes .ps-big-pass[data-featured-tone="3"] {
-    background: radial-gradient(ellipse at 95% 0%, #9a58f02b, transparent 65%), linear-gradient(125deg, #30233e, #201d2d 65%, #1d202b)!important;
-    border-color: #a77ae0!important;
+    background: radial-gradient(ellipse at 95% 0%, #3587bf25, transparent 65%), linear-gradient(125deg, #203342, #1c252f 70%) !important;
+    border-color: #52748a !important;
   }
 
-  .ps-featured-passes .ps-big-pass[data-featured-tone="1"]::before { animation-delay: 0s; }
-  .ps-featured-passes .ps-big-pass[data-featured-tone="2"]::before { animation-delay: 6s; }
-  .ps-featured-passes .ps-big-pass[data-featured-tone="3"]::before { animation-delay: 12s; }
+  .ps-featured-passes .ps-big-pass[data-featured-tone="2"] {
+    background: radial-gradient(ellipse at 95% 0%, #39a79820, transparent 65%), linear-gradient(125deg, #203a37, #1c2b2b 70%) !important;
+    border-color: #4c8377 !important;
+  }
+
+  .ps-featured-passes .ps-big-pass[data-featured-tone="3"] {
+    background: radial-gradient(ellipse at 95% 0%, #9a58f02b, transparent 65%), linear-gradient(125deg, #30233e, #201d2d 65%, #1d202b) !important;
+    border-color: #a77ae0 !important;
+  }
+
+  .ps-featured-passes .ps-big-pass[data-featured-tone="1"]::before {
+    animation-delay: 0s;
+  }
+
+  .ps-featured-passes .ps-big-pass[data-featured-tone="2"]::before {
+    animation-delay: 6s;
+  }
+
+  .ps-featured-passes .ps-big-pass[data-featured-tone="3"]::before {
+    animation-delay: 12s;
+  }
 
   /* Editorial highlight for recommendation package */
   .ps-featured-passes .ps-big-pass.ps-highlight-package {
-    background: radial-gradient(ellipse at 95% 0%, #9a58f02b, transparent 65%), linear-gradient(125deg, #30233e, #201d2d 65%, #1d202b)!important;
-    border-color: #a77ae0!important;
-    box-shadow: 0 0 0 1px #ba8cff12, inset 0 1px 0 #e0bdff10, 0 5px 22px #9448db18!important;
+    background: radial-gradient(ellipse at 95% 0%, #9a58f02b, transparent 65%), linear-gradient(125deg, #30233e, #201d2d 65%, #1d202b) !important;
+    border-color: #a77ae0 !important;
+    box-shadow: 0 0 0 1px #ba8cff12, inset 0 1px 0 #e0bdff10, 0 5px 22px #9448db18 !important;
   }
-  .ps-featured-passes .ps-highlight-package .ps-pass-copy strong { color: #f6efff!important; }
-  .ps-featured-passes .ps-highlight-package .ps-pass-copy small { color: #c5b8d6!important; }
+
+  .ps-featured-passes .ps-highlight-package .ps-pass-copy strong {
+    color: #f6efff !important;
+  }
+
+  .ps-featured-passes .ps-highlight-package .ps-pass-copy small {
+    color: #c5b8d6 !important;
+  }
+
   .ps-featured-passes .ps-big-pass.ps-highlight-package:hover {
-    border-color: #d4aaff!important;
-    box-shadow: 0 0 0 1px #cda7ff20, 0 5px 24px #9448db25!important;
+    border-color: #d4aaff !important;
+    box-shadow: 0 0 0 1px #cda7ff20, 0 5px 24px #9448db25 !important;
   }
 
   /* High-contrast recommendation badge */
@@ -635,15 +679,15 @@ if (!function_exists('format_category_seo_tables')) {
     align-items: center;
     gap: 5px;
     width: fit-content;
-    color: #241800!important;
-    background: linear-gradient(110deg, #ffdc70, #ffb719 65%, #ff9b00)!important;
-    border: 1px solid #ffe29a!important;
-    border-radius: 6px!important;
-    padding: 4px 8px!important;
-    margin-bottom: 7px!important;
-    font: 700 11px/1.3 "Segoe UI", Arial, sans-serif!important;
-    box-shadow: 0 3px 12px #ffb71926!important;
-    letter-spacing: 0!important;
+    color: #241800 !important;
+    background: linear-gradient(110deg, #ffdc70, #ffb719 65%, #ff9b00) !important;
+    border: 1px solid #ffe29a !important;
+    border-radius: 6px !important;
+    padding: 4px 8px !important;
+    margin-bottom: 7px !important;
+    font: 700 11px/1.3 "Segoe UI", Arial, sans-serif !important;
+    box-shadow: 0 3px 12px #ffb71926 !important;
+    letter-spacing: 0 !important;
     white-space: normal;
     max-width: 100%;
     box-sizing: border-box;
@@ -656,8 +700,9 @@ if (!function_exists('format_category_seo_tables')) {
     gap: 14px;
     align-items: center;
     min-height: 70px;
-    padding-right: 30px!important;
+    padding-right: 30px !important;
   }
+
   .ps-pass-image {
     width: 64px;
     height: 64px;
@@ -666,22 +711,25 @@ if (!function_exists('format_category_seo_tables')) {
     filter: drop-shadow(0 5px 9px rgba(0, 0, 0, 0.35));
     transition: filter .2s;
   }
+
   .ps-pass-copy {
     flex: 1;
     min-width: 0;
   }
+
   .ps-pass-copy strong {
     font-size: 16px;
     font-weight: 700;
     display: block;
     line-height: 1.35;
     margin: 0 0 4px;
-    color: #f4f5fa!important;
+    color: #f4f5fa !important;
   }
+
   .ps-pass-copy small {
     font-size: 11px;
     line-height: 1.45;
-    color: #aeb4c4!important;
+    color: #aeb4c4 !important;
     display: block;
   }
 
@@ -698,54 +746,62 @@ if (!function_exists('format_category_seo_tables')) {
     width: 100%;
     box-sizing: border-box;
   }
+
   .ps-pass-price-group {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 4px;
   }
+
   .ps-pass-price-row {
     display: flex;
     align-items: baseline;
     gap: 8px;
   }
+
   .ps-pass-price {
-    font-size: 20px!important;
+    font-size: 20px !important;
     letter-spacing: -.5px;
     color: #ffb300;
     font-weight: 700;
     line-height: 1.2;
   }
+
   .ps-pass-old {
     font-size: 11px;
     text-decoration: line-through;
     color: #838b9d;
   }
+
   .ps-pass-discount {
     font-size: 11px;
-    background: rgba(53, 164, 119, 0.12)!important;
-    color: #79d2ad!important;
-    border: 1px solid rgba(103, 200, 160, 0.25)!important;
-    border-radius: 4px!important;
-    padding: 2px 7px!important;
-    font-weight: 600!important;
-    display: inline-flex!important;
-    align-items: center!important;
-    justify-content: center!important;
-    line-height: 1.3!important;
+    background: rgba(53, 164, 119, 0.12) !important;
+    color: #79d2ad !important;
+    border: 1px solid rgba(103, 200, 160, 0.25) !important;
+    border-radius: 4px !important;
+    padding: 2px 7px !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1.3 !important;
   }
 
   /* Selection state */
   .ps-featured-passes .ps-big-pass[aria-pressed="true"] {
-    border-color: #ffd05b!important;
-    box-shadow: inset 0 0 0 1px #ffd05b, 0 0 0 2px rgba(255, 192, 43, 0.15), 0 5px 22px rgba(255, 174, 0, 0.12)!important;
+    border-color: #ffd05b !important;
+    box-shadow: inset 0 0 0 1px #ffd05b, 0 0 0 2px rgba(255, 192, 43, 0.15), 0 5px 22px rgba(255, 174, 0, 0.12) !important;
   }
+
   .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-pass-copy strong {
-    color: #ffca56!important;
+    color: #ffca56 !important;
   }
+
   .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-pass-image {
     filter: drop-shadow(0 3px 9px rgba(255, 192, 43, 0.35));
   }
+
   .ps-big-pass[disabled] {
     opacity: .45;
     cursor: not-allowed;
@@ -771,51 +827,58 @@ if (!function_exists('format_category_seo_tables')) {
     box-shadow: inset 0 1px 0 rgba(255, 228, 165, 0.1), 0 2px 8px rgba(255, 157, 0, 0.08);
     transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
   }
+
   .ps-featured-passes .ps-big-pass .ps-featured-flash svg {
     width: 15px;
     height: 15px;
     fill: currentColor;
     filter: drop-shadow(0 0 3px rgba(255, 154, 0, 0.25));
   }
+
   .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-featured-flash {
-    background: linear-gradient(135deg, #ffdb71, #ffb719)!important;
-    border-color: #ffe6a6!important;
-    color: #2b1d00!important;
-    box-shadow: 0 0 0 3px rgba(255, 189, 36, 0.15), 0 3px 12px rgba(255, 183, 25, 0.2)!important;
+    background: linear-gradient(135deg, #ffdb71, #ffb719) !important;
+    border-color: #ffe6a6 !important;
+    color: #2b1d00 !important;
+    box-shadow: 0 0 0 3px rgba(255, 189, 36, 0.15), 0 3px 12px rgba(255, 183, 25, 0.2) !important;
   }
+
   .ps-featured-passes .ps-big-pass[aria-pressed="true"] .ps-featured-flash svg {
-    filter: none!important;
+    filter: none !important;
   }
 
   /* Products grid layout (Desktop 3 Columns) */
   #products-grid.products-grid {
-    display: grid!important;
-    grid-template-columns: repeat(3, 1fr)!important;
-    gap: 14px!important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 14px !important;
   }
+
   #products-grid .product-item {
-    display: flex!important;
-    align-items: center!important;
-    justify-content: space-between!important;
-    padding: 16px 18px!important;
-    border-radius: 12px!important;
-    background: #191c25!important;
-    border: 1px solid rgba(255, 255, 255, 0.06)!important;
-    position: relative!important;
-    min-height: 96px!important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 18px !important;
+    border-radius: 12px !important;
+    background: #191c25 !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    position: relative !important;
+    min-height: 96px !important;
     cursor: pointer;
     transition: all 0.25s ease;
     box-sizing: border-box;
   }
+
   #products-grid .product-item:hover {
-    border-color: rgba(255, 255, 255, 0.15)!important;
-    background: #1d212c!important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    background: #1d212c !important;
     transform: translateY(-2px);
   }
+
   #products-grid .product-item.selected {
-    border-color: #ffd05b!important;
-    box-shadow: 0 0 0 1px #ffd05b, 0 4px 20px rgba(255, 200, 0, 0.1)!important;
+    border-color: #ffd05b !important;
+    box-shadow: 0 0 0 1px #ffd05b, 0 4px 20px rgba(255, 200, 0, 0.1) !important;
   }
+
   #products-grid .product-item.product-out-of-stock {
     opacity: .55;
     cursor: not-allowed;
@@ -831,6 +894,7 @@ if (!function_exists('format_category_seo_tables')) {
     padding-right: 12px;
     box-sizing: border-box;
   }
+
   #products-grid .product-item-icon {
     width: 52px;
     height: 52px;
@@ -843,11 +907,13 @@ if (!function_exists('format_category_seo_tables')) {
     justify-content: center;
     overflow: hidden;
   }
+
   #products-grid .product-item-icon img {
     width: 100%;
     height: 100%;
     object-fit: contain;
   }
+
   #products-grid .product-item-info {
     display: flex;
     flex-direction: column;
@@ -855,14 +921,16 @@ if (!function_exists('format_category_seo_tables')) {
     min-width: 0;
     text-align: left;
   }
+
   #products-grid .product-item-name {
-    font-size: 15px!important;
-    font-weight: 700!important;
-    color: #f4f5fa!important;
-    line-height: 1.35!important;
-    margin: 0!important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: #f4f5fa !important;
+    line-height: 1.35 !important;
+    margin: 0 !important;
     display: block;
   }
+
   #products-grid .product-item-short-desc {
     font-size: 11px;
     color: #9299a9;
@@ -885,34 +953,38 @@ if (!function_exists('format_category_seo_tables')) {
     gap: 6px;
     flex-shrink: 0;
   }
+
   #products-grid .product-item-side-top {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 6px;
   }
+
   #products-grid .product-item-badge-wrap {
     display: flex;
     align-items: center;
   }
+
   #products-grid .product-discount-badge {
-    position: static!important;
-    display: inline-flex!important;
+    position: static !important;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    background: rgba(53, 164, 119, 0.12)!important;
-    color: #79d2ad!important;
-    border: 1px solid rgba(103, 200, 160, 0.25)!important;
-    border-radius: 4px!important;
-    padding: 2px 7px!important;
-    font-size: 11px!important;
-    font-weight: 600!important;
-    line-height: 1.3!important;
-    letter-spacing: 0!important;
-    box-shadow: none!important;
-    white-space: nowrap!important;
-    margin: 0!important;
+    background: rgba(53, 164, 119, 0.12) !important;
+    color: #79d2ad !important;
+    border: 1px solid rgba(103, 200, 160, 0.25) !important;
+    border-radius: 4px !important;
+    padding: 2px 7px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1.3 !important;
+    letter-spacing: 0 !important;
+    box-shadow: none !important;
+    white-space: nowrap !important;
+    margin: 0 !important;
   }
+
   #products-grid .ps-product-flash {
     position: static;
     display: flex;
@@ -929,22 +1001,26 @@ if (!function_exists('format_category_seo_tables')) {
     transition: background .18s ease, color .18s ease, box-shadow .18s ease;
     flex-shrink: 0;
   }
+
   #products-grid .ps-product-flash svg {
     width: 13px;
     height: 13px;
     fill: currentColor;
   }
+
   #products-grid .product-item.selected .ps-product-flash {
     background: #ffca56;
     border-color: #ffe6a6;
     color: #2b1d00;
     box-shadow: 0 0 0 2px rgba(255, 189, 36, 0.12);
   }
+
   #products-grid .product-item.product-out-of-stock .ps-product-flash {
     color: #78818e;
     border-color: rgba(98, 106, 117, 0.25);
     background: rgba(255, 255, 255, 0.02);
   }
+
   #products-grid .product-item-prices {
     display: flex;
     align-items: baseline;
@@ -952,8 +1028,9 @@ if (!function_exists('format_category_seo_tables')) {
     gap: 6px;
     margin: 0;
   }
+
   #products-grid .product-item-price {
-    font-size: 17px!important;
+    font-size: 17px !important;
     font-weight: 700;
     color: #ffb300;
     line-height: 1.2;
@@ -961,6 +1038,7 @@ if (!function_exists('format_category_seo_tables')) {
     margin: 0;
     order: 1;
   }
+
   #products-grid .product-item-old-price {
     font-size: 11px;
     color: #7d8596;
@@ -980,6 +1058,7 @@ if (!function_exists('format_category_seo_tables')) {
     color: #8f96a7;
     margin: 26px 0 16px;
   }
+
   .ps-pass-divider:after {
     content: "";
     height: 1px;
@@ -989,128 +1068,147 @@ if (!function_exists('format_category_seo_tables')) {
 
   /* Mobile responsive styles (Görsel 1, 2, 3 ve 4) */
   @media (max-width: 850px) {
+
     /* --- Öne Çıkan Paketler Mobil Düzeni (Görsel 1, 2, 3) --- */
     .ps-pass-grid.count-1 {
-      grid-template-columns: 1fr!important;
-      max-width: 100%!important;
+      grid-template-columns: 1fr !important;
+      max-width: 100% !important;
     }
+
     .ps-pass-grid.count-2 {
-      grid-template-columns: repeat(2, 1fr)!important;
-      gap: 10px!important;
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 10px !important;
     }
+
     .ps-pass-grid.count-3 {
-      grid-template-columns: repeat(2, 1fr)!important;
-      gap: 10px!important;
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 10px !important;
     }
-    .ps-pass-grid.count-3 > :nth-child(3) {
-      grid-column: 1 / -1!important;
+
+    .ps-pass-grid.count-3> :nth-child(3) {
+      grid-column: 1 / -1 !important;
     }
 
     /* Görsel 1 & 2: Üst satırdaki 2 kart dikey düzen */
     .ps-pass-grid.count-2 .ps-pass-top,
-    .ps-pass-grid.count-3 > :nth-child(1) .ps-pass-top,
-    .ps-pass-grid.count-3 > :nth-child(2) .ps-pass-top {
-      flex-direction: column!important;
-      align-items: flex-start!important;
-      gap: 12px!important;
+    .ps-pass-grid.count-3> :nth-child(1) .ps-pass-top,
+    .ps-pass-grid.count-3> :nth-child(2) .ps-pass-top {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
     }
+
     .ps-pass-grid.count-2 .ps-pass-image,
-    .ps-pass-grid.count-3 > :nth-child(1) .ps-pass-image,
-    .ps-pass-grid.count-3 > :nth-child(2) .ps-pass-image {
-      width: 60px!important;
-      height: 60px!important;
+    .ps-pass-grid.count-3> :nth-child(1) .ps-pass-image,
+    .ps-pass-grid.count-3> :nth-child(2) .ps-pass-image {
+      width: 60px !important;
+      height: 60px !important;
     }
 
     /* Görsel 1 (3. kart) & Görsel 3 (1 kart): Tam genişliktekiler yatay düzen */
     .ps-pass-grid.count-1 .ps-pass-top,
-    .ps-pass-grid.count-3 > :nth-child(3) .ps-pass-top {
-      flex-direction: row!important;
-      align-items: center!important;
-      gap: 14px!important;
+    .ps-pass-grid.count-3> :nth-child(3) .ps-pass-top {
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 14px !important;
     }
+
     .ps-pass-grid.count-1 .ps-pass-image,
-    .ps-pass-grid.count-3 > :nth-child(3) .ps-pass-image {
-      width: 64px!important;
-      height: 64px!important;
+    .ps-pass-grid.count-3> :nth-child(3) .ps-pass-image {
+      width: 64px !important;
+      height: 64px !important;
     }
 
     /* --- Tüm Ürünler Mobil Düzeni (Görsel 2) --- */
     #products-grid.products-grid {
-      grid-template-columns: repeat(2, 1fr)!important;
-      gap: 12px!important;
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 12px !important;
     }
+
     #products-grid .product-item {
-      flex-direction: column!important;
-      align-items: stretch!important;
-      justify-content: flex-start!important;
-      padding: 16px 16px 14px!important;
-      min-height: 165px!important;
-      position: relative!important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      padding: 16px 16px 14px !important;
+      min-height: 165px !important;
+      position: relative !important;
     }
+
     #products-grid .product-item-main {
-      align-items: flex-start!important;
-      padding-right: 32px!important;
-      gap: 10px!important;
+      align-items: flex-start !important;
+      padding-right: 32px !important;
+      gap: 10px !important;
     }
+
     #products-grid .product-item-icon {
-      width: 48px!important;
-      height: 48px!important;
+      width: 48px !important;
+      height: 48px !important;
     }
+
     #products-grid .product-item-side {
-      display: flex!important;
-      flex-direction: row!important;
-      align-items: flex-end!important;
-      justify-content: space-between!important;
-      width: 100%!important;
-      margin-top: auto!important;
-      padding-top: 16px!important;
-      margin-bottom: 12px!important;
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: flex-end !important;
+      justify-content: space-between !important;
+      width: 100% !important;
+      margin-top: auto !important;
+      padding-top: 16px !important;
+      margin-bottom: 12px !important;
     }
+
     #products-grid .product-item-side-top {
-      display: flex!important;
-      align-items: center!important;
+      display: flex !important;
+      align-items: center !important;
     }
+
     #products-grid .product-item-badge-wrap {
-      display: flex!important;
-      align-items: center!important;
+      display: flex !important;
+      align-items: center !important;
     }
+
     #products-grid .ps-product-flash {
-      position: absolute!important;
-      top: 14px!important;
-      right: 14px!important;
-      z-index: 3!important;
+      position: absolute !important;
+      top: 14px !important;
+      right: 14px !important;
+      z-index: 3 !important;
     }
+
     #products-grid .product-item-prices {
-      flex-direction: column!important;
-      align-items: flex-end!important;
-      gap: 2px!important;
-      margin-left: auto!important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 2px !important;
+      margin-left: auto !important;
     }
+
     #products-grid .product-item-old-price {
-      order: 1!important;
+      order: 1 !important;
     }
+
     #products-grid .product-item-price {
-      order: 2!important;
+      order: 2 !important;
     }
+
     #products-grid .product-item-divider {
-      display: block!important;
-      width: 100%!important;
-      height: 1px!important;
-      background: rgba(255, 255, 255, 0.08)!important;
-      margin: 0!important;
+      display: block !important;
+      width: 100% !important;
+      height: 1px !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+      margin: 0 !important;
     }
   }
 
   @media (max-width: 480px) {
     #products-grid.products-grid {
-      gap: 8px!important;
+      gap: 8px !important;
     }
+
     #products-grid .product-item {
-      padding: 12px!important;
+      padding: 12px !important;
     }
+
     .ps-pass-grid.count-2,
     .ps-pass-grid.count-3 {
-      gap: 8px!important;
+      gap: 8px !important;
     }
   }
 
@@ -1122,6 +1220,7 @@ if (!function_exists('format_category_seo_tables')) {
     position: relative;
     overflow: hidden;
   }
+
   .cd-payment-card-static::before {
     content: '';
     position: absolute;
@@ -1133,6 +1232,7 @@ if (!function_exists('format_category_seo_tables')) {
     border-radius: 50%;
     pointer-events: none;
   }
+
   .cd-payment-card-static .cd-payment-total {
     display: flex;
     justify-content: space-between;
@@ -1144,9 +1244,20 @@ if (!function_exists('format_category_seo_tables')) {
     margin-bottom: 18px;
     flex-direction: row;
   }
-  .cd-payment-card-static .cd-payment-total .total-label { font-size: 15px; }
-  .cd-payment-card-static .cd-payment-total .total-value { font-size: 22px; }
-  .cd-payment-card-static .cd-btn-pay { width: 100%; padding: 16px; font-size: 16px; }
+
+  .cd-payment-card-static .cd-payment-total .total-label {
+    font-size: 15px;
+  }
+
+  .cd-payment-card-static .cd-payment-total .total-value {
+    font-size: 22px;
+  }
+
+  .cd-payment-card-static .cd-btn-pay {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+  }
 
   .cd-login-card-static {
     background: rgba(255, 255, 255, 0.02);
@@ -1159,9 +1270,25 @@ if (!function_exists('format_category_seo_tables')) {
     align-items: center;
     gap: 14px;
   }
-  .cd-login-card-static h3 { font-size: 18px; margin: 0; }
-  .cd-login-card-static p { font-size: 14px; color: rgba(255,255,255,0.6); display: block; margin: 0; }
-  .cd-login-card-static .cd-btn-login { width: 100%; max-width: 200px; padding: 14px; font-size: 15px; }
+
+  .cd-login-card-static h3 {
+    font-size: 18px;
+    margin: 0;
+  }
+
+  .cd-login-card-static p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    display: block;
+    margin: 0;
+  }
+
+  .cd-login-card-static .cd-btn-login {
+    width: 100%;
+    max-width: 200px;
+    padding: 14px;
+    font-size: 15px;
+  }
 
   /* --- Fixed Payment Section --- */
   .payment-section-fixed {
@@ -1276,7 +1403,8 @@ if (!function_exists('format_category_seo_tables')) {
   }
 
   .cd-login-card .cd-login-icon {
-    display: none; /* Hide icon on horizontal bar to save space */
+    display: none;
+    /* Hide icon on horizontal bar to save space */
   }
 
   .cd-login-card h3 {
@@ -1288,9 +1416,10 @@ if (!function_exists('format_category_seo_tables')) {
     margin: 0;
     font-size: 12px;
     text-align: left;
-    display: none; /* Hide text on mobile, maybe show on desktop via media query */
+    display: none;
+    /* Hide text on mobile, maybe show on desktop via media query */
   }
-  
+
   @media (min-width: 768px) {
     .cd-login-card p {
       display: block;
@@ -1577,6 +1706,7 @@ if (!function_exists('format_category_seo_tables')) {
   }
 
   @media (max-width: 768px) {
+
     .seo-table-responsive thead th,
     .seo-table-responsive tr:first-child th,
     .seo-table-responsive th,
@@ -1971,19 +2101,23 @@ if (!function_exists('format_category_seo_tables')) {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     animation: cdFadeIn 0.35s ease;
   }
+
   .mlbb-account-card.state-checking {
     background: rgba(255, 183, 25, 0.08);
     border-color: rgba(255, 183, 25, 0.35);
   }
+
   .mlbb-account-card.state-checking .mlbb-account-icon {
     color: #ffb719;
     font-size: 22px;
   }
+
   .mlbb-account-card.state-checking .mlbb-account-title {
     color: #ffc233;
     font-weight: 600;
     font-size: 14.5px;
   }
+
   .mlbb-account-card.state-checking .mlbb-account-desc {
     color: #aeb9cd;
     font-size: 12px;
@@ -1995,10 +2129,12 @@ if (!function_exists('format_category_seo_tables')) {
     border-color: rgba(80, 205, 137, 0.45);
     box-shadow: 0 4px 20px rgba(80, 205, 137, 0.15);
   }
+
   .mlbb-account-card.state-ready .mlbb-account-icon {
     color: #50cd89;
     font-size: 24px;
   }
+
   .mlbb-account-card.state-ready .mlbb-account-title {
     color: #50cd89;
     font-weight: 700;
@@ -2007,6 +2143,7 @@ if (!function_exists('format_category_seo_tables')) {
     align-items: center;
     gap: 8px;
   }
+
   .mlbb-account-card.state-ready .mlbb-account-desc {
     color: #d1d5db;
     font-size: 12.5px;
@@ -2018,15 +2155,18 @@ if (!function_exists('format_category_seo_tables')) {
     border-color: rgba(241, 65, 108, 0.45);
     box-shadow: 0 4px 20px rgba(241, 65, 108, 0.12);
   }
+
   .mlbb-account-card.state-error .mlbb-account-icon {
     color: #f1416c;
     font-size: 22px;
   }
+
   .mlbb-account-card.state-error .mlbb-account-title {
     color: #f1416c;
     font-weight: 600;
     font-size: 14.5px;
   }
+
   .mlbb-account-card.state-error .mlbb-account-desc {
     color: #ff9fb2;
     font-size: 12px;
@@ -2037,6 +2177,7 @@ if (!function_exists('format_category_seo_tables')) {
     flex: 1;
     min-width: 0;
   }
+
   .mlbb-account-recheck {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2051,6 +2192,7 @@ if (!function_exists('format_category_seo_tables')) {
     transition: all 0.25s ease;
     flex-shrink: 0;
   }
+
   .mlbb-account-recheck:hover {
     background: rgba(255, 255, 255, 0.18);
     color: #fff;
@@ -2065,15 +2207,26 @@ if (!function_exists('format_category_seo_tables')) {
     border-color: #ff9500 !important;
     animation: mlbbFieldPulse 1.4s ease-in-out infinite;
   }
+
   @keyframes mlbbFieldPulse {
-    0%, 100% { outline-color: #ff9500; box-shadow: 0 0 16px rgba(255, 149, 0, 0.5); }
-    50% { outline-color: #ff5c16; box-shadow: 0 0 24px rgba(255, 92, 22, 0.7); }
+
+    0%,
+    100% {
+      outline-color: #ff9500;
+      box-shadow: 0 0 16px rgba(255, 149, 0, 0.5);
+    }
+
+    50% {
+      outline-color: #ff5c16;
+      box-shadow: 0 0 24px rgba(255, 92, 22, 0.7);
+    }
   }
 
   .id-field[aria-invalid="true"] {
     border-color: #f1416c !important;
     box-shadow: 0 0 10px rgba(241, 65, 108, 0.25) !important;
   }
+
   .id-field.is-verified {
     border-color: #50cd89 !important;
   }
@@ -2084,10 +2237,12 @@ if (!function_exists('format_category_seo_tables')) {
     color: #111 !important;
     box-shadow: 0 4px 18px rgba(245, 158, 11, 0.3) !important;
   }
+
   .btn-submit-order-class.is-need-id:hover {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
     box-shadow: 0 8px 26px rgba(245, 158, 11, 0.45) !important;
   }
+
   .btn-submit-order-class.is-error {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
     color: #fff !important;
@@ -2106,7 +2261,9 @@ if (!function_exists('format_category_seo_tables')) {
                 alt="<?= htmlspecialchars($category->category_title) ?>">
             </div>
             <div class="product-info-title-row">
-              <h1 class="product-info-title"><?= htmlspecialchars(!empty($h1_tag) ? $h1_tag : $category->category_title) ?></h1>
+              <h1 class="product-info-title">
+                <?= htmlspecialchars(!empty($h1_tag) ? $h1_tag : $category->category_title) ?>
+              </h1>
             </div>
             <p class="product-info-desc" id="product-desc-text"><?= html_escape($description) ?></p>
 
@@ -2124,8 +2281,8 @@ if (!function_exists('format_category_seo_tables')) {
               </div>
 
               <?php
-              $androidUrl = trim((string)($category->category_android_app_url ?? ''));
-              $iosUrl = trim((string)($category->category_ios_app_url ?? ''));
+              $androidUrl = trim((string) ($category->category_android_app_url ?? ''));
+              $iosUrl = trim((string) ($category->category_ios_app_url ?? ''));
               $hasAndroid = !empty($androidUrl) && $androidUrl !== '0';
               $hasIos = !empty($iosUrl) && $iosUrl !== '0';
               ?>
@@ -2133,7 +2290,8 @@ if (!function_exists('format_category_seo_tables')) {
                 <div class="store-badges">
                   <?php if ($hasAndroid): ?>
                     <?php $androidHref = (!preg_match('~^https?://~i', $androidUrl)) ? 'https://' . $androidUrl : $androidUrl; ?>
-                    <a href="<?= html_escape($androidHref) ?>" target="_blank" rel="noopener noreferrer" class="store-badge">
+                    <a href="<?= html_escape($androidHref) ?>" target="_blank" rel="noopener noreferrer"
+                      class="store-badge">
                       <img src="<?= getenv('CDN_URL') ?>uploads/cdn-gallery/general/googleplay.webp" alt="Google Play"
                         class="store-icon">
                     </a>
@@ -2161,20 +2319,20 @@ if (!function_exists('format_category_seo_tables')) {
 
               <?php foreach ($subCategories as $subCat): ?>
                 <?php
-                  $subTitle = $subCat->category_title;
-                  $mobileTitle = $subTitle;
+                $subTitle = $subCat->category_title;
+                $mobileTitle = $subTitle;
 
-                  if ((int)($category->category_id ?? 0) === 13) {
-                    if (stripos($subCat->category_slug, 'ilk-yukleme') !== false || stripos($subTitle, 'İlk Yükleme') !== false || stripos($subTitle, 'Ilk Yukleme') !== false) {
-                      $mobileTitle = 'İlk Yükleme';
-                    } elseif (stripos($subCat->category_slug, 'global') !== false || stripos($subTitle, 'Global') !== false) {
-                      $mobileTitle = 'Global';
-                    } elseif (stripos($subCat->category_slug, 'elmas') !== false || stripos($subTitle, 'Elmas') !== false) {
-                      $mobileTitle = 'Elmas';
-                    } else {
-                      $mobileTitle = trim(preg_replace('/^(Mobile\s+Legends(:?\s*Bang\s*Bang)?|MLBB)\s*[-:]?\s*/iu', '', $subTitle));
-                    }
+                if ((int) ($category->category_id ?? 0) === 13) {
+                  if (stripos($subCat->category_slug, 'ilk-yukleme') !== false || stripos($subTitle, 'İlk Yükleme') !== false || stripos($subTitle, 'Ilk Yukleme') !== false) {
+                    $mobileTitle = 'İlk Yükleme';
+                  } elseif (stripos($subCat->category_slug, 'global') !== false || stripos($subTitle, 'Global') !== false) {
+                    $mobileTitle = 'Global';
+                  } elseif (stripos($subCat->category_slug, 'elmas') !== false || stripos($subTitle, 'Elmas') !== false) {
+                    $mobileTitle = 'Elmas';
+                  } else {
+                    $mobileTitle = trim(preg_replace('/^(Mobile\s+Legends(:?\s*Bang\s*Bang)?|MLBB)\s*[-:]?\s*/iu', '', $subTitle));
                   }
+                }
                 ?>
                 <a href="<?= html_escape(topupcenter() . $uri . '/' . $subCat->category_slug) ?>"
                   class="sub-cat-card <?= ($activeSubCatId == $subCat->category_id) ? 'active' : '' ?>">
@@ -2195,13 +2353,13 @@ if (!function_exists('format_category_seo_tables')) {
 
         <?php if (!empty($category->category_requires)): ?>
           <?php
-            $hasServerReq = false;
-            foreach ($category->category_requires as $r) {
-              if (($r->inputName ?? '') === 'server_id') {
-                $hasServerReq = true;
-                break;
-              }
+          $hasServerReq = false;
+          foreach ($category->category_requires as $r) {
+            if (($r->inputName ?? '') === 'server_id') {
+              $hasServerReq = true;
+              break;
             }
+          }
           ?>
           <section class="id-input-section cd-enhanced cd-fade-in" id="id-input-section">
             <div class="id-input-header">
@@ -2215,9 +2373,9 @@ if (!function_exists('format_category_seo_tables')) {
                 <?php if (($req->inputName ?? '') === 'server_id' && !empty($category->servers))
                   continue; ?>
                 <?php
-                  $reqName = $req->inputName ?? '';
-                  $fieldLabel = ($reqName === 'user_id') ? 'Oyuncu ID' : (($reqName === 'server_id') ? 'Sunucu ID' : ($req->inputPlaceholder ?? $reqName));
-                  $fieldPlaceholder = $req->inputPlaceholder ?? '';
+                $reqName = $req->inputName ?? '';
+                $fieldLabel = ($reqName === 'user_id') ? 'Oyuncu ID' : (($reqName === 'server_id') ? 'Sunucu ID' : ($req->inputPlaceholder ?? $reqName));
+                $fieldPlaceholder = $req->inputPlaceholder ?? '';
                 ?>
                 <div class="id-input-group <?= $reqName ? 'id-group-' . htmlspecialchars($reqName) : '' ?>">
                   <div class="id-input-label-row">
@@ -2225,27 +2383,24 @@ if (!function_exists('format_category_seo_tables')) {
                       <?= htmlspecialchars($fieldLabel) ?>
                     </label>
                     <?php if (($req->inputName ?? '') === 'user_id' && !empty($uniqueUserIds)): ?>
-                      <span class="last-used-ids-trigger"
-                        data-bs-toggle="modal" data-bs-target="#idModal">
+                      <span class="last-used-ids-trigger" data-bs-toggle="modal" data-bs-target="#idModal">
                         <i class="fa-solid fa-clock-rotate-left"></i> Son kullanılan ID'ler
                       </span>
                     <?php endif; ?>
                   </div>
                   <?php
-                    $isNumber = ($req->inputType ?? '') === 'number';
-                    $inputRealType = $isNumber ? 'text' : htmlspecialchars($req->inputType ?? 'text');
-                    $inputMode = $isNumber ? 'inputmode="numeric"' : '';
-                    $pattern = !empty($req->inputPattern) ? $req->inputPattern : ($isNumber ? '[0-9]*' : '');
+                  $isNumber = ($req->inputType ?? '') === 'number';
+                  $inputRealType = $isNumber ? 'text' : htmlspecialchars($req->inputType ?? 'text');
+                  $inputMode = $isNumber ? 'inputmode="numeric"' : '';
+                  $pattern = !empty($req->inputPattern) ? $req->inputPattern : ($isNumber ? '[0-9]*' : '');
                   ?>
-                  <input type="<?= $inputRealType ?>"
-                    name="<?= htmlspecialchars($req->inputName) ?>" id="<?= htmlspecialchars($req->inputName) ?>"
-                    class="id-field player-field" placeholder="<?= htmlspecialchars($fieldPlaceholder) ?>"
-                    <?= $inputMode ?>
+                  <input type="<?= $inputRealType ?>" name="<?= htmlspecialchars($req->inputName) ?>"
+                    id="<?= htmlspecialchars($req->inputName) ?>" class="id-field player-field"
+                    placeholder="<?= htmlspecialchars($fieldPlaceholder) ?>" <?= $inputMode ?>
                     <?= !empty($req->inputMaxLength) ? 'maxlength="' . (int) $req->inputMaxLength . '"' : '' ?>
                     <?= !empty($req->inputMinLength) ? 'minlength="' . (int) $req->inputMinLength . '"' : '' ?>
                     <?= !empty($pattern) ? 'pattern="' . htmlspecialchars($pattern) . '"' : '' ?>
-                    <?= !empty($req->inputPatternError) ? 'title="' . htmlspecialchars($req->inputPatternError) . '"' : ($isNumber ? 'title="Sadece rakam girebilirsiniz."' : '') ?>
-                    <?= !empty($req->inputRequired) ? 'required' : '' ?>>
+                    <?= !empty($req->inputPatternError) ? 'title="' . htmlspecialchars($req->inputPatternError) . '"' : ($isNumber ? 'title="Sadece rakam girebilirsiniz."' : '') ?>     <?= !empty($req->inputRequired) ? 'required' : '' ?>>
                 </div>
               <?php endforeach; ?>
 
@@ -2298,43 +2453,43 @@ if (!function_exists('format_category_seo_tables')) {
             </div>
             <h2 class="section-label">Ürün Seçin</h2>
           </div>
-            <?php
-            $displayProducts = [];
-            // If subcategories exist, filter by the active one.
-            if (!empty($subCategories)) {
-              if (isset($groupedProducts[$activeSubCatId])) {
-                $displayProducts = $groupedProducts[$activeSubCatId];
-              }
-            } else {
-              // Fallback for parent categories that have no subcategories
-              if (isset($groupedProducts[0])) {
-                $displayProducts = $groupedProducts[0];
-              } elseif (isset($groupedProducts[$activeSubCatId])) {
-                $displayProducts = $groupedProducts[$activeSubCatId];
+          <?php
+          $displayProducts = [];
+          // If subcategories exist, filter by the active one.
+          if (!empty($subCategories)) {
+            if (isset($groupedProducts[$activeSubCatId])) {
+              $displayProducts = $groupedProducts[$activeSubCatId];
+            }
+          } else {
+            // Fallback for parent categories that have no subcategories
+            if (isset($groupedProducts[0])) {
+              $displayProducts = $groupedProducts[0];
+            } elseif (isset($groupedProducts[$activeSubCatId])) {
+              $displayProducts = $groupedProducts[$activeSubCatId];
+            }
+          }
+          $displayCurrency = displayCurrency($currentLocale->locale_currency ?? 'TRY');
+          $featuredProducts = [];
+          if (!empty($displayProducts)) {
+            foreach ($displayProducts as $p) {
+              if (!empty($p->product_is_featured) && (int) $p->product_is_featured === 1) {
+                $featuredProducts[] = $p;
               }
             }
-            $displayCurrency = displayCurrency($currentLocale->locale_currency ?? 'TRY');
-            $featuredProducts = [];
-            if (!empty($displayProducts)) {
-              foreach ($displayProducts as $p) {
-                if (!empty($p->product_is_featured) && (int)$p->product_is_featured === 1) {
-                  $featuredProducts[] = $p;
-                }
-              }
-              if (count($featuredProducts) > 3) {
-                $featuredProducts = array_slice($featuredProducts, 0, 3);
+            if (count($featuredProducts) > 3) {
+              $featuredProducts = array_slice($featuredProducts, 0, 3);
+            }
+          }
+          $firstAvailableProductId = 0;
+          if (!empty($displayProducts)) {
+            foreach ($displayProducts as $availableProduct) {
+              if ((int) ($availableProduct->product_api_status ?? 0) === 1 && (float) $availableProduct->user_price > 0) {
+                $firstAvailableProductId = (int) $availableProduct->product_id;
+                break;
               }
             }
-            $firstAvailableProductId = 0;
-            if (!empty($displayProducts)) {
-              foreach ($displayProducts as $availableProduct) {
-                if ((int)($availableProduct->product_api_status ?? 0) === 1 && (float)$availableProduct->user_price > 0) {
-                  $firstAvailableProductId = (int)$availableProduct->product_id;
-                  break;
-                }
-              }
-            }
-            ?>
+          }
+          ?>
 
           <?php if (!empty($featuredProducts)): ?>
             <section class="ps-featured-passes" aria-label="Öne Çıkan Paketler">
@@ -2342,27 +2497,25 @@ if (!function_exists('format_category_seo_tables')) {
               <div class="ps-pass-grid count-<?= count($featuredProducts) ?>">
                 <?php foreach ($featuredProducts as $fIdx => $fProduct): ?>
                   <?php
-                    $fIsInStock = (int)($fProduct->product_api_status ?? 0) === 1 && (float)$fProduct->user_price > 0;
-                    $fIsSelected = (($this->input->get('p') !== null && $this->input->get('p') == $fProduct->product_id) || ($this->input->get('p') === null && (int)$fProduct->product_id === $firstAvailableProductId));
-                    $fDiscountBadge = '';
-                    if (!empty($fProduct->list_price) && $fProduct->list_price > $fProduct->user_price) {
-                      $fDiscount = round((($fProduct->list_price - $fProduct->user_price) / $fProduct->list_price) * 100);
-                      if ($fDiscount > 0) {
-                        $fDiscountBadge = '<span class="ps-pass-discount">%' . $fDiscount . ' indirim</span>';
-                      }
+                  $fIsInStock = (int) ($fProduct->product_api_status ?? 0) === 1 && (float) $fProduct->user_price > 0;
+                  $fIsSelected = (($this->input->get('p') !== null && $this->input->get('p') == $fProduct->product_id) || ($this->input->get('p') === null && (int) $fProduct->product_id === $firstAvailableProductId));
+                  $fDiscountBadge = '';
+                  if (!empty($fProduct->list_price) && $fProduct->list_price > $fProduct->user_price) {
+                    $fDiscount = round((($fProduct->list_price - $fProduct->user_price) / $fProduct->list_price) * 100);
+                    if ($fDiscount > 0) {
+                      $fDiscountBadge = '<span class="ps-pass-discount">%' . $fDiscount . ' indirim</span>';
                     }
-                    $toneNum = ($fIdx % 3) + 1;
-                    $hasBadge = !empty($fProduct->product_badge);
+                  }
+                  $toneNum = ($fIdx % 3) + 1;
+                  $hasBadge = !empty($fProduct->product_badge);
                   ?>
-                  <button type="button"
-                    class="ps-big-pass <?= $hasBadge ? 'ps-highlight-package' : '' ?>"
-                    data-pass-product="<?= htmlspecialchars($fProduct->product_id) ?>"
-                    data-featured-tone="<?= $toneNum ?>"
-                    aria-pressed="<?= $fIsSelected ? 'true' : 'false' ?>"
-                    <?= !$fIsInStock ? 'disabled' : '' ?>>
-                    
+                  <button type="button" class="ps-big-pass <?= $hasBadge ? 'ps-highlight-package' : '' ?>"
+                    data-pass-product="<?= htmlspecialchars($fProduct->product_id) ?>" data-featured-tone="<?= $toneNum ?>"
+                    aria-pressed="<?= $fIsSelected ? 'true' : 'false' ?>" <?= !$fIsInStock ? 'disabled' : '' ?>>
+
                     <span class="ps-pass-top">
-                      <img class="ps-pass-image" src="<?= getenv('CDN_URL') . $fProduct->product_icon ?>" alt="<?= htmlspecialchars($fProduct->product_name) ?>" loading="lazy">
+                      <img class="ps-pass-image" src="<?= getenv('CDN_URL') . $fProduct->product_icon ?>"
+                        alt="<?= htmlspecialchars($fProduct->product_name) ?>" loading="lazy">
                       <span class="ps-pass-copy">
                         <?php if ($hasBadge): ?>
                           <span class="ps-package-recommendation"><?= htmlspecialchars($fProduct->product_badge) ?></span>
@@ -2378,9 +2531,11 @@ if (!function_exists('format_category_seo_tables')) {
                       <span class="ps-pass-price-group">
                         <?= $fDiscountBadge ?>
                         <span class="ps-pass-price-row">
-                          <span class="ps-pass-price"><?= !$fIsInStock ? 'Stokta Yok' : number_format($fProduct->user_price, 2, ',', '.') . ' ' . $displayCurrency ?></span>
+                          <span
+                            class="ps-pass-price"><?= !$fIsInStock ? 'Stokta Yok' : number_format($fProduct->user_price, 2, ',', '.') . ' ' . $displayCurrency ?></span>
                           <?php if (!empty($fProduct->list_price) && $fProduct->list_price > $fProduct->user_price): ?>
-                            <span class="ps-pass-old"><?= number_format($fProduct->list_price, 2, ',', '.') ?> <?= $displayCurrency ?></span>
+                            <span class="ps-pass-old"><?= number_format($fProduct->list_price, 2, ',', '.') ?>
+                              <?= $displayCurrency ?></span>
                           <?php endif; ?>
                         </span>
                       </span>
@@ -2404,7 +2559,7 @@ if (!function_exists('format_category_seo_tables')) {
             <?php if (!empty($displayProducts)): ?>
               <?php foreach ($displayProducts as $key => $product): ?>
                 <?php
-                $isInStock = (int)($product->product_api_status ?? 0) === 1 && (float)$product->user_price > 0;
+                $isInStock = (int) ($product->product_api_status ?? 0) === 1 && (float) $product->user_price > 0;
                 $discountBadge = '';
                 if (!empty($product->list_price) && $product->list_price > $product->user_price) {
                   $discountPercentage = round((($product->list_price - $product->user_price) / $product->list_price) * 100);
@@ -2414,23 +2569,24 @@ if (!function_exists('format_category_seo_tables')) {
                 }
                 ?>
 
-                <div
-                  role="button" tabindex="0" aria-label="<?= html_escape($product->product_name) ?>"
-                  class="product-item <?= !$isInStock ? 'product-out-of-stock' : (($this->input->get('p') !== null && $this->input->get('p') == $product->product_id) || ($this->input->get('p') === null && (int)$product->product_id === $firstAvailableProductId) ? 'selected' : '') ?>"
+                <div role="button" tabindex="0" aria-label="<?= html_escape($product->product_name) ?>"
+                  class="product-item <?= !$isInStock ? 'product-out-of-stock' : (($this->input->get('p') !== null && $this->input->get('p') == $product->product_id) || ($this->input->get('p') === null && (int) $product->product_id === $firstAvailableProductId) ? 'selected' : '') ?>"
                   data-product="<?= htmlspecialchars($product->product_id) ?>"
                   data-price="<?= htmlspecialchars($product->user_price) ?>"
-                  data-epin="<?= ((int)($product->product_type ?? 0) === 3 && empty($product->product_is_bundle)) ? '1' : '0' ?>"
+                  data-epin="<?= ((int) ($product->product_type ?? 0) === 3 && empty($product->product_is_bundle)) ? '1' : '0' ?>"
                   data-name="<?= htmlspecialchars($product->product_name) ?>">
 
                   <div class="product-item-main">
                     <div class="product-item-icon">
-                      <img src="<?= getenv('CDN_URL') . $product->product_icon ?>" alt="<?= htmlspecialchars($product->product_name) ?>" loading="lazy">
+                      <img src="<?= getenv('CDN_URL') . $product->product_icon ?>"
+                        alt="<?= htmlspecialchars($product->product_name) ?>" loading="lazy">
                     </div>
 
                     <div class="product-item-info">
                       <span class="product-item-name"><?= htmlspecialchars($product->product_name) ?></span>
                       <?php if (!empty($product->product_short_desc)): ?>
-                        <span class="product-item-short-desc"><?= nl2br(htmlspecialchars($product->product_short_desc)) ?></span>
+                        <span
+                          class="product-item-short-desc"><?= nl2br(htmlspecialchars($product->product_short_desc)) ?></span>
                       <?php endif; ?>
                     </div>
                   </div>
@@ -2438,7 +2594,9 @@ if (!function_exists('format_category_seo_tables')) {
                   <div class="product-item-side">
                     <div class="product-item-side-top">
                       <span class="ps-product-flash" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" focusable="false"><path d="M13.6 2.8 5.8 13h5.4l-.8 8.2L18.2 11h-5.4l.8-8.2Z"></path></svg>
+                        <svg viewBox="0 0 24 24" focusable="false">
+                          <path d="M13.6 2.8 5.8 13h5.4l-.8 8.2L18.2 11h-5.4l.8-8.2Z"></path>
+                        </svg>
                       </span>
                       <div class="product-item-badge-wrap">
                         <?= $discountBadge ?>
@@ -2446,9 +2604,10 @@ if (!function_exists('format_category_seo_tables')) {
                     </div>
 
                     <div class="product-item-prices">
-                      <span class="product-item-price"<?= $isInStock ? ' itemprop="price" content="' . htmlspecialchars(number_format((float)$product->user_price, 2, '.', '')) . '"' : '' ?>><?= !$isInStock ? 'Stokta Yok' : number_format($product->user_price, 2, ',', '.') . ' ' . $displayCurrency ?></span>
+                      <span class="product-item-price" <?= $isInStock ? ' itemprop="price" content="' . htmlspecialchars(number_format((float) $product->user_price, 2, '.', '')) . '"' : '' ?>><?= !$isInStock ? 'Stokta Yok' : number_format($product->user_price, 2, ',', '.') . ' ' . $displayCurrency ?></span>
                       <?php if (!empty($product->list_price) && $product->list_price > $product->user_price): ?>
-                        <span class="product-item-old-price"><?= number_format($product->list_price, 2, ',', '.') ?> <?= $displayCurrency ?></span>
+                        <span class="product-item-old-price"><?= number_format($product->list_price, 2, ',', '.') ?>
+                          <?= $displayCurrency ?></span>
                       <?php endif; ?>
                     </div>
                   </div>
@@ -2467,7 +2626,8 @@ if (!function_exists('format_category_seo_tables')) {
                     <span class="total-label">Toplam Tutar</span>
                     <span class="total-value total-transfer-text">0,00 <?= $displayCurrency ?></span>
                   </div>
-                  <button class="cd-btn-pay btn-submit-order-class<?= ($category->category_id == 13) ? ' is-need-id' : '' ?>">
+                  <button
+                    class="cd-btn-pay btn-submit-order-class<?= ($category->category_id == 13) ? ' is-need-id' : '' ?>">
                     <?php if ($category->category_id == 13): ?>
                       <i class="fa-solid fa-id-card" style="margin-right: 6px;"></i>ID Bilgilerini Tanımlayın
                     <?php else: ?>
@@ -2494,7 +2654,7 @@ if (!function_exists('format_category_seo_tables')) {
         </section>
 
         <?php if (!empty($category_description)): ?>
-        <?php
+          <?php
           $categoryDescriptionHtml = preg_replace(
             ['/<h1\b([^>]*)>/i', '/<\/h1>/i'],
             ['<h2$1>', '</h2>'],
@@ -2504,14 +2664,14 @@ if (!function_exists('format_category_seo_tables')) {
           $categoryDescriptionHtml = news_content_clean_html($categoryDescriptionHtml);
           $categoryDescriptionHtml = safe_rich_html($categoryDescriptionHtml);
           $categoryDescriptionHtml = format_category_seo_tables($categoryDescriptionHtml);
-        ?>
-        <section class="category-detail-section cd-seo-box cd-enhanced cd-fade-in" id="category-detail-section">
-          <div class="seo-content-wrapper" id="cd-seo-content">
-            <div class="detail-text"><?= $categoryDescriptionHtml ?></div>
-            <div class="seo-blur-overlay"></div>
-          </div>
-          <button class="read-more-btn" id="cd-read-more-btn">Devamını Gör</button>
-        </section>
+          ?>
+          <section class="category-detail-section cd-seo-box cd-enhanced cd-fade-in" id="category-detail-section">
+            <div class="seo-content-wrapper" id="cd-seo-content">
+              <div class="detail-text"><?= $categoryDescriptionHtml ?></div>
+              <div class="seo-blur-overlay"></div>
+            </div>
+            <button class="read-more-btn" id="cd-read-more-btn">Devamını Gör</button>
+          </section>
         <?php endif; ?>
 
         <!-- <section class="how-to-section cd-enhanced cd-fade-in" id="how-to-section">
@@ -2525,15 +2685,23 @@ if (!function_exists('format_category_seo_tables')) {
             <strong class="fab-price total-transfer-text">0,00 <?= $displayCurrency ?></strong>
           </div>
           <?php if (!empty($user['user_id'])): ?>
-            <button class="fab-btn btn-submit-order-class<?= ($category->category_id == 13) ? ' is-need-id' : '' ?>" type="button">
+            <button class="fab-btn btn-submit-order-class<?= ($category->category_id == 13) ? ' is-need-id' : '' ?>"
+              type="button">
               <?php if ($category->category_id == 13): ?>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" style="width: 18px; height: 18px; flex-shrink: 0;">
-                  <rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2"/><path d="M15 12h2"/><path d="M7 16h10"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"
+                  style="width: 18px; height: 18px; flex-shrink: 0;">
+                  <rect x="3" y="4" width="18" height="16" rx="3" />
+                  <circle cx="9" cy="10" r="2" />
+                  <path d="M15 8h2" />
+                  <path d="M15 12h2" />
+                  <path d="M7 16h10" />
                 </svg>
                 ID Bilgilerini Tanımlayın
               <?php else: ?>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                  <path d="M5 11V7a7 7 0 0 1 14 0v4"/><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M12 15v3"/>
+                  <path d="M5 11V7a7 7 0 0 1 14 0v4" />
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M12 15v3" />
                 </svg>
                 Güvenli Ödemeye Geç
               <?php endif; ?>
@@ -2541,7 +2709,9 @@ if (!function_exists('format_category_seo_tables')) {
           <?php else: ?>
             <a href="<?= topupcenter() ?>login?redirect=<?= $this->uri->segment(2) ?>" class="fab-btn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" y1="12" x2="3" y2="12" />
               </svg>
               Giriş Yapın
             </a>
@@ -2580,161 +2750,262 @@ if (!function_exists('format_category_seo_tables')) {
 
       </div>
     </div>
-    
-<?php if (!empty($reviews)): ?>
-    <section class="reviews-section product-reviews-section" id="product-reviews-section">
-      <div class="section-header">
-        <h2 class="section-title">Yorumlar</h2>
-      </div>
-      <div class="reviews-marquee-wrapper">
-        <div class="reviews-marquee-track">
-          <?php foreach ($reviews as $rev): ?>
-            <?php
-            $reviewerName = !empty($rev->user_nickname) ? $rev->user_nickname : (!empty($rev->user_name) ? $rev->user_name : 'Kullanıcı');
-            if (mb_strlen($reviewerName) > 4) {
-              $reviewerName = mb_substr($reviewerName, 0, 2) . '***' . mb_substr($reviewerName, -2);
-            }
-            ?>
-            <div class="review-card">
-              <div class="review-header">
-                <div class="review-avatar">
-                  <div class="review-avatar-text" style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
-                    <?= html_escape(strtoupper(mb_substr($reviewerName, 0, 1))) ?>
+
+    <?php if (!empty($reviews)): ?>
+      <section class="reviews-section product-reviews-section" id="product-reviews-section">
+        <div class="section-header">
+          <h2 class="section-title">Yorumlar</h2>
+        </div>
+        <div class="reviews-marquee-wrapper">
+          <div class="reviews-marquee-track">
+            <?php foreach ($reviews as $rev): ?>
+              <?php
+              $reviewerName = !empty($rev->user_nickname) ? $rev->user_nickname : (!empty($rev->user_name) ? $rev->user_name : 'Kullanıcı');
+              if (mb_strlen($reviewerName) > 4) {
+                $reviewerName = mb_substr($reviewerName, 0, 2) . '***' . mb_substr($reviewerName, -2);
+              }
+              ?>
+              <div class="review-card">
+                <div class="review-header">
+                  <div class="review-avatar">
+                    <div class="review-avatar-text"
+                      style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
+                      <?= html_escape(strtoupper(mb_substr($reviewerName, 0, 1))) ?>
+                    </div>
+                  </div>
+                  <div class="review-user-info">
+                    <div class="review-username"><?= html_escape($reviewerName) ?></div>
+                    <div class="review-product"><?= html_escape(!empty($rev->product_name) ? $rev->product_name : $title) ?>
+                    </div>
+                  </div>
+                  <div class="review-stars">
+                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                      <?php if ($i <= (int) $rev->review_rating): ?>
+                        <svg viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+                        </svg>
+                      <?php else: ?>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+                        </svg>
+                      <?php endif; ?>
+                    <?php endfor; ?>
                   </div>
                 </div>
-                <div class="review-user-info">
-                  <div class="review-username"><?= html_escape($reviewerName) ?></div>
-                  <div class="review-product"><?= html_escape(!empty($rev->product_name) ? $rev->product_name : $title) ?></div>
-                </div>
-                <div class="review-stars">
-                  <?php for ($i = 1; $i <= 5; $i++): ?>
-                    <?php if ($i <= (int)$rev->review_rating): ?>
-                      <svg viewBox="0 0 24 24">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-                      </svg>
-                    <?php else: ?>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-                      </svg>
-                    <?php endif; ?>
-                  <?php endfor; ?>
+                <p class="review-text"><?= nl2br(html_escape($rev->review_comment)) ?></p>
+                <div class="review-tags">
+                  <span class="review-tag">Hızlı Teslimat</span>
                 </div>
               </div>
-              <p class="review-text"><?= nl2br(html_escape($rev->review_comment)) ?></p>
-              <div class="review-tags">
-                <span class="review-tag">Hızlı Teslimat</span>
-              </div>
-            </div>
-          <?php endforeach; ?>
+            <?php endforeach; ?>
+          </div>
         </div>
-      </div>
-    </section>
-<?php endif; ?>
-
-    <?php if (!empty($category->category_content) || !empty($category_faqs)): ?>
-    <style>
-      .seo-box { background-color: #232732; padding: 30px; border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); margin-bottom: 25px; margin-top: 40px; color: #d1d5db;}
-      .seo-box h2, .seo-box h3 { color: #ffffff; font-size: 20px; margin-bottom: 15px; }
-      .seo-box p { line-height: 1.6; margin-bottom: 15px; font-size: 15px; }
-
-      .faq-accordion { display: flex; gap: 15px; align-items: flex-start; margin-bottom: 35px; }
-      .faq-col { display: flex; flex-direction: column; gap: 15px; flex: 1; min-width: 0; }
-      @media (max-width: 768px) { .faq-accordion { flex-direction: column; } }
-      .accordion-item { background-color: #232732; border-radius: 8px; overflow: hidden; transition: all 0.3s ease; border: none; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); }
-      .accordion-title { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; cursor: pointer; user-select: none; }
-      .accordion-title:hover { background-color: #2a2e3a; }
-      .accordion-title .h6 { font-size: 15px; font-weight: 600; color: #ffffff; margin: 0; flex: 1; padding-right: 15px; line-height: 1.4; }
-      .accordion-icon { width: 20px; height: 20px; color: #ffb300; flex-shrink: 0; }
-      .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; background-color: #1e222d; }
-      .content-inner { padding: 0 24px 20px 24px; margin-top: 10px; padding-top: 15px; font-size: 14px; line-height: 1.6; border-top: 1px solid rgba(255, 255, 255, 0.05); color: #d1d5db; }
-      .accordion-item.active { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); }
-      .accordion-item.active .plus-icon { display: none; }
-      .accordion-item.active .minus-icon { display: block !important; }
-    </style>
-
-    <?php if (!empty($category->category_content)): ?>
-      <div class="seo-box">
-        <?php 
-          $seoHtml = preg_replace('/<h2\b[^>]*>\s*<\/h2>/i', '', (string)$category->category_content);
-          $seoHtml = format_category_seo_tables(safe_rich_html($seoHtml));
-        ?>
-        <?= $seoHtml ?>
-      </div>
+      </section>
     <?php endif; ?>
 
-    <?php if (!empty($category_faqs)): ?>
-      <div class="faq-accordion">
-        <?php
+    <?php if (!empty($category->category_content) || !empty($category_faqs)): ?>
+      <style>
+        .seo-box {
+          background-color: #232732;
+          padding: 30px;
+          border-radius: 12px;
+          border: none;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+          margin-bottom: 25px;
+          margin-top: 40px;
+          color: #d1d5db;
+        }
+
+        .seo-box h2,
+        .seo-box h3 {
+          color: #ffffff;
+          font-size: 20px;
+          margin-bottom: 15px;
+        }
+
+        .seo-box p {
+          line-height: 1.6;
+          margin-bottom: 15px;
+          font-size: 15px;
+        }
+
+        .faq-accordion {
+          display: flex;
+          gap: 15px;
+          align-items: flex-start;
+          margin-bottom: 35px;
+        }
+
+        .faq-col {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+          flex: 1;
+          min-width: 0;
+        }
+
+        @media (max-width: 768px) {
+          .faq-accordion {
+            flex-direction: column;
+          }
+        }
+
+        .accordion-item {
+          background-color: #232732;
+          border-radius: 8px;
+          overflow: hidden;
+          transition: all 0.3s ease;
+          border: none;
+          box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .accordion-title {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 18px 24px;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .accordion-title:hover {
+          background-color: #2a2e3a;
+        }
+
+        .accordion-title .h6 {
+          font-size: 15px;
+          font-weight: 600;
+          color: #ffffff;
+          margin: 0;
+          flex: 1;
+          padding-right: 15px;
+          line-height: 1.4;
+        }
+
+        .accordion-icon {
+          width: 20px;
+          height: 20px;
+          color: #ffb300;
+          flex-shrink: 0;
+        }
+
+        .accordion-content {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.3s ease-out;
+          background-color: #1e222d;
+        }
+
+        .content-inner {
+          padding: 0 24px 20px 24px;
+          margin-top: 10px;
+          padding-top: 15px;
+          font-size: 14px;
+          line-height: 1.6;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          color: #d1d5db;
+        }
+
+        .accordion-item.active {
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .accordion-item.active .plus-icon {
+          display: none;
+        }
+
+        .accordion-item.active .minus-icon {
+          display: block !important;
+        }
+      </style>
+
+      <?php if (!empty($category->category_content)): ?>
+        <div class="seo-box">
+          <?php
+          $seoHtml = preg_replace('/<h2\b[^>]*>\s*<\/h2>/i', '', (string) $category->category_content);
+          $seoHtml = format_category_seo_tables(safe_rich_html($seoHtml));
+          ?>
+          <?= $seoHtml ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if (!empty($category_faqs)): ?>
+        <div class="faq-accordion">
+          <?php
           $half = ceil(count($category_faqs) / 2);
           $faqs_col1 = array_slice($category_faqs, 0, $half);
           $faqs_col2 = array_slice($category_faqs, $half);
-        ?>
-        <div class="faq-col">
-          <?php foreach ($faqs_col1 as $faq): ?>
-            <div class="accordion-item">
-              <div class="accordion-title">
-                <span class="h6"><?= html_escape($faq->faq_question) ?></span>
-                <svg class="accordion-icon plus-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                <svg class="accordion-icon minus-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display:none;">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16"></path>
-                </svg>
-              </div>
-              <div class="accordion-content">
-                <div class="content-inner">
-                  <p><?= nl2br(html_escape($faq->faq_answer)) ?></p>
+          ?>
+          <div class="faq-col">
+            <?php foreach ($faqs_col1 as $faq): ?>
+              <div class="accordion-item">
+                <div class="accordion-title">
+                  <span class="h6"><?= html_escape($faq->faq_question) ?></span>
+                  <svg class="accordion-icon plus-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                  </svg>
+                  <svg class="accordion-icon minus-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" style="display:none;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16"></path>
+                  </svg>
+                </div>
+                <div class="accordion-content">
+                  <div class="content-inner">
+                    <p><?= nl2br(html_escape($faq->faq_answer)) ?></p>
+                  </div>
                 </div>
               </div>
-            </div>
-          <?php endforeach; ?>
-        </div>
-        <?php if (!empty($faqs_col2)): ?>
-        <div class="faq-col">
-          <?php foreach ($faqs_col2 as $faq): ?>
-            <div class="accordion-item">
-              <div class="accordion-title">
-                <span class="h6"><?= html_escape($faq->faq_question) ?></span>
-                <svg class="accordion-icon plus-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                <svg class="accordion-icon minus-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display:none;">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16"></path>
-                </svg>
-              </div>
-              <div class="accordion-content">
-                <div class="content-inner">
-                  <p><?= nl2br(html_escape($faq->faq_answer)) ?></p>
+            <?php endforeach; ?>
+          </div>
+          <?php if (!empty($faqs_col2)): ?>
+            <div class="faq-col">
+              <?php foreach ($faqs_col2 as $faq): ?>
+                <div class="accordion-item">
+                  <div class="accordion-title">
+                    <span class="h6"><?= html_escape($faq->faq_question) ?></span>
+                    <svg class="accordion-icon plus-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <svg class="accordion-icon minus-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor" style="display:none;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16"></path>
+                    </svg>
+                  </div>
+                  <div class="accordion-content">
+                    <div class="content-inner">
+                      <p><?= nl2br(html_escape($faq->faq_answer)) ?></p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              <?php endforeach; ?>
             </div>
-          <?php endforeach; ?>
+          <?php endif; ?>
         </div>
-        <?php endif; ?>
-      </div>
-    <?php endif; ?>
+      <?php endif; ?>
     <?php endif; ?>
 
   </div>
 </main>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     const accordionItems = document.querySelectorAll('.accordion-item');
     accordionItems.forEach(item => {
       const title = item.querySelector('.accordion-title');
       const content = item.querySelector('.accordion-content');
-      
-      if(title && content) {
+
+      if (title && content) {
         title.addEventListener('click', () => {
           const isActive = item.classList.contains('active');
-          
+
           accordionItems.forEach(otherItem => {
             otherItem.classList.remove('active');
             const otherContent = otherItem.querySelector('.accordion-content');
-            if(otherContent) otherContent.style.maxHeight = null;
+            if (otherContent) otherContent.style.maxHeight = null;
           });
-          
+
           if (!isActive) {
             item.classList.add('active');
             content.style.maxHeight = content.scrollHeight + "px";
@@ -2834,9 +3105,9 @@ if (!function_exists('format_category_seo_tables')) {
 
     // Scroll Yönü Dinleyicisi (Aşağı = Ödeme Barı, Yukarı / En Üst = Mobil Alt Menü)
     let isTicking = false;
-    window.addEventListener('scroll', function() {
+    window.addEventListener('scroll', function () {
       if (!isTicking) {
-        window.requestAnimationFrame(function() {
+        window.requestAnimationFrame(function () {
           const currentScrollY = window.scrollY || 0;
           const diff = currentScrollY - lastScrollY;
 
@@ -2870,7 +3141,7 @@ if (!function_exists('format_category_seo_tables')) {
     }
 
     // Update Bottom Price Cards
-    const IS_EPIN = <?= ((int)($category->category_type ?? 0) === 3) ? 'true' : 'false' ?>;
+    const IS_EPIN = <?= ((int) ($category->category_type ?? 0) === 3) ? 'true' : 'false' ?>;
     const MAX_QTY = 10;
 
     (function injectQtyControls() {
@@ -2985,14 +3256,14 @@ if (!function_exists('format_category_seo_tables')) {
 
     function escapeHtmlText(value) {
       return String(value == null ? '' : value).replace(/[&<>"'`]/g, function (ch) {
-        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[ch];
       });
     }
 
     function focusMlbbInputs() {
       if (!isMlbb) return;
       const target = (!$userInput || !$userInput.value.trim()) ? $userInput :
-                     ((!$serverField || !$serverField.value.trim()) ? $serverField : $userInput);
+        ((!$serverField || !$serverField.value.trim()) ? $serverField : $userInput);
       if (idInputSection) {
         idInputSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -3019,7 +3290,7 @@ if (!function_exists('format_category_seo_tables')) {
         } else if (phase === 'ready') {
           btn.disabled = false;
           btn.removeAttribute('aria-busy');
-          const icon = isFab 
+          const icon = isFab
             ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" style="width: 18px; height: 18px; flex-shrink: 0;"><path d="M5 11V7a7 7 0 0 1 14 0v4"/><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M12 15v3"/></svg>'
             : '<i class="fa-solid fa-lock" style="margin-right: 6px;"></i>';
           btn.innerHTML = icon + 'Güvenli Ödemeye Geç';
@@ -3045,7 +3316,7 @@ if (!function_exists('format_category_seo_tables')) {
     function setMlbbCardState(state, title, desc) {
       if (!mlbbAccountCard) return;
       mlbbAccountCard.classList.remove('state-checking', 'state-ready', 'state-error');
-      
+
       if (!state) {
         mlbbAccountCard.style.display = 'none';
         return;
@@ -3131,8 +3402,8 @@ if (!function_exists('format_category_seo_tables')) {
             }
             const rawCountry = String(response.register_country || (response.data && response.data.register_country) || '').toLowerCase();
             const country = /^[a-z]{2}$/.test(rawCountry) ? rawCountry : '';
-            const flagHtml = country 
-              ? `<img src="https://flagcdn.com/20x15/${country}.png" alt="${country.toUpperCase()}" style="width: 17px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.4);" />` 
+            const flagHtml = country
+              ? `<img src="https://flagcdn.com/20x15/${country}.png" alt="${country.toUpperCase()}" style="width: 17px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.4);" />`
               : '';
             const desc = `${flagHtml}ID: ${escapeHtmlText(u)} · Sunucu: (${escapeHtmlText(s)}) · Oyuncu Adı Onaylandı`;
             setMlbbCardState('ready', response.name, desc);
@@ -3167,8 +3438,8 @@ if (!function_exists('format_category_seo_tables')) {
             $serverField.setAttribute('aria-invalid', 'true');
             $serverField.classList.remove('is-verified');
           }
-          const errMsg = (xhr.responseJSON && xhr.responseJSON.message) 
-            ? xhr.responseJSON.message 
+          const errMsg = (xhr.responseJSON && xhr.responseJSON.message)
+            ? xhr.responseJSON.message
             : 'Sorgulama başarısız oldu. Lütfen bilgilerinizi kontrol edin.';
           setMlbbCardState('error', 'Hesap Doğrulanamadı', errMsg);
           updateMlbbButtonStates('error');
@@ -3313,7 +3584,7 @@ if (!function_exists('format_category_seo_tables')) {
     const cdSeoContent = document.getElementById('cd-seo-content');
 
     if (cdReadMoreBtn && cdSeoContent) {
-      cdReadMoreBtn.addEventListener('click', function() {
+      cdReadMoreBtn.addEventListener('click', function () {
         cdSeoContent.classList.toggle('expanded');
         if (cdSeoContent.classList.contains('expanded')) {
           this.innerHTML = 'Daha Az Göster';
