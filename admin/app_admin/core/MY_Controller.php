@@ -50,6 +50,49 @@ class MY_Controller extends MX_Controller
         return false;
     }
 
+    protected function throttleHit($key, $max, $windowSeconds)
+    {
+        $filePath = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+            . DIRECTORY_SEPARATOR . 'playsel_admin_throttle_' . md5($key);
+        $file = @fopen($filePath, 'c+');
+        if ($file === false) {
+            log_message('error', 'Unable to open admin throttle storage.');
+            return null;
+        }
+        if (!flock($file, LOCK_EX)) {
+            fclose($file);
+            log_message('error', 'Unable to lock admin throttle storage.');
+            return null;
+        }
+
+        rewind($file);
+        $storedEntry = stream_get_contents($file);
+        $entry = is_string($storedEntry) ? json_decode($storedEntry, true) : null;
+        if (!is_array($entry) || ($entry['expires'] ?? 0) <= time()) {
+            $entry = ['count' => 0, 'expires' => time() + (int)$windowSeconds];
+        }
+        if ($entry['count'] >= (int)$max) {
+            flock($file, LOCK_UN);
+            fclose($file);
+            return false;
+        }
+
+        $entry['count']++;
+        $serializedEntry = json_encode($entry);
+        rewind($file);
+        if ($serializedEntry === false || !ftruncate($file, 0)
+            || fwrite($file, $serializedEntry) !== strlen($serializedEntry) || !fflush($file)) {
+            flock($file, LOCK_UN);
+            fclose($file);
+            log_message('error', 'Unable to persist admin throttle state.');
+            return null;
+        }
+
+        flock($file, LOCK_UN);
+        fclose($file);
+        return true;
+    }
+
     public function locales()
     {
         $locales = $this->db->select('*')

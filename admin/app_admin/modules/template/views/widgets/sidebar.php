@@ -235,6 +235,12 @@ $total_pending_users = ($pending_referral_count ?? 0) + ($pending_streamers_coun
 							</a>
 						</div>
 						<div class="menu-item">
+							<a class="menu-link" href="<?= base_url('users/acquisitionReport') ?>">
+								<span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+								<span class="menu-title">Kullanıcı Edinim Raporu</span>
+							</a>
+						</div>
+						<div class="menu-item">
 							<a class="menu-link" href="<?= base_url('users/referenceRequests') ?>">
 								<span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
 								<span class="menu-title">

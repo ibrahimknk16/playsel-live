@@ -36,6 +36,7 @@ class Orders extends MY_Controller
 	public function index() //++
 	{
 		$data = $this->data;
+		$data['adminActionCsrfToken'] = $this->adminActionCsrfToken();
 		$data['cancellation_reasons'] = $this->db->table_exists('order_cancellation_reasons')
 			? $this->db->where('reason_status', 1)->order_by('reason_sort', 'ASC')->get('order_cancellation_reasons')->result()
 			: [];
@@ -366,6 +367,103 @@ class Orders extends MY_Controller
 		$order->pinTeslim = $pinTeslim;
 
 		return json($order);
+	}
+
+	public function lookupOrderIp()
+	{
+		if (!$this->requirePostRequest()) {
+			return;
+		}
+		if (!$this->requireAdminActionCsrf()) {
+			return;
+		}
+
+		$orderID = (int)$this->input->post('order_id');
+		if ($orderID <= 0) {
+			return json(['status' => 'error', 'message' => 'Geçersiz sipariş kimliği.'], 422);
+		}
+
+		$order = $this->db->select('order_user_ip')
+			->where('order_id', $orderID)
+			->get('orders')
+			->row();
+		if (!$order) {
+			return json(['status' => 'error', 'message' => 'Sipariş bulunamadı.'], 404);
+		}
+
+		$ip = trim((string)$order->order_user_ip);
+		if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+			return json(['status' => 'error', 'message' => 'Bu sipariş için sorgulanabilir bir genel IP adresi bulunamadı.'], 422);
+		}
+
+		$adminID = (int)($this->session->userdata('admin')['admin_id'] ?? 0);
+		if ($adminID <= 0) {
+			return json(['status' => 'error', 'message' => 'Admin oturumu doğrulanamadı.'], 401);
+		}
+
+		$adminThrottle = $this->throttleHit('ipwhois_admin_' . $adminID, 50, 86400);
+		if ($adminThrottle === null) {
+			return json(['status' => 'error', 'message' => 'IP sorgu limiti kontrol edilemiyor. Lütfen daha sonra tekrar deneyin.'], 503);
+		}
+		if (!$adminThrottle) {
+			return json(['status' => 'error', 'message' => 'IP sorgu limitiniz doldu. Daha sonra tekrar deneyin.'], 429);
+		}
+
+		$dailyThrottle = $this->throttleHit('ipwhois_admin_daily', 900, 86400);
+		if ($dailyThrottle === null) {
+			return json(['status' => 'error', 'message' => 'IP sorgu limiti kontrol edilemiyor. Lütfen daha sonra tekrar deneyin.'], 503);
+		}
+		if (!$dailyThrottle) {
+			return json(['status' => 'error', 'message' => 'IP sorgu limiti doldu. Daha sonra tekrar deneyin.'], 429);
+		}
+
+		$curl = curl_init('https://ipwho.is/' . $ip);
+		curl_setopt_array($curl, [
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_CONNECTTIMEOUT => 5,
+			CURLOPT_TIMEOUT => 10,
+			CURLOPT_SSL_VERIFYPEER => true,
+			CURLOPT_SSL_VERIFYHOST => 2,
+			CURLOPT_HTTPHEADER => ['Accept: application/json'],
+		]);
+		$body = curl_exec($curl);
+		$httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		$curlErrorNumber = curl_errno($curl);
+		curl_close($curl);
+
+		if ($body === false) {
+			log_message('error', 'Admin IP geolocation request failed. cURL error number: ' . $curlErrorNumber);
+			return json(['status' => 'error', 'message' => 'IP sorgu servisine şu anda ulaşılamıyor.'], 502);
+		}
+		if ($httpCode === 429) {
+			return json(['status' => 'error', 'message' => 'IP sorgu servisinin günlük limiti doldu. Daha sonra tekrar deneyin.'], 429);
+		}
+
+		$lookup = json_decode($body, true);
+		if ($httpCode !== 200 || !is_array($lookup) || empty($lookup['success'])) {
+			log_message('error', 'Admin IP geolocation service returned an unsuccessful response. HTTP status: ' . $httpCode);
+			return json(['status' => 'error', 'message' => 'IP adresi için konum bilgisi alınamadı.'], 502);
+		}
+
+		$connection = is_array($lookup['connection'] ?? null) ? $lookup['connection'] : [];
+		$timezone = is_array($lookup['timezone'] ?? null) ? $lookup['timezone'] : [];
+
+		return json([
+			'status' => 'success',
+			'data' => [
+				'ip' => $ip,
+				'type' => (string)($lookup['type'] ?? ''),
+				'country' => (string)($lookup['country'] ?? ''),
+				'region' => (string)($lookup['region'] ?? ''),
+				'city' => (string)($lookup['city'] ?? ''),
+				'postal' => (string)($lookup['postal'] ?? ''),
+				'latitude' => $lookup['latitude'] ?? null,
+				'longitude' => $lookup['longitude'] ?? null,
+				'isp' => (string)($connection['isp'] ?? ''),
+				'organization' => (string)($connection['org'] ?? ''),
+				'timezone' => (string)($timezone['id'] ?? ''),
+			],
+		]);
 	}
 
 	public function approveFraud()

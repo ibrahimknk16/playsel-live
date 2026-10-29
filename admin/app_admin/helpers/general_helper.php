@@ -16,7 +16,9 @@ function topup_url($url = '')
 function generate_unique_nickname($name, $surname = '')
 {
 	$ci = &get_instance();
-	$base = strtolower(trim($name . '_' . $surname));
+	$base = trim((string)$name . '_' . (string)$surname);
+	$base = strtr($base, ['I' => 'ı', 'İ' => 'i']);
+	$base = mb_strtolower($base, 'UTF-8');
 	$base = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $base);
 	$base = preg_replace('/[^a-z0-9]+/', '_', $base);
 	$base = trim($base, '_');

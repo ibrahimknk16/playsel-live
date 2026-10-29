@@ -7,7 +7,7 @@
             <span class="hero-icon"><svg class="icon"><use href="#i-card"/></svg></span>
             <div class="hero-copy">
                 <h1>Ödemelerim</h1>
-                <p>Bakiye yükleme işlemlerini ve ödeme geçmişini incele.</p>
+                <p>Bakiye yükleme ve sipariş ödeme geçmişini incele.</p>
             </div>
         </header>
 
@@ -44,6 +44,9 @@
           foreach (($payments ?? []) as $p) {
               $mergedPayments[] = ['kind' => 'current', 'ts' => (int)strtotime($p->user_balance_created_at), 'row' => $p];
           }
+          foreach (($order_payments ?? []) as $p) {
+              $mergedPayments[] = ['kind' => 'order', 'ts' => (int)strtotime($p->order_created_at), 'row' => $p];
+          }
           foreach (($legacy_payments ?? []) as $p) {
               $mergedPayments[] = ['kind' => 'old_payment', 'ts' => $p->payment_date ? (int)strtotime($p->payment_date) : 0, 'row' => $p];
           }
@@ -67,6 +70,36 @@
                 <thead><tr><th>Ödeme no</th><th>Yöntem</th><th>Tarih</th><th>Tutar</th><th>Durum</th></tr></thead>
                 <tbody>
                   <?php foreach ($mergedPayments as $item): ?>
+                  <?php if ($item['kind'] === 'order'):
+                      $orderPayment = $item['row'];
+                      $orderPaymentMethods = [2 => 'Cüzdan', 3 => 'Havale / EFT', 4 => 'Kredi Kartı', 5 => 'Mobil Ödeme'];
+                      $orderPaymentStatuses = [
+                          0 => 'İşleme Alındı',
+                          1 => 'Tamamlandı',
+                          2 => 'İptal Edildi',
+                          3 => 'İşleme Alındı',
+                          4 => 'Satıcı Onayladı',
+                          5 => 'Satıcı Onaylamadı',
+                          9 => 'İşlemde',
+                          11 => 'Ödeme Bekleniyor',
+                          12 => 'Ödeme Başarısız',
+                          13 => 'Kontrol Ediliyor',
+                          14 => 'Tedarikçi Bekleniyor',
+                      ];
+                      $orderStatus = (int)$orderPayment->order_status;
+                      $orderStatusClass = $orderStatus === 11 || $orderStatus === 13
+                          ? 'payment-pending'
+                          : (in_array($orderStatus, [2, 5, 12], true) ? 'refund' : 'done');
+                      $orderCurrency = $orderPayment->order_sale_price_currency ?: 'TRY';
+                  ?>
+                  <tr>
+                    <td data-label="Ödeme no"><span class="row-id">Sipariş #<?= (int)$orderPayment->order_id ?></span></td>
+                    <td data-label="Yöntem"><span class="method-cell"><span class="method-icon"><svg class="icon"><use href="#i-bag"/></svg></span><span><?= htmlspecialchars($orderPaymentMethods[(int)$orderPayment->order_payment_type] ?? 'Sipariş ödemesi') ?></span></span></td>
+                    <td data-label="Tarih" class="subtle"><?= !empty($orderPayment->order_created_at) ? date('d.m.Y · H:i', strtotime($orderPayment->order_created_at)) : '-' ?></td>
+                    <td data-label="Tutar" class="money"><?= number_format((float)$orderPayment->order_sale_price, 2, ',', '.') ?> <?= $orderCurrency === 'TRY' ? 'TL' : htmlspecialchars($orderCurrency) ?></td>
+                    <td data-label="Durum"><span class="status <?= $orderStatusClass ?>"><?php if ($orderStatusClass === 'payment-pending'): ?><span class="status-mark pending" aria-hidden="true"></span><?php else: ?><span class="status-mark"><svg class="icon"><use href="#i-<?= $orderStatusClass === 'done' ? 'check' : 'x' ?>"/></svg></span><?php endif; ?><?= htmlspecialchars($orderPaymentStatuses[$orderStatus] ?? 'İşleniyor') ?></span></td>
+                  </tr>
+                  <?php continue; endif; ?>
                   <?php if ($item['kind'] !== 'current'):
                       $lp = $item['row'];
                       $isRefund = $item['kind'] === 'old_refund';

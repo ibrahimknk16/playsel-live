@@ -1397,6 +1397,31 @@ class Profile extends MY_Controller
 		$this->db->limit($config['per_page'], $offset);
 
 		$data['payments'] = $this->db->get()->result();
+		$orderPaymentsQuery = $this->db
+			->select('order_id, order_created_at, order_payment_type, order_status, order_sale_price, order_sale_price_currency')
+			->from('orders')
+			->where('order_reseller_id', (int)$userID)
+			->where_in('order_payment_type', [2, 3, 4, 5]);
+		if ($statusFilter === 'pending') {
+			$orderPaymentsQuery->where('order_status', 11);
+		} elseif ($statusFilter === 'completed') {
+			$orderPaymentsQuery->where_in('order_status', [0, 1, 3, 4, 9, 13, 14]);
+		} elseif ($statusFilter === 'cancelled') {
+			$orderPaymentsQuery->where('order_status', 2);
+		} elseif ($statusFilter === 'rejected') {
+			$orderPaymentsQuery->where_in('order_status', [5, 12]);
+		}
+		if ($dateFilter === '1week') {
+			$orderPaymentsQuery->where('order_created_at >=', date('Y-m-d H:i:s', strtotime('-1 week')));
+		} elseif ($dateFilter === '1month') {
+			$orderPaymentsQuery->where('order_created_at >=', date('Y-m-d H:i:s', strtotime('-1 month')));
+		} elseif ($dateFilter === '3months') {
+			$orderPaymentsQuery->where('order_created_at >=', date('Y-m-d H:i:s', strtotime('-3 months')));
+		}
+		$data['order_payments'] = $orderPaymentsQuery
+			->order_by('order_created_at', 'DESC')
+			->get()
+			->result();
 		$data['legacy_payments'] = [];
 		$data['legacy_cancellations'] = [];
 		if ($this->db->query("SHOW TABLES LIKE 'legacy_payments'")->num_rows() > 0) {
@@ -2022,6 +2047,89 @@ class Profile extends MY_Controller
 		$data['description'] = $this->lang->line('order_detail_description');
 		$this->template->content->view('order-detail', $data);
 		$this->template->publish();
+	}
+
+	public function lookupOrderIp()
+	{
+		if ($this->input->method(true) !== 'POST') {
+			return json(['status' => 'error', 'message' => 'Bu işlem yalnızca POST isteğiyle yapılabilir.'], 405);
+		}
+		if (strtolower((string)$this->input->server('HTTP_X_REQUESTED_WITH')) !== 'xmlhttprequest') {
+			return json(['status' => 'error', 'message' => 'Geçersiz istek.'], 403);
+		}
+
+		$userId = (int)($this->data['user']['user_id'] ?? 0);
+		$orderId = (int)$this->input->post('order_id');
+		if ($userId <= 0 || $orderId <= 0) {
+			return json(['status' => 'error', 'message' => 'Sipariş bulunamadı.'], 422);
+		}
+
+		$order = $this->db->select('order_user_ip')
+			->where('order_id', $orderId)
+			->where('order_reseller_id', $userId)
+			->get('orders')
+			->row();
+		if (!$order) {
+			return json(['status' => 'error', 'message' => 'Sipariş bulunamadı.'], 404);
+		}
+
+		$ip = trim((string)$order->order_user_ip);
+		if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+			return json(['status' => 'error', 'message' => 'Bu sipariş için sorgulanabilir bir genel IP adresi bulunamadı.'], 422);
+		}
+
+		if (!$this->throttleHit('ipwhois_user_' . $userId, 10, 86400)
+			|| !$this->throttleHit('ipwhois_free_daily', 900, 86400)) {
+			return json(['status' => 'error', 'message' => 'IP sorgu limiti doldu. Daha sonra tekrar deneyin.'], 429);
+		}
+
+		$curl = curl_init('https://ipwho.is/' . $ip);
+		curl_setopt_array($curl, [
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_CONNECTTIMEOUT => 5,
+			CURLOPT_TIMEOUT => 10,
+			CURLOPT_SSL_VERIFYPEER => true,
+			CURLOPT_SSL_VERIFYHOST => 2,
+			CURLOPT_HTTPHEADER => ['Accept: application/json'],
+		]);
+		$body = curl_exec($curl);
+		$httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		$curlErrorNumber = curl_errno($curl);
+		curl_close($curl);
+
+		if ($body === false) {
+			log_message('error', 'IP geolocation request failed. cURL error number: ' . $curlErrorNumber);
+			return json(['status' => 'error', 'message' => 'IP sorgu servisine şu anda ulaşılamıyor.'], 502);
+		}
+
+		$lookup = json_decode($body, true);
+		if ($httpCode === 429) {
+			return json(['status' => 'error', 'message' => 'IP sorgu servisinin günlük limiti doldu. Daha sonra tekrar deneyin.'], 429);
+		}
+		if ($httpCode !== 200 || !is_array($lookup) || empty($lookup['success'])) {
+			log_message('error', 'IP geolocation service returned an unsuccessful response. HTTP status: ' . $httpCode);
+			return json(['status' => 'error', 'message' => 'IP adresi için konum bilgisi alınamadı.'], 502);
+		}
+
+		$connection = is_array($lookup['connection'] ?? null) ? $lookup['connection'] : [];
+		$timezone = is_array($lookup['timezone'] ?? null) ? $lookup['timezone'] : [];
+
+		return json([
+			'status' => 'success',
+			'data' => [
+				'ip' => $ip,
+				'type' => (string)($lookup['type'] ?? ''),
+				'country' => (string)($lookup['country'] ?? ''),
+				'region' => (string)($lookup['region'] ?? ''),
+				'city' => (string)($lookup['city'] ?? ''),
+				'postal' => (string)($lookup['postal'] ?? ''),
+				'latitude' => $lookup['latitude'] ?? null,
+				'longitude' => $lookup['longitude'] ?? null,
+				'isp' => (string)($connection['isp'] ?? ''),
+				'organization' => (string)($connection['org'] ?? ''),
+				'timezone' => (string)($timezone['id'] ?? ''),
+			],
+		]);
 	}
 
 	public function legacyOrderDetail($key = null)

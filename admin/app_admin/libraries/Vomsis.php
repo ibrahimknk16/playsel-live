@@ -33,24 +33,44 @@ class Vomsis
             return null;
         }
 
+        $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
+        if ($httpCode < 200 || $httpCode >= 300) {
+            log_message('error', 'Vomsis authentication returned HTTP status ' . $httpCode . '.');
+            return null;
+        }
 
         $decoded = json_decode($response, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            log_message('error', 'Vomsis authentication returned invalid JSON.');
+            log_message('error', 'Vomsis authentication returned invalid JSON: ' . json_last_error_msg());
             return null;
         }
         if (!is_array($decoded) || ($decoded['status'] ?? null) !== 'success') {
             log_message('error', 'Vomsis authentication API error: ' . (is_array($decoded) ? ($decoded['error_type'] ?? '') . ' ' . ($decoded['message'] ?? '') : 'invalid response'));
             return null;
         }
-        return $decoded['token'] ?? null;
+        $token = trim((string)($decoded['token'] ?? ''));
+        if ($token === '') {
+            log_message('error', 'Vomsis authentication succeeded without returning a token.');
+            return null;
+        }
+        return $token;
     }
 
     public function vomsisTransactions($beginDate = null, $endDate = null)
     {
+        $token = $this->vomsisAuth();
+        if (!$token) {
+            return null;
+        }
+
         $curl = curl_init();
+        if ($curl === false) {
+            log_message('error', 'Vomsis transactions request could not be initialized.');
+            return null;
+        }
+
         // şu andan önceki 1 dakika ile şu andan sonraki 1 dakika arasındaki işlemleri çekelim
         $begindate = $beginDate ?: date('d-m-Y H:i:s', strtotime('-24 hours'));
         $enddate = $endDate ?: date('d-m-Y H:i:s');
@@ -66,16 +86,35 @@ class Vomsis
             CURLOPT_CUSTOMREQUEST => 'GET',
             CURLOPT_HTTPHEADER => array(
                 'Accept: application/json',
-                'Authorization: Bearer ' . (string)$this->vomsisAuth()
+                'Authorization: Bearer ' . $token
             ),
         ));
 
         $response = curl_exec($curl);
-
+        if ($response === false) {
+            $error = curl_error($curl);
+            curl_close($curl);
+            log_message('error', 'Vomsis transactions request failed: ' . $error);
+            return null;
+        }
+        $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
-        //echo $response;
-        $response = json_decode($response, true);
-        return $response;
+        if ($httpCode < 200 || $httpCode >= 300) {
+            log_message('error', 'Vomsis transactions request returned HTTP status ' . $httpCode . '.');
+            return null;
+        }
+
+        $decoded = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            log_message('error', 'Vomsis transactions response returned invalid JSON: ' . json_last_error_msg());
+            return null;
+        }
+        if (!is_array($decoded) || !isset($decoded['transactions']) || !is_array($decoded['transactions'])) {
+            log_message('error', 'Vomsis transactions response did not contain a transactions array.');
+            return null;
+        }
+
+        return $decoded;
     }
     
 }

@@ -108,6 +108,19 @@
                     <strong><?= date('d.m.Y · H:i', strtotime($order->order_created_at)) ?></strong>
                 </div>
                 <div class="detail-meta">
+                    <span>Sipariş IP adresi</span>
+                    <strong>
+                        <?= !empty($order->order_user_ip) ? html_escape($order->order_user_ip) : '—' ?>
+                        <?php if (!empty($order->order_user_ip)): ?>
+                            <button type="button" id="lookupOrderIpButton" class="secondary-button"
+                                data-order-id="<?= (int)$order->order_id ?>"
+                                style="min-height:26px; margin-top:6px; padding:0 9px; font-size:11px;">
+                                IP konumunu sorgula
+                            </button>
+                        <?php endif; ?>
+                    </strong>
+                </div>
+                <div class="detail-meta">
                     <span>Ödeme yöntemi</span>
                     <strong><?= $paymentTypeStr ?></strong>
                 </div>
@@ -343,7 +356,116 @@
     </section>
 </main>
 
+<div id="orderIpLookupModal" role="dialog" aria-modal="true" aria-labelledby="orderIpLookupTitle" hidden
+    style="position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,.68);">
+    <div style="width:min(100%,420px); padding:20px; border:1px solid rgba(255,255,255,.12); border-radius:12px; background:#1f232c; color:#f1f3f4; box-shadow:0 12px 40px rgba(0,0,0,.45);">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
+            <h2 id="orderIpLookupTitle" style="margin:0; font-size:16px;">IP konum bilgisi</h2>
+            <button type="button" id="closeOrderIpLookup" class="secondary-button" aria-label="Kapat" style="min-height:28px; padding:0 9px;">Kapat</button>
+        </div>
+        <p style="margin:0 0 14px; color:#aeb6c2; font-size:12px; line-height:1.5;">
+            Sorgulama için sipariş IP adresi HTTPS üzerinden ipwho.is servisine gönderilir. Konum bilgisi yaklaşık olabilir.
+        </p>
+        <div id="orderIpLookupStatus" role="status" style="font-size:13px;">Sorgulanıyor…</div>
+        <dl id="orderIpLookupData" hidden style="display:grid; grid-template-columns:110px 1fr; gap:8px 12px; margin:14px 0 0; font-size:12px;"></dl>
+    </div>
+</div>
+
 <script>
+    (function () {
+        const lookupButton = document.getElementById('lookupOrderIpButton');
+        const modal = document.getElementById('orderIpLookupModal');
+        if (!lookupButton || !modal) return;
+
+        const closeButton = document.getElementById('closeOrderIpLookup');
+        const status = document.getElementById('orderIpLookupStatus');
+        const resultList = document.getElementById('orderIpLookupData');
+        const lookupUrl = <?= json_encode(base_url($this->uri->segment(1) . '/profile/lookupOrderIp')) ?>;
+
+        function closeModal() {
+            modal.hidden = true;
+            modal.style.display = 'none';
+        }
+
+        function showResult(data) {
+            const fields = [
+                ['IP', data.ip],
+                ['Tür', data.type],
+                ['Ülke', data.country],
+                ['Bölge', data.region],
+                ['Şehir', data.city],
+                ['Posta kodu', data.postal],
+                ['ISP', data.isp],
+                ['Organizasyon', data.organization],
+                ['Saat dilimi', data.timezone],
+                ['Koordinat', data.latitude != null && data.longitude != null ? data.latitude + ', ' + data.longitude : '']
+            ];
+
+            resultList.replaceChildren();
+            fields.forEach(function (field) {
+                if (!field[1]) return;
+                const term = document.createElement('dt');
+                const value = document.createElement('dd');
+                term.textContent = field[0];
+                value.textContent = field[1];
+                term.style.color = '#aeb6c2';
+                value.style.margin = '0';
+                value.style.overflowWrap = 'anywhere';
+                resultList.append(term, value);
+            });
+            resultList.hidden = false;
+            status.hidden = true;
+        }
+
+        lookupButton.addEventListener('click', function () {
+            modal.hidden = false;
+            modal.style.display = 'flex';
+            status.hidden = false;
+            status.textContent = 'IP konumu sorgulanıyor…';
+            resultList.hidden = true;
+            resultList.replaceChildren();
+            lookupButton.disabled = true;
+
+            fetch(lookupUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new URLSearchParams({ order_id: lookupButton.dataset.orderId })
+            })
+                .then(function (response) {
+                    return response.json().catch(function () {
+                        throw new Error('IP sorgusu sırasında bir hata oluştu.');
+                    }).then(function (data) {
+                        if (!response.ok || data.status !== 'success') {
+                            throw new Error(data.message || 'IP konum bilgisi alınamadı.');
+                        }
+                        return data;
+                    });
+                })
+                .then(function (response) {
+                    showResult(response.data || {});
+                })
+                .catch(function (error) {
+                    status.textContent = error instanceof TypeError
+                        ? 'IP sorgu servisine şu anda ulaşılamıyor.'
+                        : error.message || 'IP sorgusu sırasında bir hata oluştu.';
+                })
+                .finally(function () {
+                    lookupButton.disabled = false;
+                });
+        });
+
+        closeButton.addEventListener('click', closeModal);
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.hidden) closeModal();
+        });
+    })();
+
     function copyToClipboard(elementId, isDiv = false) {
         let textToCopy = "";
         const el = document.getElementById(elementId);

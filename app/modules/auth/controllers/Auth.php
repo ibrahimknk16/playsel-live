@@ -553,13 +553,14 @@ class Auth extends MY_Controller
 			'user_bill_tax_number' => '11111111111',
 			'user_bill_city' => 'İstanbul',
 			'user_bill_district' => 'Kadıköy',
-			'user_bill_address' => 'Merkez Mah.',
+			'user_bill_address' => '',
 		];
 
 		$this->db->insert('users', $insertArray);
 		$id = $this->db->insert_id();
 
 		if ($id) {
+			$this->saveUserAcquisition($id, 'email');
 			$newUser = $this->db->get_where('users', ['user_id' => $id])->row();
 			if ($newUser) {
 				$this->ensure_default_billing_address($newUser);
@@ -916,9 +917,12 @@ class Auth extends MY_Controller
 				'user_bill_tax_number' => '11111111111',
 				'user_bill_city' => 'İstanbul',
 				'user_bill_district' => 'Kadıköy',
-				'user_bill_address' => 'Merkez Mah.',
+				'user_bill_address' => '',
 			]);
 			$user = $this->db->get_where('users', ['user_id' => $this->db->insert_id()])->row();
+			if ($user) {
+				$this->saveUserAcquisition((int)$user->user_id, 'google');
+			}
 		}
 		if ($user) {
 			$this->session->unset_userdata('referral_nickname');
@@ -970,7 +974,7 @@ class Auth extends MY_Controller
 		$defaultTckn = '11111111111';
 		$defaultCity = 'İstanbul';
 		$defaultDistrict = 'Kadıköy';
-		$defaultAddress = 'Merkez Mah.';
+		$defaultAddress = '';
 
 		// 1. user_addresses tablosunda aktif adres var mı?
 		if ($this->db->table_exists('user_addresses')) {

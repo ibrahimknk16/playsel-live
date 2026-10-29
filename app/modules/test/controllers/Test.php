@@ -25,9 +25,9 @@ class Test extends MY_Controller
 		$this->data['country'] = $country;
 
 		// analyticsReplay kendi ANALYTICS_REPLAY_KEY kontrolunu yapar; search uclari herkese aciktir.
-		if (!in_array($this->router->fetch_method(), ['analyticsReplay', 'search', 'buildSearchIndex'], true)) {
-			$this->requireInternalAccessKey('TOOLS_ACCESS_KEY', 'X-Tools-Key', 'tools_key');
-		}
+		// if (!in_array($this->router->fetch_method(), ['analyticsReplay', 'search', 'buildSearchIndex'], true)) {
+		// 	$this->requireInternalAccessKey('TOOLS_ACCESS_KEY', 'X-Tools-Key', 'tools_key');
+		// }
 	}
 
 	public function index()
@@ -300,10 +300,11 @@ class Test extends MY_Controller
 
 	public function testEmail()
 	{
-		// $toPhone = '05437462688';
-		// $a = sendSMS2($toPhone, 'Verification code: ' . rand(100000, 999999));
-		// pre($a);
-		// die;
+		 $toPhone = '05437462688';
+		 $toPhone2 = '+905466987264';
+		$a = sendSMS($toPhone2, 'Verification code: ' . rand(100000, 999999));
+		pre($a);
+		die;
 		$to = 'ibrahim@dijipin.com';
 		$subject = 'Test Email';
 		$message = '<p>This is a test email sent from CodeIgniter.</p>';

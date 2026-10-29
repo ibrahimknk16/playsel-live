@@ -808,7 +808,40 @@ class Users extends MY_Controller
 			->limit(1)
 			->get('user_logs')->row();
 		$data['registerIp'] = !empty($registerLog->user_logs_user_ip) ? $registerLog->user_logs_user_ip : '—';
+		$data['acquisition'] = [
+			'source' => '',
+			'medium' => '',
+			'campaign' => '',
+			'term' => '',
+			'content' => '',
+			'referrer' => '',
+			'landing_page' => '',
+			'click_id' => '',
+			'signup_method' => '',
+			'created_at' => '',
+		];
+		if ($this->db->table_exists('user_acquisitions')) {
+			$acquisition = $this->db->select('acquisition_source, acquisition_medium, acquisition_campaign, acquisition_term, acquisition_content, acquisition_referrer, acquisition_landing_page, acquisition_click_id, acquisition_signup_method, acquisition_created_at')
+				->where('user_id', (int)$userID)
+				->get('user_acquisitions')
+				->row();
+			if ($acquisition) {
+				$data['acquisition'] = [
+					'source' => (string)$acquisition->acquisition_source,
+					'medium' => (string)$acquisition->acquisition_medium,
+					'campaign' => (string)$acquisition->acquisition_campaign,
+					'term' => (string)$acquisition->acquisition_term,
+					'content' => (string)$acquisition->acquisition_content,
+					'referrer' => (string)$acquisition->acquisition_referrer,
+					'landing_page' => (string)$acquisition->acquisition_landing_page,
+					'click_id' => (string)$acquisition->acquisition_click_id,
+					'signup_method' => (string)$acquisition->acquisition_signup_method,
+					'created_at' => (string)$acquisition->acquisition_created_at,
+				];
+			}
+		}
 		$data['lastPayments'] = $this->lastPayments($userID);
+		$data['orderPayments'] = $this->orderPayments($userID);
 		$data['summaryStats'] = $this->getUserSummaryStats($userID);
 		$legacyHistory = $this->getLegacyHistory($userID);
 		$data['legacy_orders'] = $legacyHistory['orders'];
@@ -2111,6 +2144,53 @@ class Users extends MY_Controller
 		return $array['lastPayments'];
 	}
 
+	private function orderPayments($userID)
+	{
+		$statusLabels = [
+			0 => 'Beklemede',
+			1 => 'Teslim Edildi',
+			2 => 'İptal Edildi',
+			3 => 'İşleme Alındı',
+			4 => 'Satıcı Onayladı',
+			5 => 'Satıcı Onaylamadı',
+			9 => 'Cron İşlemi',
+			11 => 'Ödeme Bekleniyor',
+			12 => 'Ödeme Reddedildi',
+			13 => 'Fraud Onayı',
+			14 => 'Yeni Tedarikçi Bekleniyor',
+		];
+		$statusColors = [
+			1 => 'success',
+			2 => 'danger',
+			5 => 'danger',
+			12 => 'danger',
+		];
+		$paymentMethods = [
+			2 => 'Cüzdan',
+			3 => 'Havale / EFT',
+			4 => 'Kredi Kartı',
+			5 => 'Mobil Ödeme',
+		];
+		$orders = $this->db->select('o.order_id, o.order_created_at, o.order_payment_type, o.order_status, o.order_sale_price, o.order_sale_price_currency, o.order_quantity, p.product_name')
+			->from('orders o')
+			->join('products p', 'p.product_id = o.order_product_id', 'left')
+			->where('o.order_reseller_id', (int)$userID)
+			->where_in('o.order_payment_type', [2, 3, 4, 5])
+			->order_by('o.order_id', 'DESC')
+			->limit(300)
+			->get()
+			->result();
+
+		foreach ($orders as $order) {
+			$status = (int)$order->order_status;
+			$order->paymentMethod = $paymentMethods[(int)$order->order_payment_type] ?? 'Bilinmiyor';
+			$order->statusText = $statusLabels[$status] ?? 'Bilinmiyor';
+			$order->statusColor = $statusColors[$status] ?? 'warning';
+		}
+
+		return $orders;
+	}
+
 	public function getUserSummaryStats($userID)
 	{
 		$userID = (int)$userID;
@@ -2380,26 +2460,37 @@ class Users extends MY_Controller
 
 	public function invoiceDetail($uuid)
 	{
-		// Segment'ten alamazsa parametre olarak geleni kullanması için ufak bir fallback
-
-
 		$uuid = $this->uri->segment(3);
 		if (empty($uuid)) {
 			show_error('Geçersiz fatura numarası.');
 			return;
 		}
+
+		$invoiceOrder = $this->db->select('order_billing_address')
+			->where('order_invoice_uuid', $uuid)
+			->where('order_invoice_status', 1)
+			->limit(1)
+			->get('orders')
+			->row();
+		if (!$invoiceOrder) {
+			show_404();
+			return;
+		}
+
+		$snapshot = json_decode((string)$invoiceOrder->order_billing_address, true);
+		$preferredType = !empty($snapshot['is_e_invoice_taxpayer']) ? 'EFATURA' : 'EARSIV';
+		$documentTypes = [$preferredType, $preferredType === 'EFATURA' ? 'EARSIV' : 'EFATURA'];
 		$this->load->library('birfatura');
 		$birFatura = new Birfatura();
-		// API'den PDF linkini çek
-		$result = $birFatura->get_pdf_link_by_uuid($uuid, 'EFATURA');
-		// Eğer sonuç geçerli bir URL ise doğrudan o adrese yönlendir
-		if (!empty($result) && filter_var($result, FILTER_VALIDATE_URL)) {
-			redirect($result);
-		} else {
-			// Eğer link gelmediyse veya API hata verdiyse kullanıcıya bilgi ver
-			//sekmeyi kapat
-			echo '<script>window.close();</script>';
+		foreach ($documentTypes as $documentType) {
+			$result = $birFatura->get_pdf_link_by_uuid($uuid, $documentType);
+			if (!empty($result) && filter_var($result, FILTER_VALIDATE_URL)) {
+				redirect($result);
+				return;
+			}
 		}
+
+		show_error('Fatura PDF bağlantısı Birfatura tarafından alınamadı.', 502);
 	}
 
 	public function updateBillingInfo($id)
@@ -2756,6 +2847,90 @@ class Users extends MY_Controller
 		$data = $this->data;
 		$data['referralDefaults'] = ['date_from' => '', 'date_to' => ''];
 		$this->template->content->view('referral_report', $data);
+		$this->template->publish();
+	}
+
+	public function acquisitionReport()
+	{
+		$dateFrom = trim((string)$this->input->get('date_from', true));
+		$dateTo = trim((string)$this->input->get('date_to', true));
+		$dateFrom = validateDate($dateFrom, 'Y-m-d') ? $dateFrom : '';
+		$dateTo = validateDate($dateTo, 'Y-m-d') ? $dateTo : '';
+		if ($dateFrom !== '' && $dateTo !== '' && $dateFrom > $dateTo) {
+			[$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+		}
+
+		$data = $this->data;
+		$data['acquisitionDateFrom'] = $dateFrom;
+		$data['acquisitionDateTo'] = $dateTo;
+		$data['acquisitionTableMissing'] = !$this->db->table_exists('user_acquisitions');
+		$data['acquisitionTotals'] = ['signups' => 0, 'unknown' => 0, 'paid' => 0, 'campaigns' => 0];
+		$data['acquisitionSources'] = [];
+		$data['acquisitionCampaigns'] = [];
+		$data['acquisitionMethods'] = [];
+		$data['acquisitionLandingPages'] = [];
+
+		if (!$data['acquisitionTableMissing']) {
+			$applyDateRange = function () use ($dateFrom, $dateTo) {
+				if ($dateFrom !== '') {
+					$this->db->where('ua.acquisition_created_at >=', $dateFrom . ' 00:00:00');
+				}
+				if ($dateTo !== '') {
+					$this->db->where('ua.acquisition_created_at <=', $dateTo . ' 23:59:59');
+				}
+			};
+
+			$totalsQuery = $this->db->select(
+				"COUNT(*) AS signups,
+				SUM(CASE WHEN ua.acquisition_source = 'direct' OR ua.acquisition_source = '' THEN 1 ELSE 0 END) AS unknown,
+				SUM(CASE WHEN ua.acquisition_medium IN ('cpc', 'ppc', 'paid', 'paid_social', 'display', 'affiliate') THEN 1 ELSE 0 END) AS paid,
+				SUM(CASE WHEN ua.acquisition_campaign <> '' THEN 1 ELSE 0 END) AS campaigns",
+				false
+			)->from('user_acquisitions ua');
+			$applyDateRange();
+			$totals = $totalsQuery->get()->row_array();
+			foreach ($data['acquisitionTotals'] as $key => $unused) {
+				$data['acquisitionTotals'][$key] = (int)($totals[$key] ?? 0);
+			}
+
+			$sourceQuery = $this->db->select('ua.acquisition_source, ua.acquisition_medium, COUNT(*) AS signups', false)
+				->from('user_acquisitions ua');
+			$applyDateRange();
+			$data['acquisitionSources'] = $sourceQuery
+				->group_by(['ua.acquisition_source', 'ua.acquisition_medium'])
+				->order_by('signups', 'DESC')
+				->order_by('ua.acquisition_source', 'ASC')
+				->get()->result();
+
+			$campaignQuery = $this->db->select('ua.acquisition_source, ua.acquisition_medium, ua.acquisition_campaign, COUNT(*) AS signups', false)
+				->from('user_acquisitions ua')
+				->where('ua.acquisition_campaign <>', '');
+			$applyDateRange();
+			$data['acquisitionCampaigns'] = $campaignQuery
+				->group_by(['ua.acquisition_source', 'ua.acquisition_medium', 'ua.acquisition_campaign'])
+				->order_by('signups', 'DESC')
+				->limit(200)
+				->get()->result();
+
+			$landingPageQuery = $this->db->select('ua.acquisition_landing_page, COUNT(*) AS signups', false)
+				->from('user_acquisitions ua');
+			$applyDateRange();
+			$data['acquisitionLandingPages'] = $landingPageQuery
+				->group_by('ua.acquisition_landing_page')
+				->order_by('signups', 'DESC')
+				->limit(200)
+				->get()->result();
+
+			$methodQuery = $this->db->select('ua.acquisition_signup_method, COUNT(*) AS signups', false)
+				->from('user_acquisitions ua');
+			$applyDateRange();
+			$data['acquisitionMethods'] = $methodQuery
+				->group_by('ua.acquisition_signup_method')
+				->order_by('signups', 'DESC')
+				->get()->result();
+		}
+
+		$this->template->content->view('acquisition_report', $data);
 		$this->template->publish();
 	}
 

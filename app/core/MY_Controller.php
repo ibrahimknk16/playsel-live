@@ -141,7 +141,8 @@ class MY_Controller extends MX_Controller
 				}
 			}
 		}
-		
+
+		$this->captureUserAcquisition();
 		$this->userLogInsert();
 
 		$userData = $this->session->userdata('user');
@@ -163,6 +164,190 @@ class MY_Controller extends MX_Controller
 				redirect(topupcenter() . (preg_match('/^[a-z]{2}-[A-Z]{2}$/', (string)$this->uri->segment(1)) ? $this->uri->segment(1) : 'tr-TR') . '/login');
 			}
 		}
+	}
+
+	private function captureUserAcquisition()
+	{
+		$attribution = $this->session->userdata('user_acquisition');
+		if (!is_array($attribution)) {
+			$cookieValue = (string)($_COOKIE['playsel_acquisition'] ?? '');
+			$cookieAttribution = json_decode($cookieValue, true);
+			$attribution = is_array($cookieAttribution) ? $cookieAttribution : [];
+		}
+
+		$utm = [];
+		foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $key) {
+			$value = $this->input->get($key, true);
+			$utm[$key] = is_string($value) ? mb_substr(trim($value), 0, 255) : '';
+		}
+
+		$clickId = '';
+		$clickSource = '';
+		$clickMedium = '';
+		foreach (['gclid' => ['google', 'cpc'], 'gbraid' => ['google', 'cpc'], 'wbraid' => ['google', 'cpc'], 'fbclid' => ['facebook', 'social'], 'msclkid' => ['bing', 'cpc'], 'ttclid' => ['tiktok', 'paid_social']] as $key => $details) {
+			$value = $this->input->get($key, true);
+			if (is_string($value) && trim($value) !== '') {
+				$clickId = mb_substr(trim($value), 0, 500);
+				$clickSource = $details[0];
+				$clickMedium = $details[1];
+				break;
+			}
+		}
+
+		$referrer = $this->acquisitionReferrer();
+		$referrerHost = strtolower((string)parse_url($referrer, PHP_URL_HOST));
+		$siteHost = strtolower((string)parse_url(base_url(), PHP_URL_HOST));
+		$isExternalReferrer = $referrerHost !== '' && !$this->acquisitionHostMatches($referrerHost, [$siteHost]);
+		$referrerSource = '';
+		$referrerMedium = '';
+		if ($isExternalReferrer) {
+			$searchEngines = [
+				'google' => ['google.com', 'google.co.uk', 'google.de', 'google.fr', 'google.com.tr', 'google.ae', 'google.ru', 'google.co.id', 'google.co.in', 'google.co.jp', 'google.ca', 'google.com.au', 'google.co.nz', 'google.co.za', 'google.com.br', 'google.com.mx', 'google.es', 'google.it', 'google.nl', 'google.pl', 'google.com.sg', 'google.com.my', 'google.com.ph', 'google.com.pk', 'google.com.ng', 'google.com.eg', 'google.com.sa', 'google.com.ua', 'google.com.vn', 'google.com.hk', 'google.com.tw', 'google.com.ar', 'google.com.co', 'google.com.pe', 'google.com.cl', 'google.gr', 'google.se', 'google.no', 'google.dk', 'google.ch', 'google.at', 'google.be', 'google.ie', 'google.pt', 'google.cz', 'google.hu', 'google.ro', 'google.bg', 'google.hr', 'google.sk', 'google.si', 'google.lt', 'google.lv', 'google.ee', 'google.fi'],
+				'bing' => ['bing.com'],
+				'yahoo' => ['yahoo.com', 'yahoo.co.uk', 'yahoo.co.jp', 'yahoo.com.tr'],
+				'yandex' => ['yandex.ru', 'yandex.com', 'yandex.com.tr', 'yandex.kz', 'yandex.by'],
+				'duckduckgo' => ['duckduckgo.com'],
+				'ecosia' => ['ecosia.org'],
+				'brave' => ['search.brave.com'],
+			];
+			foreach ($searchEngines as $sourceName => $domains) {
+				if ($this->acquisitionHostMatches($referrerHost, $domains)) {
+					$referrerSource = $sourceName;
+					$referrerMedium = 'organic';
+					break;
+				}
+			}
+
+			if ($referrerSource === '') {
+				$socialNetworks = [
+					'facebook' => ['facebook.com', 'fb.com', 'fb.me'],
+					'instagram' => ['instagram.com'],
+					'tiktok' => ['tiktok.com'],
+					'x' => ['x.com', 'twitter.com', 't.co'],
+					'youtube' => ['youtube.com', 'youtu.be'],
+					'linkedin' => ['linkedin.com', 'lnkd.in'],
+					'reddit' => ['reddit.com', 'redd.it'],
+					'pinterest' => ['pinterest.com', 'pin.it'],
+				];
+				foreach ($socialNetworks as $sourceName => $domains) {
+					if ($this->acquisitionHostMatches($referrerHost, $domains)) {
+						$referrerSource = $sourceName;
+						$referrerMedium = 'social';
+						break;
+					}
+				}
+			}
+			if ($referrerSource === '') {
+				$referrerSource = mb_substr(preg_replace('/[^a-z0-9.-]/', '', $referrerHost), 0, 100);
+				$referrerMedium = 'referral';
+			}
+		}
+
+		$source = $utm['utm_source'] !== '' ? $utm['utm_source'] : ($clickSource ?: ($referrerSource ?: 'direct'));
+		$source = mb_substr(strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $source)), 0, 100);
+		$inferredMedium = $utm['utm_source'] !== ''
+			? ($clickSource !== '' && strtolower($utm['utm_source']) === $clickSource ? $clickMedium : 'campaign')
+			: ($clickMedium ?: $referrerMedium);
+		$medium = $utm['utm_medium'] !== '' ? $utm['utm_medium'] : $inferredMedium;
+		$medium = mb_substr(strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $medium)), 0, 100);
+		$candidate = [
+			'source' => $source !== '' ? $source : 'direct',
+			'medium' => $medium,
+			'campaign' => $utm['utm_campaign'],
+			'term' => $utm['utm_term'],
+			'content' => $utm['utm_content'],
+			'landing_page' => mb_substr('/' . ltrim($this->uri->uri_string(), '/'), 0, 500),
+			'referrer' => mb_substr($referrer, 0, 500),
+			'click_id' => $clickId,
+		];
+
+		$hasAttribution = isset($attribution['source']) && (string)$attribution['source'] !== '';
+		if (!$hasAttribution || ((string)$attribution['source'] === 'direct' && $candidate['source'] !== 'direct')) {
+			if ($hasAttribution && !empty($attribution['landing_page'])) {
+				$candidate['landing_page'] = $attribution['landing_page'];
+			}
+			$attribution = $candidate;
+		}
+		$attribution = $this->normalizeUserAcquisition($attribution);
+		$this->session->set_userdata('user_acquisition', $attribution);
+
+		$cookieOptions = [
+			'expires' => time() + (90 * 86400),
+			'path' => '/',
+			'secure' => (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') || (int)($_SERVER['SERVER_PORT'] ?? 0) === 443,
+			'httponly' => true,
+			'samesite' => 'Lax',
+		];
+		setcookie('playsel_acquisition', (string)json_encode($attribution, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $cookieOptions);
+	}
+
+	private function acquisitionReferrer()
+	{
+		$value = (string)($_SERVER['HTTP_REFERER'] ?? '');
+		$parts = parse_url($value);
+		if (!is_array($parts) || !in_array(strtolower((string)($parts['scheme'] ?? '')), ['http', 'https'], true) || empty($parts['host'])) {
+			return '';
+		}
+
+		$referrer = strtolower((string)$parts['scheme']) . '://' . strtolower((string)$parts['host']);
+		if (!empty($parts['port'])) {
+			$referrer .= ':' . (int)$parts['port'];
+		}
+		$referrer .= (string)($parts['path'] ?? '');
+		return mb_substr($referrer, 0, 500);
+	}
+
+	private function acquisitionHostMatches($host, array $domains)
+	{
+		foreach ($domains as $domain) {
+			if ($host === $domain || substr($host, -strlen('.' . $domain)) === '.' . $domain) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private function normalizeUserAcquisition(array $attribution)
+	{
+		$fields = ['source' => 100, 'medium' => 100, 'campaign' => 255, 'term' => 255, 'content' => 255, 'landing_page' => 500, 'referrer' => 500, 'click_id' => 500];
+		$normalized = [];
+		foreach ($fields as $field => $maxLength) {
+			$value = trim((string)($attribution[$field] ?? ''));
+			$normalized[$field] = mb_substr($value, 0, $maxLength);
+		}
+		if ($normalized['source'] === '') {
+			$normalized['source'] = 'direct';
+		}
+		return $normalized;
+	}
+
+	public function saveUserAcquisition($userId, $signupMethod)
+	{
+		if (!$this->db->table_exists('user_acquisitions')) {
+			log_message('error', 'User acquisition could not be saved: user_acquisitions table is missing.');
+			return false;
+		}
+
+		$attribution = $this->session->userdata('user_acquisition');
+		$attribution = $this->normalizeUserAcquisition(is_array($attribution) ? $attribution : []);
+		$inserted = $this->db->insert('user_acquisitions', [
+			'user_id' => (int)$userId,
+			'acquisition_source' => $attribution['source'],
+			'acquisition_medium' => $attribution['medium'],
+			'acquisition_campaign' => $attribution['campaign'],
+			'acquisition_term' => $attribution['term'],
+			'acquisition_content' => $attribution['content'],
+			'acquisition_landing_page' => $attribution['landing_page'],
+			'acquisition_referrer' => $attribution['referrer'],
+			'acquisition_click_id' => $attribution['click_id'],
+			'acquisition_signup_method' => in_array($signupMethod, ['email', 'google'], true) ? $signupMethod : 'unknown',
+			'acquisition_created_at' => date('Y-m-d H:i:s'),
+		]);
+		if (!$inserted) {
+			log_message('error', 'User acquisition could not be saved for user ID ' . (int)$userId . '.');
+			return false;
+		}
+		return true;
 	}
 
 	public function locales()

@@ -1939,6 +1939,7 @@ $statusOptions = [
                     };
                     const statusCode = Number(data.order_status);
                     const statusTag = statusCode === 1 ? 'ok' : ([2, 5, 12].indexOf(statusCode) !== -1 ? 'no' : 'wait');
+                    const orderIp = String(data.order_user_ip || '').trim();
                     const requireKeyLabels = {
                         user_id: 'UserID',
                         server_id: 'Server',
@@ -1962,6 +1963,12 @@ $statusOptions = [
                         wait: ['Sipariş işlemde', statusCode === 13 ? 'Fraud kontrolü bekleniyor.' : 'Sipariş henüz tamamlanmadı; tedarikçi yanıtı bekleniyor.']
                     }[statusTag];
                     const copyBtn = function(v) { return '<button type="button" class="od-copy" data-copy="' + escapeHtml(v) + '" title="Kopyala"><i class="fa-solid fa-copy"></i></button>'; };
+                    const ipRow = '<div class="od-row"><span class="od-key">' + odIcon('globe') + 'Sipariş IP Adresi</span>' +
+                        '<span style="display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0">' +
+                        '<strong style="overflow-wrap:anywhere">' + escapeHtml(odValue(orderIp)) + '</strong>' +
+                        (orderIp && orderIp !== '-' ?
+                            '<button type="button" class="btn btn-sm btn-outline-info" data-order-ip-lookup="' + orderId + '" title="IP Sorgula" aria-label="IP Sorgula" style="flex:none;margin:0;padding:3px 7px;font-size:10px;line-height:1"><i class="fa-solid fa-location-dot"></i></button>' : '') +
+                        '</span></div>';
 
                     const paneDetail = '<section class="od-product">' +
                         (imageSrc ? '<img src="' + imageSrc + '" alt="">' : '') +
@@ -1990,7 +1997,7 @@ $statusOptions = [
                         odRow('Müşteri', data.customer_name || data.reseller_name, 'user') +
                         odRow('E-posta', data.customer_email, 'envelope') +
                         odRow('Telefon', data.customer_phone, 'phone') +
-                        odRow('Sipariş IP Adresi', data.order_user_ip, 'globe') +
+                        ipRow +
                         '</div>' +
                         ((data.islemeAl || data.pinTeslim) ? '<div class="od-actions">' + (data.islemeAl || '') + (data.pinTeslim || '') + '</div>' : '');
 
@@ -2045,6 +2052,75 @@ $statusOptions = [
 
             $(document).on('click', '.od-copy', function() {
                 window.copy($(this).attr('data-copy'));
+            });
+
+            $(document).on('click', '[data-order-ip-lookup]', function() {
+                var button = $(this);
+                var orderID = Number(button.attr('data-order-ip-lookup'));
+                Swal.fire({
+                    title: 'Sipariş IP adresini sorgula?',
+                    text: 'IP adresi konum bilgisi almak için HTTPS üzerinden ipwho.is servisine gönderilecek. Konum bilgisi yaklaşık olabilir.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sorgula',
+                    cancelButtonText: 'Vazgeç',
+                    reverseButtons: true,
+                    showLoaderOnConfirm: true,
+                    preConfirm: function() {
+                        return $.ajax({
+                            url: '<?= site_url('orders/lookupOrderIp') ?>',
+                            type: 'POST',
+                            dataType: 'json',
+                            data: {
+                                order_id: orderID,
+                                admin_action_csrf: <?= json_encode($adminActionCsrfToken) ?>
+                            }
+                        }).then(function(response) {
+                            if (!response || response.status !== 'success') {
+                                Swal.showValidationMessage(response && response.message ? response.message : 'IP sorgusu başarısız oldu.');
+                                return false;
+                            }
+                            return response.data;
+                        }).catch(function(xhr) {
+                            var response = xhr.responseJSON;
+                            Swal.showValidationMessage(response && response.message ? response.message : 'IP sorgu servisine ulaşılamadı.');
+                            return false;
+                        });
+                    },
+                    allowOutsideClick: function() {
+                        return !Swal.isLoading();
+                    }
+                }).then(function(result) {
+                    if (!result.isConfirmed || !result.value) return;
+
+                    var data = result.value;
+                    var fields = [
+                        ['IP', data.ip],
+                        ['Tür', data.type],
+                        ['Ülke', data.country],
+                        ['Bölge', data.region],
+                        ['Şehir', data.city],
+                        ['Posta kodu', data.postal],
+                        ['ISP', data.isp],
+                        ['Organizasyon', data.organization],
+                        ['Saat dilimi', data.timezone],
+                        ['Koordinat', data.latitude != null && data.longitude != null ? data.latitude + ', ' + data.longitude : '']
+                    ];
+                    var details = fields.filter(function(field) {
+                        return field[1] !== null && field[1] !== undefined && String(field[1]) !== '';
+                    }).map(function(field) {
+                        return '<div style="display:flex;justify-content:space-between;gap:14px;text-align:left;padding:5px 0;border-bottom:1px solid #333"><span>' +
+                            escapeHtml(field[0]) + '</span><strong style="text-align:right;overflow-wrap:anywhere">' + escapeHtml(String(field[1])) + '</strong></div>';
+                    }).join('');
+
+                    Swal.fire({
+                        title: 'IP konum bilgisi',
+                        html: '<div style="font-size:13px">' + details + '</div>',
+                        icon: 'info',
+                        confirmButtonText: 'Kapat',
+                        width: 440
+                    });
+                });
             });
 
             $(document).on('click', '#orderDetailContent [data-od-tab]', function() {

@@ -115,6 +115,10 @@
                 <p>Kayıtlı müşterileri görüntüleyin, filtreleyin ve hesap durumlarını yönetin.</p>
             </div>
             <div class="toolbar">
+                <a class="btn" href="<?= base_url('users/acquisitionReport') ?>">
+                    <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15v-4m4 4V7m4 8v-6m4 10V9"/></svg>
+                    <span>Edinim Raporu</span>
+                </a>
                 <button type="button" class="btn" id="exportBtn">
                     <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4"/><path d="M4 16v4h16v-4"/></svg>
                     <span>Dışa Aktar</span>
@@ -375,7 +379,6 @@
     function notify(type, msg) {
         if (typeof toastr !== 'undefined') toastr[type](msg);
     }
-
     var icons = {
         copy: '<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
         mail: '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',

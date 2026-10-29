@@ -565,7 +565,10 @@ if (!empty($user->user_reference_id)) {
 
                     <aside class="cd-overview-left">
                         <section class="cd-panel">
-                            <div class="cd-panel-head"><h3>Üye Bilgileri</h3></div>
+                            <div class="cd-panel-head">
+                                <h3>Üye Bilgileri</h3>
+                                <button type="button" class="cd-button" data-bs-toggle="modal" data-bs-target="#cdAcquisitionModal"><?= $cdIcon('activity') ?> Edinim Detayları</button>
+                            </div>
                             <div class="cd-info-stack">
                                 <div class="cd-vrow"><span><?= $cdIcon('user') ?> Müşteri ID</span><strong>#<?= (int)$user->user_id ?></strong></div>
                                 <div class="cd-vrow"><span><?= $cdIcon('user') ?> Ad Soyad</span><strong><?= html_escape($fullName) ?></strong></div>
@@ -603,6 +606,31 @@ if (!empty($user->user_reference_id)) {
                                 <div class="cd-vrow"><span><?= $cdIcon('file') ?> Vergi / Kimlik No</span><strong><?= html_escape($taxMasked) ?></strong></div>
                             </div>
                         </section>
+
+                        <div class="modal fade" id="cdAcquisitionModal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Kullanıcı edinim detayları</h5>
+                                        <button type="button" class="btn btn-icon btn-sm btn-active-light-primary" data-bs-dismiss="modal" aria-label="Kapat">✕</button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="cd-info-stack">
+                                            <div class="cd-vrow"><span>Edinim kaynağı</span><strong><?= html_escape($acquisition['source'] !== '' ? $acquisition['source'] : 'Bilinmiyor') ?></strong></div>
+                                            <div class="cd-vrow"><span>Kanal / medium</span><strong><?= html_escape($acquisition['medium'] !== '' ? $acquisition['medium'] : '—') ?></strong></div>
+                                            <div class="cd-vrow"><span>Kampanya</span><strong><?= html_escape($acquisition['campaign'] !== '' ? $acquisition['campaign'] : '—') ?></strong></div>
+                                            <div class="cd-vrow"><span>Arama terimi (utm_term)</span><strong><?= html_escape($acquisition['term'] !== '' ? $acquisition['term'] : '—') ?></strong></div>
+                                            <div class="cd-vrow"><span>İçerik / kreatif (utm_content)</span><strong><?= html_escape($acquisition['content'] !== '' ? $acquisition['content'] : '—') ?></strong></div>
+                                            <div class="cd-vrow"><span>Yönlendiren sayfa</span><strong style="max-width:420px;overflow-wrap:anywhere;text-align:right"><?= html_escape($acquisition['referrer'] !== '' ? $acquisition['referrer'] : '—') ?></strong></div>
+                                            <div class="cd-vrow"><span>İlk açılan sayfa</span><strong style="max-width:420px;overflow-wrap:anywhere;text-align:right"><?= html_escape($acquisition['landing_page'] !== '' ? $acquisition['landing_page'] : '—') ?></strong></div>
+                                            <div class="cd-vrow"><span>Reklam tıklama kimliği</span><strong style="max-width:420px;overflow-wrap:anywhere;text-align:right"><?= html_escape($acquisition['click_id'] !== '' ? $acquisition['click_id'] : '—') ?></strong></div>
+                                            <div class="cd-vrow"><span>Kayıt yöntemi</span><strong><?= html_escape($acquisition['signup_method'] !== '' ? $acquisition['signup_method'] : 'Bilinmiyor') ?></strong></div>
+                                            <div class="cd-vrow"><span>Edinim kaydı zamanı</span><strong><?= html_escape($acquisition['created_at'] !== '' ? $acquisition['created_at'] : '—') ?></strong></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <?php if (!empty($user->user_email_temp) || !empty($user->user_phone_temp)): ?>
                             <section class="cd-panel">
@@ -722,10 +750,11 @@ if (!empty($user->user_reference_id)) {
                                                 <th>Tutar</th>
                                                 <th>Referans No</th>
                                                 <th>Durum</th>
+                                                <th>İşlem</th>
                                             </tr>
                                         </thead>
                                         <tbody class="fw-semibold text-gray-700">
-                                            <?php if (!empty($lastPayments)): ?>
+                                            <?php if (!empty($lastPayments) || !empty($orderPayments)): ?>
                                                 <?php foreach ($lastPayments as $index => $row): ?>
                                                     <tr>
                                                         <td><?= $index + 1 ?></td>
@@ -742,9 +771,21 @@ if (!empty($user->user_reference_id)) {
                                                                 <?= html_escape($row->statusText) ?>
                                                             </span>
                                                         </td>
+                                                        <td><button type="button" class="cd-table-btn" data-cd-payment="<?= (int)$row->user_balance_id ?>">Ödeme Detayı</button></td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
+                                            <?php foreach ($orderPayments ?? [] as $orderPayment): ?>
+                                                <tr>
+                                                    <td><span class="badge badge-light-info">Sipariş #<?= (int)$orderPayment->order_id ?></span></td>
+                                                    <td><?= html_escape($orderPayment->order_created_at ?: '-') ?></td>
+                                                    <td><span class="badge badge-light-info"><?= html_escape($orderPayment->paymentMethod) ?></span></td>
+                                                    <td><?= nFormat($orderPayment->order_sale_price) ?> <?= html_escape($orderPayment->order_sale_price_currency ?: 'TRY') ?></td>
+                                                    <td><?= html_escape('#' . (int)$orderPayment->order_id) ?></td>
+                                                    <td><span class="badge badge-light-<?= html_escape($orderPayment->statusColor) ?>"><?= html_escape($orderPayment->statusText) ?></span></td>
+                                                    <td><button type="button" class="cd-table-btn" data-cd-order-payment="<?= (int)$orderPayment->order_id ?>">Ödeme Detayı</button></td>
+                                                </tr>
+                                            <?php endforeach; ?>
                                             <?php foreach ($legacy_payments as $legacyPayment): ?>
                                                 <tr>
                                                     <td><span class="badge badge-light-warning">Legacy</span></td>
@@ -771,6 +812,7 @@ if (!empty($user->user_reference_id)) {
                                                         <?php endif; ?>
                                                     </td>
                                                     <td><span class="badge badge-light-warning"><?= html_escape($legacyPayment->status_text ?: 'Legacy') ?></span></td>
+                                                    <td><button type="button" class="cd-table-btn" data-cd-legacy-payment="<?= html_escape($legacyPayment->legacy_payment_key) ?>">Ödeme Detayı</button></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                             <?php foreach ($legacy_cancellations as $legacyCancellation): ?>
@@ -781,11 +823,12 @@ if (!empty($user->user_reference_id)) {
                                                     <td><?= nFormat($legacyCancellation->amount) ?> <?= html_escape($legacyCancellation->currency ?: 'TRY') ?></td>
                                                     <td><?= html_escape($legacyCancellation->legacy_cancellation_key ?: '-') ?></td>
                                                     <td><span class="badge badge-light-danger"><?= html_escape($legacyCancellation->status_text ?: 'İade') ?></span></td>
+                                                    <td>—</td>
                                                 </tr>
                                             <?php endforeach; ?>
-                                            <?php if (empty($lastPayments) && empty($legacy_payments) && empty($legacy_cancellations)): ?>
+                                            <?php if (empty($lastPayments) && empty($orderPayments) && empty($legacy_payments) && empty($legacy_cancellations)): ?>
                                                 <tr>
-                                                    <td colspan="6" class="text-center text-gray-500 py-6">Ödeme kaydı bulunamadı.</td>
+                                                    <td colspan="7" class="text-center text-gray-500 py-6">Ödeme kaydı bulunamadı.</td>
                                                 </tr>
                                             <?php endif; ?>
                                         </tbody>
@@ -1160,6 +1203,7 @@ if (!empty($user->user_reference_id)) {
                     <div><small>Toplam Yükleme</small><strong class="up"><?= number_format((float)$userBalance['balanceTotal'], 2, ',', '.') ?> TL</strong></div>
                     <div><small>Toplam Harcama</small><strong class="down"><?= number_format((float)$userBalance['spent'], 2, ',', '.') ?> TL</strong></div>
                     <div><small>Güncel Ödeme Kaydı</small><strong><?= count($lastPayments ?? []) ?></strong><span><?= $payOkCount ?> onaylı</span></div>
+                    <div><small>Sipariş Ödemesi</small><strong><?= count($orderPayments ?? []) ?></strong><span>Son 300 sipariş</span></div>
                     <div><small>Legacy Ödeme Kaydı</small><strong><?= count($legacy_payments ?? []) ?></strong><span>Eski sistem</span></div>
                 </div>
 
@@ -1167,6 +1211,7 @@ if (!empty($user->user_reference_id)) {
                     <ul class="nav cd-subtabs" role="tablist">
                         <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#cd_pay_current" role="tab">Güncel Ödemeler</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_spending" role="tab">Güncel Harcamalar (<?= count($spendingMovements ?? []) ?>)</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_order" role="tab">Sipariş Ödemeleri (<?= count($orderPayments ?? []) ?>)</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_pending_orders" role="tab">Ödeme Bekleniyor (<?= count($pendingPaymentOrders ?? []) ?>)</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_legacy" role="tab">Legacy Ödemeler</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cd_pay_moves" role="tab">Legacy Bakiye Hareketleri</a></li>
@@ -1190,7 +1235,7 @@ if (!empty($user->user_reference_id)) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if (!empty($lastPayments)): ?>
+                                    <?php if (!empty($lastPayments) || !empty($orderPayments)): ?>
                                         <?php foreach ($lastPayments as $index => $row): ?>
                                             <tr>
                                                 <td class="cd-muted"><?= $index + 1 ?></td>
@@ -1224,6 +1269,19 @@ if (!empty($user->user_reference_id)) {
                                                         </form>
                                                     <?php endif; ?>
                                                 </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        <?php foreach ($orderPayments ?? [] as $orderPayment): ?>
+                                            <tr>
+                                                <td class="cd-ref">#<?= (int)$orderPayment->order_id ?></td>
+                                                <td><?= html_escape($orderPayment->order_created_at) ?></td>
+                                                <td><span class="badge badge-light-info"><?= html_escape($orderPayment->paymentMethod) ?></span></td>
+                                                <td class="cd-money"><?= number_format((float)$orderPayment->order_sale_price, 2, ',', '.') ?> <?= html_escape($orderPayment->order_sale_price_currency ?: 'TRY') ?></td>
+                                                <td class="cd-ref">#<?= (int)$orderPayment->order_id ?></td>
+                                                <td>Sipariş</td>
+                                                <td class="cd-note-cell"><?= html_escape($orderPayment->product_name ?: 'Ürün') ?></td>
+                                                <td><span class="badge badge-light-<?= html_escape($orderPayment->statusColor) ?>"><?= html_escape($orderPayment->statusText) ?></span></td>
+                                                <td class="text-end"><button type="button" class="cd-table-btn" data-cd-order-payment="<?= (int)$orderPayment->order_id ?>">Ödeme Detayı</button></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php else: ?>
@@ -1276,6 +1334,44 @@ if (!empty($user->user_reference_id)) {
                         </div>
                         <?php if (count($spendingMovements ?? []) >= 300): ?>
                             <div class="text-muted fs-7 px-4 pb-4">En son 300 harcama kaydı gösteriliyor.</div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="tab-pane fade" id="cd_pay_order" role="tabpanel">
+                        <div class="cd-table-wrap">
+                            <table class="table align-middle cd-pay-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sipariş No</th>
+                                        <th>Tarih</th>
+                                        <th>Ürün</th>
+                                        <th>Ödeme Yöntemi</th>
+                                        <th>Tutar</th>
+                                        <th>Sipariş Durumu</th>
+                                        <th class="text-end">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($orderPayments)): ?>
+                                        <?php foreach ($orderPayments as $orderPayment): ?>
+                                            <tr>
+                                                <td class="cd-ref">#<?= (int)$orderPayment->order_id ?></td>
+                                                <td><?= html_escape($orderPayment->order_created_at) ?></td>
+                                                <td><?= html_escape($orderPayment->product_name ?: 'Ürün') ?> <span class="text-muted">x<?= (int)$orderPayment->order_quantity ?></span></td>
+                                                <td><?= html_escape($orderPayment->paymentMethod) ?></td>
+                                                <td class="cd-money"><?= number_format((float)$orderPayment->order_sale_price, 2, ',', '.') ?> <?= html_escape($orderPayment->order_sale_price_currency ?: 'TRY') ?></td>
+                                                <td><span class="badge badge-light-<?= html_escape($orderPayment->statusColor) ?>"><?= html_escape($orderPayment->statusText) ?></span></td>
+                                                <td class="text-end"><a class="cd-table-btn" href="<?= base_url('orders/orderInvoice/' . (int)$orderPayment->order_id) ?>" target="_blank" rel="noopener">Sipariş Detayı</a></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="7" class="text-center text-muted py-8">Sipariş ödemesi bulunamadı.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php if (count($orderPayments ?? []) >= 300): ?>
+                            <div class="text-muted fs-7 px-4 pb-4">En son 300 sipariş ödemesi gösteriliyor.</div>
                         <?php endif; ?>
                     </div>
 
@@ -1722,6 +1818,15 @@ if (!empty($user->user_reference_id)) {
                         $('#cdRefCount').text(all.length ? n + ' / ' + all.length + ' kayıt' : '');
                     });
                 </script>
+                <script>
+                (function () {
+                    if (window.location.hash !== '#kt_user_invoices') return;
+                    var invoiceTab = document.querySelector('a[data-bs-toggle="tab"][href="#kt_user_invoices"]');
+                    if (invoiceTab && window.bootstrap && bootstrap.Tab) {
+                        bootstrap.Tab.getOrCreateInstance(invoiceTab).show();
+                    }
+                })();
+                </script>
             </div>
             
         </div>
@@ -1963,6 +2068,7 @@ if (!empty($user->user_reference_id)) {
         legacy: "<?= site_url('users/legacyOrderDetail/' . (int)$user->user_id) ?>",
         payment: "<?= site_url('users/paymentDetail/' . (int)$user->user_id . '/') ?>",
         legacyPayment: "<?= site_url('users/legacyPaymentDetail/' . (int)$user->user_id) ?>",
+        orderPayment: "<?= site_url('balance/paymentDetail/order/') ?>",
         contract: "<?= base_url('orders/orderContract/') ?>",
         invoice: "<?= base_url('orders/orderInvoice/') ?>"
     };
@@ -2026,6 +2132,17 @@ if (!empty($user->user_reference_id)) {
         return parts.length ? parts.join(' · ') : '—';
     }
 
+    function orderCardDetails(info) {
+        info = info && typeof info === 'object' ? info : {};
+        var card = info.card && typeof info.card === 'object' ? info.card : {};
+        var bin = info.cardBin || info.binNumber || card.cardBin || card.binNumber || '';
+        var last4 = info.cardLast4 || info.lastFourDigits || card.cardLast4 || card.lastFourDigits || '';
+        var holder = info.cardHolderName || card.cardHolderName || '';
+        var expiry = info.cardExpiry || card.cardExpiry || '';
+        var masked = bin || last4 ? (bin || '******') + ' **** ' + (last4 || '****') : '';
+        return {masked: masked, holder: holder, expiry: expiry};
+    }
+
     function renderOrder(d) {
         var qty = Number(d.order_quantity) || 1;
         var statusText = d.order_status_name || 'Bilinmiyor';
@@ -2036,6 +2153,8 @@ if (!empty($user->user_reference_id)) {
         var delivered = d.order_voucher ? 'E-Pin kodu tanımlı' : (String(d.order_status) === '1' ? 'Teslim edildi' : 'Teslim bekleniyor');
         var couponDiscount = Number(d.coupon_discount) > 0 ? money(d.coupon_discount) : '—';
         var oid = Number(d.order_id);
+        var orderPaymentInfo = orderCardDetails(d.order_payment_info);
+        var orderPaymentMethods = {2: 'Cüzdan', 3: 'Havale / EFT', 4: 'Kredi Kartı', 5: 'Mobil Ödeme'};
 
         title.textContent = '#' + oid + ' · Sipariş Detayı';
         tabs(d.product_name || '', [
@@ -2043,6 +2162,7 @@ if (!empty($user->user_reference_id)) {
                 return '<div class="cd-pop-sum"><div class="cd-pop-prod">' + thumb + '<div><small>' + esc(val(d.category_title)) + '</small><strong>' + esc(val(d.product_name)) + '</strong><span>' + qty + ' adet · ' + esc(val(d.order_created_at)) + '</span></div></div><span class="cd-pop-tag ' + tagClass(statusText, d.order_status) + '">' + esc(statusText) + '</span></div>' +
                     '<div class="cd-pop-figs"><div><small>Satış Tutarı</small><strong>' + esc(d.order_sale_price ? money(d.order_sale_price, d.order_sale_price_currency || 'TL') : '—') + '</strong></div><div><small>Maliyet (tedarikçi)</small><strong>' + esc(d.order_cost ? money(d.order_cost, d.order_cost_currency || '') : '—') + '</strong></div><div><small>Maliyet (TL)</small><strong>' + esc(val(costTl)) + '</strong></div></div>' +
                     section('Sipariş Bilgileri', [['Sipariş No', '#' + oid], ['Sipariş Durumu', statusText], ['Sipariş Kanalı', channel], ['Sipariş Tarihi', d.order_created_at], ['Kupon', d.coupon_code], ['Kupon İndirimi', couponDiscount], ['Sipariş IP', d.order_user_ip]]) +
+                    section('Ödeme Bilgileri', [['Ödeme Yöntemi', orderPaymentMethods[Number(d.order_payment_type)] || '—'], ['Kart', orderPaymentInfo.masked || '—'], ['Kart Sahibi', orderPaymentInfo.holder || '—'], ['Geçerlilik', orderPaymentInfo.expiry || '—']]) +
                     section('Ürün ve Teslimat', [['Kategori', d.category_title], ['Ürün', d.product_name], ['Adet', qty], ['Sipariş İçeriği', requireText(d.order_require_data)], ['Teslimat', delivered]]) +
                     section('Müşteri Bilgileri', [['Ad Soyad', CUSTOMER.name], ['E-posta', CUSTOMER.email]]);
             }},
@@ -2135,6 +2255,51 @@ if (!empty($user->user_reference_id)) {
             p.refundable ? '<div class="cd-pop-links" style="padding:0 0 12px"><a class="cd-pop-btn" target="_blank" rel="noopener" href="' + esc(p.detail_url) + '">İade İşlemi / Ödeme Sayfası</a></div>' : '');
     }
 
+    function renderOrderPayment(p) {
+        var statusCode = Number(p.order_status);
+        var info = p.payment_info || {};
+        var items = Array.isArray(p.order_items) ? p.order_items : [];
+        var itemFields = items.map(function(item) {
+            return [
+                '#' + val(item.order_id) + ' · ' + val(item.product) + ' × ' + val(item.quantity),
+                money(item.amount, p.payment_currency) + ' · ' + val(item.status) + (item.require && Object.keys(item.require).length ? ' · ' + requireText(item.require) : '')
+            ];
+        });
+        var paymentPage = URLS.orderPayment + encodeURIComponent(p.order_id);
+        title.textContent = '#' + val(p.order_id) + ' · Ödeme Detayı';
+        payBody(val(p.payment_method) + ' · ' + val(p.payment_created_at), statusTag(p.payment_status, statusCode), p.payment_method,
+            [
+                ['Ödeme Tutarı', money(p.payment_amount, p.payment_currency)],
+                ['Sipariş No', '#' + val(p.payment_order_id)],
+                ['İade Edilebilir Tutar', p.payment_refundable ? money(p.payment_refund_remaining, p.payment_currency) : '—']
+            ],
+            section('Ödeme Bilgileri', [
+                ['Kaynak', p.payment_source],
+                ['Ödeme Yöntemi', p.payment_method],
+                ['İşlem / Referans No', p.payment_reference],
+                ['Banka', p.payment_bank],
+                ['Alıcı', p.payment_bank_owner],
+                ['IBAN', p.payment_iban],
+                ['Vomsis İşlem No', p.payment_vomsis_id],
+                ['İşlem Tarihi', p.payment_created_at],
+                ['Ödeme Durumu', p.payment_status]
+            ]) +
+            section('Müşteri ve İşlem Bilgileri', [
+                ['Müşteri', p.user_name],
+                ['E-posta', p.user_email],
+                ['Telefon', p.user_phone],
+                ['IP Adresi', p.payment_ip],
+                ['Port', p.payment_port],
+                ['İşlemi Yapan', p.payment_approved_by],
+                ['Kart', p.payment_card],
+                ['Kart Sahibi', p.payment_cardholder],
+                ['Kart Geçerlilik', p.payment_card_expiry]
+            ]) +
+            (itemFields.length ? section('Sipariş Detayları' + (p.order_bundle_name ? ' · ' + p.order_bundle_name : ''), itemFields) : '') +
+            (info.message ? section('Ödeme Notu', [['Bilgi', info.message]]) : ''),
+            '<div class="cd-pop-links" style="padding:0 0 12px"><a class="cd-pop-btn" target="_blank" rel="noopener" href="' + esc(paymentPage) + '">Tam Ödeme Detayı / İade İşlemi</a></div>');
+    }
+
     function renderLegacyPayment(r) {
         var p = r.payment, c = r.customer || {}, cur = p.currency || 'TRY';
         title.textContent = '#' + val(p.payment_no) + ' · Ödeme Detayı';
@@ -2152,6 +2317,13 @@ if (!empty($user->user_reference_id)) {
             if (!r || r.status !== 'success') return fail((r && r.message) || 'Ödeme detayı alınamadı.');
             renderPayment(r);
         }).fail(function() { fail('Ödeme detayı alınamadı.'); });
+    }
+    function openOrderPayment(id) {
+        open('#' + id + ' · Ödeme Detayı', '');
+        $.getJSON(URLS.orderPayment + encodeURIComponent(id), {format: 'json'}).done(function(p) {
+            if (!p || !p.payment_order_id) return fail((p && p.message) || 'Sipariş ödeme detayı alınamadı.');
+            renderOrderPayment(p);
+        }).fail(function() { fail('Sipariş ödeme detayı alınamadı.'); });
     }
     function openLegacyPayment(key) {
         open('Ödeme Detayı', 'Legacy (eski sistem)');
@@ -2278,6 +2450,7 @@ if (!empty($user->user_reference_id)) {
     $(document).on('click', '[data-cd-movement]', function() { openPayment(parseInt(this.getAttribute('data-cd-movement'), 10), true); });
 
     $(document).on('click', '[data-cd-payment]', function() { openPayment(parseInt(this.getAttribute('data-cd-payment'), 10)); });
+    $(document).on('click', '[data-cd-order-payment]', function() { openOrderPayment(parseInt(this.getAttribute('data-cd-order-payment'), 10)); });
     $(document).on('click', '[data-cd-legacy-payment]', function() { openLegacyPayment(this.getAttribute('data-cd-legacy-payment')); });
     $(document).on('click', '[data-cd-order]', function() { openOrder(parseInt(this.getAttribute('data-cd-order'), 10)); });
     $(document).on('click', '[data-cd-legacy-order]', function() { openLegacy(this.getAttribute('data-cd-legacy-order')); });

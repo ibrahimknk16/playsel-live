@@ -94,7 +94,7 @@ class Birfatura
             'endpoint'       => $invoice_data['endpoint'] ?? null,
             'order_no'       => $invoice_data['order_no'] ?? null,
             'order_date'     => $invoice_data['order_date'] ?? null,
-            'sales_channel'  => $invoice_data['sales_channel'] ?? 'api.dijipin.com'
+            'sales_channel'  => $invoice_data['sales_channel'] ?? 'playsel.com'
         ];
 
         $xml = $this->_generate_ubl_xml($ubl_data);
@@ -358,7 +358,7 @@ class Birfatura
 
         // Website
         if ($tag === 'cac:AccountingSupplierParty') {
-            $w->writeElement('cbc:WebsiteURI', 'https://www.dijipin.com');
+            $w->writeElement('cbc:WebsiteURI', 'https://playsel.com');
         }
 
         // Endpoint

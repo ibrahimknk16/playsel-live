@@ -21,7 +21,9 @@ function site_setting($key, $default = '')
 function generate_unique_nickname($name, $surname = '')
 {
 	$ci = &get_instance();
-	$base = strtolower(trim($name . '_' . $surname));
+	$base = trim((string)$name . '_' . (string)$surname);
+	$base = strtr($base, ['I' => 'ı', 'İ' => 'i']);
+	$base = mb_strtolower($base, 'UTF-8');
 	$base = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $base);
 	$base = preg_replace('/[^a-z0-9]+/', '_', $base);
 	$base = trim($base, '_');
@@ -321,17 +323,18 @@ function sendSms($phoneNumber, $message)
 		CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
 		CURLOPT_CUSTOMREQUEST => 'POST',
 		CURLOPT_POSTFIELDS => array(
-			'usercode' => '2323321719',
-			'password' => 'F52BAB7',
+			'usercode' => '8503088548',
+			'password' => 'P9T935DK',
 			'gsmno' => $phoneNumber,
 			'message' => $message,
-			'msgheader' => 'PLAYSEL A.S',
+			'msgheader' => 'PLAYSEL',
 			'filter' => '0',
 			'startdate' => '',
 			'stopdate' => ''
 		),
 	));
 	$response = curl_exec($curl);
+	pre($response);
 	curl_close($curl);
 	$responseCode = explode(' ', $response);
 	pre($responseCode);

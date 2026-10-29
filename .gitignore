@@ -3,6 +3,7 @@
 !.env.example
 *.md
 !/PROJECT-IMPROVEMENT-PLAN.md
+!/INVOICE_AUTOMATION_FLOW.md
 /uploads/*
 /.vscode/
 /vendor

@@ -14,8 +14,8 @@ $config['birfatura_supplier'] = [
     'address'     => 'Adalet Mh, Anadolu Cd. No 41/1 İç Kapı No: 1402 My Plaza',
     'city'        => 'İzmir',
     'district'    => 'Bayraklı',
-    'phone'       => '+905353454746',
-    'email'       => 'muhasebe@playsel.com',
+    'phone'       => '+9008502421925',
+    'email'       => 'info@playsel.com',
     'tax_office'  => 'KARŞIYAKA',
     'vkn'         => '7300761424'
 ];

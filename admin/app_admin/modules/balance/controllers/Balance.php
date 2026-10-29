@@ -619,11 +619,36 @@ class Balance extends MY_Controller
                 $payment->payment_status = [0 => 'İşleme alındı', 1 => 'Tamamlandı', 2 => 'İptal edildi', 11 => 'Ödeme bekleniyor', 12 => 'Ödeme başarısız', 13 => 'Fraud kontrolü'][(int)$payment->order_status] ?? 'İşleniyor';
                 $payment->payment_ip = $payment->order_user_ip ?: '-';
                 $payment->payment_port = (string)($info['client_port'] ?? '');
-                $cardBin = $info['cardBin'] ?? ($info['binNumber'] ?? '');
-                $cardLast4 = $info['cardLast4'] ?? ($info['lastFourDigits'] ?? '');
+                $cardSources = [$info];
+                foreach (['data', 'result', 'payment', 'paymentInfo', 'payment_info'] as $containerKey) {
+                    if (is_array($info[$containerKey] ?? null)) {
+                        $cardSources[] = $info[$containerKey];
+                    }
+                }
+                $nestedCardSources = [];
+                foreach ($cardSources as $cardSource) {
+                    foreach (['card', 'paymentCard', 'payment_card', 'cardInfo', 'card_info', 'source'] as $cardKey) {
+                        if (is_array($cardSource[$cardKey] ?? null)) {
+                            $nestedCardSources[] = $cardSource[$cardKey];
+                        }
+                    }
+                }
+                $findCardValue = static function (array $sources, array $keys) {
+                    foreach ($sources as $source) {
+                        foreach ($keys as $key) {
+                            $value = $source[$key] ?? null;
+                            if (is_scalar($value) && trim((string)$value) !== '') {
+                                return trim((string)$value);
+                            }
+                        }
+                    }
+                    return '';
+                };
+                $cardBin = $findCardValue(array_merge($cardSources, $nestedCardSources), ['cardBin', 'binNumber', 'card_bin', 'card_bin_number', 'bin']);
+                $cardLast4 = $findCardValue(array_merge($cardSources, $nestedCardSources), ['cardLast4', 'lastFourDigits', 'last_4', 'last4', 'card_last4', 'last_four_digits']);
                 $payment->payment_card = !empty($cardBin) || !empty($cardLast4) ? ($cardBin ?: '******') . ' **** ' . ($cardLast4 ?: '****') : '-';
-                $payment->payment_cardholder = $info['cardHolderName'] ?? '-';
-                $payment->payment_card_expiry = $info['cardExpiry'] ?? '-';
+                $payment->payment_cardholder = $findCardValue(array_merge($cardSources, $nestedCardSources), ['cardHolderName', 'cardholderName', 'card_holder_name', 'holderName', 'name']) ?: '-';
+                $payment->payment_card_expiry = $findCardValue(array_merge($cardSources, $nestedCardSources), ['cardExpiry', 'card_expiry', 'expiry', 'expirationDate']) ?: '-';
                 $payment->payment_sender = '-';
                 $payment->payment_note = '-';
                 $payment->payment_method = [2 => 'Cüzdan', 3 => 'Havale / EFT', 4 => 'Kredi Kartı', 5 => 'Mobil Ödeme'][(int)$payment->order_payment_type] ?? '';
