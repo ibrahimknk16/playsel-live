@@ -4,6 +4,7 @@
 *.md
 !/PROJECT-IMPROVEMENT-PLAN.md
 !/INVOICE_AUTOMATION_FLOW.md
+!/admin-panel-usage.md
 /uploads/*
 /.vscode/
 /vendor

@@ -480,20 +480,7 @@ class Auth extends MY_Controller
 
 		// Telefon Numarası
 		$rawPhone = trim($post['phone'] ?? $post['user_phone'] ?? '');
-		$cleanPhone = preg_replace('/\s+/', '', $rawPhone);
-		if ($cleanPhone !== '') {
-			if (str_starts_with($cleanPhone, '00')) {
-				$cleanPhone = '+' . substr($cleanPhone, 2);
-			} elseif (str_starts_with($cleanPhone, '+')) {
-				// uluslararası format
-			} elseif (str_starts_with($cleanPhone, '90') && strlen($cleanPhone) === 12) {
-				$cleanPhone = '+' . $cleanPhone;
-			} elseif (str_starts_with($cleanPhone, '0') && strlen($cleanPhone) === 11) {
-				$cleanPhone = '+9' . $cleanPhone;
-			} elseif (strlen($cleanPhone) === 10 && str_starts_with($cleanPhone, '5')) {
-				$cleanPhone = '+90' . $cleanPhone;
-			}
-		}
+		$cleanPhone = normalizePhoneE164($rawPhone);
 
 		if ($cleanPhone === '') {
 			$this->session->set_flashdata('alert', [
@@ -502,6 +489,8 @@ class Auth extends MY_Controller
 			]);
 			redirect($_SERVER['HTTP_REFERER']);
 		}
+		$phoneIsVerified = preg_match('/^\+[1-9]\d{7,14}$/D', $cleanPhone) === 1
+			&& strpos($cleanPhone, '+90') !== 0;
 
 		$passwordRegex = '/^(?=.{8,}$)(?=.*[A-ZÇĞİÖŞÜ])(?=.*[a-zçğıöşü])(?=.*\d)(?=.*[^A-Za-zçğıöşüÇĞİÖŞÜ\d]).+$/u';
 		$post['password'] = trim($post['password']);
@@ -540,7 +529,7 @@ class Auth extends MY_Controller
 			'user_email' => $post['email'],
 			'user_password' => password_hash($post['password'], PASSWORD_BCRYPT),
 			'user_phone' => $cleanPhone,
-			'user_phone_is_verified' => 0,
+			'user_phone_is_verified' => $phoneIsVerified ? 1 : 0,
 			'user_status' => 1,
 			'user_type' => 4,
 			'user_tier' => 1,
