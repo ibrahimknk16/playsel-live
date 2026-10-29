@@ -521,7 +521,7 @@ if (empty($currentLangName))
                 searchTimeout = setTimeout(() => {
                     const requestId = ++searchRequestId;
                     searchController = new AbortController();
-                    fetch(`<?= topupcenter() ?>test/search?q=${encodeURIComponent(keyword)}&country=<?= strtoupper($country ?? 'TR') ?>`, {
+                    fetch(`<?= topupcenter() . $uri ?>/search?q=${encodeURIComponent(keyword)}&country=<?= strtoupper($country ?? 'TR') ?>`, {
                         signal: searchController.signal
                     })
                         .then(response => {

@@ -290,18 +290,15 @@ class Cron2 extends MY_Controller
 				]);
 			}
 		}
-
-		// Zaten çalışan bu cron'a bağlı: yeni teslim/iptal edilen siparişlerin olayları ayrı bir cron gerektirmeden gönderilir.
-		$this->analyticsEvents();
 	}
 
 	// Cron Job: teslim/iptal edilen siparişlerin GA4 + Meta olaylarını gönderir (her 5 dakikada bir önerilir).
 	// Idempotent: gönderilen olay analytics_events_sent kaydıyla tekrar gönderilmez; çakışan çalışmalar kilitle engellenir.
 	public function analyticsEvents()
 	{
-		$this->load->library('analytics_tracker');
-		$processed = $this->analytics_tracker->runLocked(50);
-		echo $processed === null ? 'Başka bir çalışma sürüyor.' : 'Analytics olayı işlenen sipariş: ' . $processed;
+		// $this->load->library('analytics_tracker');
+		// $processed = $this->analytics_tracker->runLocked(50);
+		// echo $processed === null ? 'Başka bir çalışma sürüyor.' : 'Analytics olayı işlenen sipariş: ' . $processed;
 	}
 
 	public function vomsisAutoApproveProcess() // Cron Job: Vomsis ile Bekleyen Cüzdan Yüklemelerini ve Siparişleri Tek Elden Yönet
@@ -674,91 +671,8 @@ class Cron2 extends MY_Controller
 
 	public function buildSearchIndex() // Cron Job: Arama İndeksini Oluştur
 	{
-		$indexFilePath = FCPATH . 'uploads/search_index.json';
-		$tmpFilePath = FCPATH . 'uploads/search_index.tmp.json';
-
-		// 1. Kategorileri önce alalım (Mapping için)
-		$dbCategories = $this->db->select('category_id, category_title, category_slug, category_image')
-			->where('category_status', 1)
-			->where('category_api_status', 1)
-			->order_by('category_sort_id', 'ASC')
-			->get('categories')->result_array();
-
-		$categoriesMap = [];
-		foreach ($dbCategories as $cat) {
-			$categoriesMap[$cat['category_id']] = $cat;
-		}
-
-		// 2. Ürünleri çek
-		$products = $this->db->select('product_id, product_name, product_category_id, product_image')
-			->where('product_status', 1)
-			->where('product_api_status', 1)
-			->order_by('product_sort_id', 'ASC')
-			->get('products')->result_array();
-
-		// 3. İndeks ve Veri yapısını hazırla
-		$index = [];
-		$productsData = [];
-
-		foreach ($products as $p) {
-			// Ürüne kategori bilgilerini ekle (Slug ve image)
-			$catId = $p['product_category_id'];
-			$p['category_slug'] = isset($categoriesMap[$catId]) ? $categoriesMap[$catId]['category_slug'] : '#';
-			$p['category_image'] = isset($categoriesMap[$catId]) ? $categoriesMap[$catId]['category_image'] : '';
-
-			$productsData[$p['product_id']] = $p;
-
-			// Ürünü indexle (Prefix p_)
-			$this->_add_to_index($index, $p['product_name'], 'p_' . $p['product_id']);
-		}
-
-		// Kategorileri indexle (Prefix c_)
-		foreach ($categoriesMap as $c) {
-			$this->_add_to_index($index, $c['category_title'], 'c_' . $c['category_id']);
-		}
-
-		$payload = json_encode([
-			'timestamp' => time(),
-			'index' => $index,
-			'products' => $productsData,
-			'categories' => $categoriesMap
-		]);
-
-		// 4. Atomik Yazma
-		$fp = fopen($tmpFilePath, 'w');
-		if (flock($fp, LOCK_EX)) {
-			fwrite($fp, $payload);
-			fflush($fp);
-			flock($fp, LOCK_UN);
-			fclose($fp);
-			rename($tmpFilePath, $indexFilePath);
-			echo "Search index built successfully at $indexFilePath\n";
-		} else {
-			fclose($fp);
-			echo "Failed to acquire lock for writing search index.\n";
-		}
-	}
-
-	private function _add_to_index(array|object &$index, string $title, string $idWithPrefix) // buildSearchIndex Yardımcı metod
-	{
-		$name = $this->_normalize($title);
-		$words = explode(' ', $name);
-		foreach ($words as $word) {
-			if (strlen($word) < 2) continue;
-			for ($len = 3; $len <= strlen($word); $len++) {
-				$sub = substr($word, 0, $len);
-				$index[$sub][] = $idWithPrefix;
-			}
-		}
-	}
-
-	private function _normalize(string $string): string // buildSearchIndex Yardımcı metod
-	{
-		$string = mb_strtolower($string, 'UTF-8');
-		$tr = ['ı', 'ğ', 'ü', 'ş', 'ö', 'ç'];
-		$en = ['i', 'g', 'u', 's', 'o', 'c'];
-		$string = str_replace($tr, $en, $string);
-		return preg_replace('/[^a-z0-9 ]+/', '', $string);
+		$this->load->model('search/Search_model');
+		echo $this->Search_model->buildIndex() ? "Search index built successfully\n" : "Failed to write search index.\n";
 	}
 
 	public function listenDijipinOrders() // Cron Job: Test

@@ -9,6 +9,8 @@ class Analytics_tracker
 	private $CI;
 	// Yeniden gönderimde olaylara siparişin gerçek oluşturulma zamanı yazılır.
 	public $useOrderTime = false;
+	// Yeniden gönderimde Meta CAPI atlanır; yalnızca GA4'e gönderilir.
+	public $ga4Only = false;
 	// Tanı: GA4 /debug/mp/collect ucuna gönderir (olay kaydedilmez, doğrulama mesajları döner).
 	public $ga4Debug = false;
 	// Tanı: Meta Test Events kodu; doluysa olaylar gerçek veri olarak sayılmaz.
@@ -90,7 +92,7 @@ class Analytics_tracker
 		return $processed;
 	}
 
-	private const ORDER_COLUMNS = 'o.order_id, o.order_reseller_id, o.order_product_id, o.order_status, o.order_sale_price_tl, o.order_voucher, o.order_tracking, o.order_payment_info, o.order_created_at, p.product_name';
+	private const ORDER_COLUMNS = 'o.order_id, o.order_reseller_id, o.order_product_id, o.order_status, 	o.order_sale_price_tl, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_tracking, o.order_payment_info, o.order_created_at, p.product_name';
 	// Gruptaki bekleyen satır bu süreden uzun takılı kalırsa teslim edilen satırlar beklenmeden gönderilir.
 	private const GROUP_MAX_WAIT = 86400;
 
@@ -148,72 +150,6 @@ class Analytics_tracker
 		}
 
 		return $processed;
-	}
-
-	// Outbox: müşterinin tarayıcıda henüz bildirilmemiş (event_key 'purchase_web') teslim edilmiş satışları, sepet bazında.
-	public function pendingWebPurchases($userId, $limit = 5)
-	{
-		$candidates = $this->CI->db->select(self::ORDER_COLUMNS)
-			->from('orders as o')
-			->join('products as p', 'p.product_id = o.order_product_id', 'left')
-			->join('analytics_events_sent as w', "w.order_id = o.order_id AND w.event_key = 'purchase_web'", 'left', false)
-			->where('o.order_reseller_id', (int)$userId)
-			->where('o.order_type', 3)
-			->where('o.order_status', 1)
-			->where('o.order_created_at >=', date('Y-m-d H:i:s', time() - 7 * 86400))
-			->where('w.id IS NULL', null, false)
-			->order_by('o.order_id', 'ASC')
-			->limit(50)->get()->result();
-
-		$result = [];
-		$handled = [];
-		foreach ($candidates as $order) {
-			if (count($result) >= $limit) {
-				break;
-			}
-			if (isset($handled[(int)$order->order_id])) {
-				continue;
-			}
-			$group = $this->buildGroup($order, 'purchase_web');
-			if ($group === null) {
-				continue;
-			}
-			foreach ($group['rows'] as $row) {
-				$handled[(int)$row->order_id] = true;
-			}
-			$result[] = [
-				'transaction_id' => $group['tx'],
-				'value' => $group['value'],
-				'currency' => 'TRY',
-				'items' => $group['items'],
-			];
-		}
-		return $result;
-	}
-
-	// Tarayıcı olayı gönderdikten sonra çağrılır: grubun satırları 'purchase_web' olarak işaretlenir.
-	public function ackWebPurchase($userId, $transactionId)
-	{
-		$db = $this->CI->db;
-		$order = $db->select(self::ORDER_COLUMNS)
-			->from('orders as o')
-			->join('products as p', 'p.product_id = o.order_product_id', 'left')
-			->where('o.order_id', (int)$transactionId)
-			->where('o.order_reseller_id', (int)$userId)
-			->where('o.order_status', 1)
-			->get()->row();
-		if (!$order) {
-			return false;
-		}
-		$group = $this->buildGroup($order, 'purchase_web');
-		if ($group === null || $group['tx'] !== (string)(int)$transactionId) {
-			return false;
-		}
-		$now = date('Y-m-d H:i:s');
-		foreach ($group['rows'] as $row) {
-			$db->query('INSERT IGNORE INTO analytics_events_sent (order_id, event_key, created_at) VALUES (?, ?, ?)', [(int)$row->order_id, 'purchase_web', $now]);
-		}
-		return true;
 	}
 
 	private function hasTxColumn()
@@ -282,13 +218,27 @@ class Analytics_tracker
 		return $this->makeGroup($rows, (string)$rows[0]->order_id);
 	}
 
+	// Sipariş satırının TL tutarı: order_sale_price_tl boşsa TL cinsinden order_sale_price'a düşer (admin raporlarıyla aynı mantık).
+	public function orderValue($row)
+	{
+		$tl = round((float)($row->order_sale_price_tl ?? 0), 2);
+		if ($tl > 0) {
+			return $tl;
+		}
+		$currency = strtoupper(trim((string)($row->order_sale_price_currency ?? '')));
+		if (in_array($currency, ['TRY', 'TL'], true)) {
+			return round((float)($row->order_sale_price ?? 0), 2);
+		}
+		return 0.0;
+	}
+
 	// Satırlardan tek işlem (transaction) oluşturur: toplam tutar ve ürün bazında birleştirilmiş items.
 	private function makeGroup(array $rows, $transactionId)
 	{
 		$items = [];
 		$value = 0.0;
 		foreach ($rows as $row) {
-			$price = round((float)$row->order_sale_price_tl, 2);
+			$price = $this->orderValue($row);
 			$value += $price;
 			$key = (string)$row->order_product_id;
 			if (!isset($items[$key])) {
@@ -349,6 +299,13 @@ class Analytics_tracker
 		}
 
 		$lead = $group['lead'];
+		if ($eventKey === 'purchase' && (float)$group['value'] <= 0) {
+			$db->insert('logs', [
+				'log_controller' => 'analyticsEvents',
+				'log_message' => 'Sıfır tutarlı purchase gönderiliyor. İşlem: ' . $group['tx'] . ' - order_sale_price_tl/order_sale_price kontrol edin.',
+				'log_error_code' => 'analytics_zero_value',
+			]);
+		}
 		$tracking = json_decode((string)$lead->order_tracking, true);
 		$tracking = is_array($tracking) ? $tracking : [];
 		$eventTime = time();
@@ -358,7 +315,7 @@ class Analytics_tracker
 
 		// null: kanal yapılandırılmamış (atlanır), false: gönderim başarısız, true: gönderildi.
 		$results = [$this->sendGa4($group, $gaName, $tracking, $eventTime)];
-		if ($metaName !== null) {
+		if ($metaName !== null && !$this->ga4Only) {
 			$results[] = $this->sendMeta($group, $metaName, $gaName, $eventKey, $tracking, $eventTime);
 		}
 		$delivered = in_array(true, $results, true);
@@ -376,7 +333,7 @@ class Analytics_tracker
 	public function diagnose($limit = 2)
 	{
 		$orders = $this->CI->db
-			->select('o.order_id, o.order_reseller_id, o.order_product_id, o.order_status, o.order_sale_price_tl, o.order_voucher, o.order_tracking, o.order_created_at, p.product_name')
+			->select('o.order_id, o.order_reseller_id, o.order_product_id, o.order_status, o.order_sale_price_tl, o.order_sale_price, o.order_sale_price_currency, o.order_voucher, o.order_tracking, o.order_created_at, p.product_name')
 			->from('orders as o')
 			->join('products as p', 'p.product_id = o.order_product_id', 'left')
 			->where('o.order_status', 1)
@@ -399,10 +356,9 @@ class Analytics_tracker
 	public function status($limit = 25)
 	{
 		$rows = $this->CI->db->query(
-			"SELECT o.order_id, o.order_status, o.order_type, o.order_created_at,
+			"SELECT o.order_id, o.order_status, o.order_type, o.order_created_at, o.order_sale_price_tl, o.order_sale_price, o.order_sale_price_currency,
 				(o.order_tracking IS NOT NULL) AS has_tracking,
-				(SELECT COUNT(*) FROM analytics_events_sent s WHERE s.order_id = o.order_id AND s.event_key = 'purchase') AS server_sent,
-				(SELECT COUNT(*) FROM analytics_events_sent s WHERE s.order_id = o.order_id AND s.event_key = 'purchase_web') AS web_sent
+				(SELECT COUNT(*) FROM analytics_events_sent s WHERE s.order_id = o.order_id AND s.event_key = 				'purchase') AS server_sent
 			FROM orders o WHERE o.order_type = 3 ORDER BY o.order_id DESC LIMIT " . (int)$limit
 		)->result_array();
 		$logs = $this->CI->db->select('log_error_code, log_message, log_created_at')
@@ -437,7 +393,13 @@ class Analytics_tracker
 	// Yapılandırma durumu (secret değerleri döndürülmez).
 	public function channelStatus()
 	{
+		$serverId = strtoupper(trim((string)getenv('GA4_MEASUREMENT_ID')));
+		$siteTagId = strtoupper(trim((string)site_setting('google_analytics_id')));
 		return [
+			// Sunucu (Measurement Protocol) ve tarayıcı etiketi aynı GA4 veri akışına yazmalı; farklıysa raporlar boş/yarım kalır.
+			'ga4_server_measurement_id' => $serverId,
+			'ga4_site_tag_id' => $siteTagId,
+			'ga4_ids_match' => $serverId !== '' && $serverId === $siteTagId,
 			'ga4' => !empty(getenv('GA4_MEASUREMENT_ID')) && !empty(getenv('GA4_API_SECRET')),
 			'meta' => $this->metaPixelId() !== '' && !empty(getenv('META_CAPI_TOKEN')),
 		];

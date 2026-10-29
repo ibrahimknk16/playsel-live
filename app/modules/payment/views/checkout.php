@@ -635,9 +635,6 @@ $appliedCoupon = $this->session->userdata('applied_coupon');
   </form>
 </dialog>
 <script>
-if (typeof window.fbq === 'function') {
-  window.fbq('track', 'InitiateCheckout', { value: <?= (float)$netTotal ?>, currency: 'TRY' });
-}
 (() => {
   function initializeCheckout($) {
     const baseTotal = <?= (float)$netTotal ?>;

@@ -110,7 +110,7 @@ if (!function_exists('format_category_seo_tables')) {
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-rows: auto auto auto;
     grid-template-areas:
       "icon title"
@@ -180,6 +180,7 @@ if (!function_exists('format_category_seo_tables')) {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     width: 100%;
     gap: 16px;
     margin-top: 4px;
@@ -187,6 +188,7 @@ if (!function_exists('format_category_seo_tables')) {
 
   .category-detail-page .product-info-card.cd-enhanced .meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     margin: 0;

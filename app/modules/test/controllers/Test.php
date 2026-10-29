@@ -24,8 +24,8 @@ class Test extends MY_Controller
 		$this->data['lang'] = $lang;
 		$this->data['country'] = $country;
 
-		// analyticsReplay kendi ANALYTICS_REPLAY_KEY kontrolunu yapar; search uclari herkese aciktir.
-		// if (!in_array($this->router->fetch_method(), ['analyticsReplay', 'search', 'buildSearchIndex'], true)) {
+		// analyticsReplay kendi ANALYTICS_REPLAY_KEY kontrolunu yapar.
+		// if (!in_array($this->router->fetch_method(), ['analyticsReplay'], true)) {
 		// 	$this->requireInternalAccessKey('TOOLS_ACCESS_KEY', 'X-Tools-Key', 'tools_key');
 		// }
 	}
@@ -46,256 +46,6 @@ class Test extends MY_Controller
 		$complete = $magicpay->complete3dPayment(100153);
 		pre($complete);
 		die;
-	}
-
-	public function buildSearchIndex()
-	{
-		$indexFilePath = FCPATH . 'uploads/search_index.json';
-		$tmpFilePath = FCPATH . 'uploads/search_index.tmp.json';
-
-		if (!is_dir(FCPATH . 'uploads')) {
-			@mkdir(FCPATH . 'uploads', 0755, true);
-		}
-
-		// 1. Kategorileri önce alalım (Mapping için)
-		$dbCategories = $this->db->select('category_id, category_title, category_slug, category_image, category_thumbnail, category_countries')
-			->where('category_status', 1)
-			->where('category_api_status', 1)
-			->order_by('category_sort_id', 'ASC')
-			->get('categories')->result_array();
-
-		$categoriesMap = [];
-		foreach ($dbCategories as $cat) {
-			if (empty($cat['category_image']) && !empty($cat['category_thumbnail'])) {
-				$cat['category_image'] = $cat['category_thumbnail'];
-			}
-			$categoriesMap[$cat['category_id']] = $cat;
-		}
-
-		// 2. Ürünleri çek
-		$products = $this->db->select('product_id, product_name, product_category_id, product_image, product_countries')
-			->where('product_status', 1)
-			->where('product_api_status', 1)
-			->order_by('product_sort_id', 'ASC')
-			->get('products')->result_array();
-
-		// 3. İndeks ve Veri yapısını hazırla
-		$index = [];
-		$productsData = [];
-
-		foreach ($products as $p) {
-			$catId = $p['product_category_id'];
-			$p['category_slug'] = isset($categoriesMap[$catId]) ? $categoriesMap[$catId]['category_slug'] : '#';
-			$p['category_image'] = isset($categoriesMap[$catId]) ? $categoriesMap[$catId]['category_image'] : '';
-
-			$productsData[$p['product_id']] = $p;
-
-			// Ürünü indexle (Prefix p_)
-			$this->_add_to_index($index, $p['product_name'], 'p_' . $p['product_id']);
-		}
-
-		// Kategorileri indexle (Prefix c_)
-		foreach ($categoriesMap as $c) {
-			$this->_add_to_index($index, $c['category_title'], 'c_' . $c['category_id']);
-		}
-
-		$payload = json_encode([
-			'timestamp' => time(),
-			'index' => $index,
-			'products' => $productsData,
-			'categories' => $categoriesMap
-		], JSON_UNESCAPED_UNICODE);
-
-		// 4. Atomik Yazma
-		$fp = @fopen($tmpFilePath, 'w');
-		if ($fp && flock($fp, LOCK_EX)) {
-			fwrite($fp, $payload);
-			fflush($fp);
-			flock($fp, LOCK_UN);
-			fclose($fp);
-			@rename($tmpFilePath, $indexFilePath);
-		} elseif ($fp) {
-			fclose($fp);
-		} else {
-			@file_put_contents($indexFilePath, $payload, LOCK_EX);
-		}
-
-		return true;
-	}
-
-	private function _add_to_index(array|object &$index, string $title, string $idWithPrefix)
-	{
-		$name = $this->_normalize($title);
-		$words = explode(' ', $name);
-		foreach ($words as $word) {
-			if (strlen($word) < 2)
-				continue;
-			for ($len = 2; $len <= strlen($word); $len++) {
-				$sub = substr($word, 0, $len);
-				$index[$sub][] = $idWithPrefix;
-			}
-		}
-	}
-
-	private function _normalize(string $string): string
-	{
-		$string = mb_strtolower($string, 'UTF-8');
-		$tr = ['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'i̇'];
-		$en = ['i', 'g', 'u', 's', 'o', 'c', 'i'];
-		$string = str_replace($tr, $en, $string);
-		return trim(preg_replace('/[^a-z0-9 ]+/', '', $string));
-	}
-
-	public function search()
-	{
-		$rawQ = (string) $this->input->get('q', true);
-		$q = $this->_normalize($rawQ);
-		$country = strtoupper(trim((string) ($this->input->get('country', true) ?: ($this->data['country'] ?? 'TR'))));
-
-		$results = [
-			'categories' => [],
-			'products' => []
-		];
-
-		if (empty($q)) {
-			return json($results);
-		}
-
-		$indexFilePath = FCPATH . 'uploads/search_index.json';
-		if (!file_exists($indexFilePath) || filesize($indexFilePath) < 10) {
-			$this->buildSearchIndex();
-		}
-
-		$data = null;
-		if (file_exists($indexFilePath)) {
-			$content = @file_get_contents($indexFilePath);
-			if (!empty($content)) {
-				$data = json_decode($content, true);
-			}
-		}
-
-		// Fallback to database search if index could not be loaded or parsed
-		if (empty($data) || empty($data['index'])) {
-			return $this->_dbSearchFallback($rawQ, $country);
-		}
-
-		$words = array_filter(explode(' ', $q));
-		if (empty($words)) {
-			return json($results);
-		}
-
-		$matchSets = [];
-		foreach ($words as $word) {
-			if (strlen($word) < 2) {
-				continue;
-			}
-			$matches = $data['index'][$word] ?? [];
-			if (empty($matches)) {
-				return $this->_dbSearchFallback($rawQ, $country);
-			}
-			$matchSets[] = array_unique($matches);
-		}
-
-		if (empty($matchSets)) {
-			return $this->_dbSearchFallback($rawQ, $country);
-		}
-
-		usort($matchSets, function ($a, $b) {
-			return count($a) <=> count($b);
-		});
-
-		$matches = array_shift($matchSets);
-		foreach ($matchSets as $set) {
-			$matches = array_intersect($matches, $set);
-			if (empty($matches)) {
-				break;
-			}
-		}
-
-		$matches = array_unique($matches);
-
-		$countryUpper = '"' . $country . '"';
-		$countryLower = '"' . strtolower($country) . '"';
-
-		foreach ($matches as $match) {
-			if (strpos($match, 'c_') === 0) {
-				$id = substr($match, 2);
-				if (isset($data['categories'][$id])) {
-					$cat = $data['categories'][$id];
-					$catCountries = (string) ($cat['category_countries'] ?? '');
-					if (empty($catCountries) || $catCountries === '[]' || strpos($catCountries, $countryUpper) !== false || strpos($catCountries, $countryLower) !== false) {
-						$results['categories'][] = $cat;
-					}
-				}
-			} elseif (strpos($match, 'p_') === 0) {
-				$id = substr($match, 2);
-				if (isset($data['products'][$id])) {
-					$prod = $data['products'][$id];
-					$prodCountries = (string) ($prod['product_countries'] ?? '');
-					if (empty($prodCountries) || $prodCountries === '[]' || strpos($prodCountries, $countryUpper) !== false || strpos($prodCountries, $countryLower) !== false) {
-						$results['products'][] = $prod;
-					}
-				}
-			}
-		}
-
-		if (empty($results['categories']) && empty($results['products'])) {
-			return $this->_dbSearchFallback($rawQ, $country);
-		}
-
-		$results['categories'] = array_slice($results['categories'], 0, 10);
-		$results['products'] = array_slice($results['products'], 0, 20);
-
-		return json($results);
-	}
-
-	private function _dbSearchFallback($rawQ, $country)
-	{
-		$results = [
-			'categories' => [],
-			'products' => []
-		];
-		$term = trim($rawQ);
-		if (strlen($term) < 2) {
-			return json($results);
-		}
-
-		$countryUpper = '"' . $country . '"';
-		$countryLower = '"' . strtolower($country) . '"';
-
-		$catQuery = $this->db->select('category_id, category_title, category_slug, category_image, category_thumbnail, category_countries')
-			->where('category_status', 1)
-			->where('category_api_status', 1)
-			->like('category_title', $term)
-			->order_by('category_sort_id', 'ASC')
-			->limit(10)
-			->get('categories')->result_array();
-
-		foreach ($catQuery as $cat) {
-			$catCountries = (string) ($cat['category_countries'] ?? '');
-			if (empty($catCountries) || $catCountries === '[]' || strpos($catCountries, $countryUpper) !== false || strpos($catCountries, $countryLower) !== false) {
-				$cat['category_image'] = !empty($cat['category_image']) ? $cat['category_image'] : ($cat['category_thumbnail'] ?? '');
-				$results['categories'][] = $cat;
-			}
-		}
-
-		$prodQuery = $this->db->select('products.product_id, products.product_name, products.product_category_id, products.product_image, products.product_countries, categories.category_slug')
-			->join('categories', 'categories.category_id = products.product_category_id', 'left')
-			->where('products.product_status', 1)
-			->where('products.product_api_status', 1)
-			->like('products.product_name', $term)
-			->order_by('products.product_sort_id', 'ASC')
-			->limit(20)
-			->get('products')->result_array();
-
-		foreach ($prodQuery as $prod) {
-			$prodCountries = (string) ($prod['product_countries'] ?? '');
-			if (empty($prodCountries) || $prodCountries === '[]' || strpos($prodCountries, $countryUpper) !== false || strpos($prodCountries, $countryLower) !== false) {
-				$results['products'][] = $prod;
-			}
-		}
-
-		return json($results);
 	}
 
 	public function testEmail()
@@ -379,10 +129,19 @@ class Test extends MY_Controller
 			return $this->legacyBanRespond($result, 200);
 		}
 
+		// ?ga4_only=1: Meta'ya gönderilmez; tarayıcı kayıtları (purchase_web) silinmez, böylece müşteriler yeniden bildirim göndermez.
+		$ga4Only = (string) $this->input->get('ga4_only') === '1';
+		$result['ga4_only'] = $ga4Only;
+
 		if ($apply) {
-			$this->db->where('created_at >=', $sinceStart)->delete('analytics_events_sent');
+			$this->db->where('created_at >=', $sinceStart);
+			if ($ga4Only) {
+				$this->db->where_in('event_key', ['purchase', 'cancel', 'refund']);
+			}
+			$this->db->delete('analytics_events_sent');
 			$result['records_deleted'] = (int) $this->db->affected_rows();
 
+			$this->analytics_tracker->ga4Only = $ga4Only;
 			$this->analytics_tracker->useOrderTime = true;
 			$processed = 0;
 			// Her tur en fazla 50 kayıt işler; başarısız gönderimler bir sonraki turda yeniden denenir.
@@ -398,6 +157,41 @@ class Test extends MY_Controller
 			$result['note'] = 'Kalan kayıt varsa endpoint tekrar çağrılabilir; gönderilenler tekrar gönderilmez.';
 		}
 
+		return $this->legacyBanRespond($result, 200);
+	}
+
+	// Sunucu taraflı analytics cron testi (üretimdeki Cron2::analyticsEvents ile aynı kilit/outbox).
+	// Varsayılan: sadece bekleyen sayıları. ?run=1: gerçek gönderim (en fazla ?limit=50). ?key= ANALYTICS_REPLAY_KEY.
+	public function analyticsCron()
+	{
+		$expected = (string) getenv('ANALYTICS_REPLAY_KEY');
+		if ($expected === '' || !hash_equals($expected, (string) $this->input->get('key'))) {
+			return $this->legacyBanRespond(['status' => 'error', 'message' => 'Yetkisiz.'], 403);
+		}
+		if (!$this->db->table_exists('analytics_events_sent') || !$this->db->field_exists('order_tracking', 'orders')) {
+			return $this->legacyBanRespond(['status' => 'error', 'message' => 'analytics_events_sent tablosu veya orders.order_tracking sütunu yok.'], 409);
+		}
+		$this->load->library('analytics_tracker');
+		$tracker = $this->analytics_tracker;
+		$result = [
+			'status' => 'success',
+			'channels_configured' => $tracker->channelStatus(),
+			'event_names' => [
+				'purchase' => site_setting('analytics_purchase_event_name', 'purchase'),
+				'cancel' => site_setting('analytics_cancel_event_name', 'cancel'),
+				'refund' => site_setting('analytics_refund_event_name', 'refund'),
+			],
+			'status_report' => $tracker->status(10),
+		];
+		if ((string) $this->input->get('run') === '1') {
+			$limit = max(1, min(50, (int) $this->input->get('limit') ?: 50));
+			$processed = $tracker->runLocked($limit);
+			$result['mode'] = 'run';
+			$result['orders_processed'] = $processed;
+			$result['responses'] = $tracker->responseLog;
+		} else {
+			$result['mode'] = 'dry_run';
+		}
 		return $this->legacyBanRespond($result, 200);
 	}
 

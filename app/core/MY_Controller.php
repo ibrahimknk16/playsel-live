@@ -168,7 +168,8 @@ class MY_Controller extends MX_Controller
 
 	private function captureUserAcquisition()
 	{
-		$attribution = $this->session->userdata('user_acquisition');
+		$sessionAttribution = $this->session->userdata('user_acquisition');
+		$attribution = $sessionAttribution;
 		if (!is_array($attribution)) {
 			$cookieValue = (string)($_COOKIE['playsel_acquisition'] ?? '');
 			$cookieAttribution = json_decode($cookieValue, true);
@@ -269,6 +270,11 @@ class MY_Controller extends MX_Controller
 			$attribution = $candidate;
 		}
 		$attribution = $this->normalizeUserAcquisition($attribution);
+		$unchanged = is_array($sessionAttribution) && $sessionAttribution === $attribution
+			&& (string)($_COOKIE['playsel_acquisition'] ?? '') !== '';
+		if ($unchanged) {
+			return;
+		}
 		$this->session->set_userdata('user_acquisition', $attribution);
 
 		$cookieOptions = [
@@ -366,7 +372,7 @@ class MY_Controller extends MX_Controller
 
 	public function userLogInsert($userEvent = '')
 	{
-		if (isAjaxRequest() || strpos($this->uri->uri_string(), 'assets-front') !== false || strpos($this->uri->uri_string(), 'uploads') !== false) { // AJAX isteği ise ya da assets-front ile başlayan sayfalar ise loglama yapma
+		if (isAjaxRequest() || strpos($this->uri->uri_string(), 'assets-front') !== false || strpos($this->uri->uri_string(), 'uploads') !== false || substr($this->uri->uri_string(), -11) === 'test/search') { // AJAX isteği ise ya da assets-front ile başlayan sayfalar ise loglama yapma
 			return;
 		}
 		$userData = $this->session->userdata('user');

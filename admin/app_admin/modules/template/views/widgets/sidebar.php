@@ -95,7 +95,7 @@ $total_pending_users = ($pending_referral_count ?? 0) + ($pending_streamers_coun
 						<span class="menu-icon">
 							<i class="fa-solid fa-cart-shopping"></i>
 						</span>
-						<span class="menu-title">Sipariş & Ödemeler</span>
+						<span class="menu-title">Siparişler</span>
 					</a>
 				</div>
 				<div class="menu-item">

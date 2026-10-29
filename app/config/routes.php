@@ -17,7 +17,7 @@ $route['auth/googleLogin'] = 'auth/googleLogin';
 $route['auth/googleCallback'] = 'auth/googleCallback';
 $route['feeds/googleMerchantFeed.xml'] = 'feeds/googleMerchantFeed';
 $route['(home|v1|callback|payment|feeds|cron|cron2|test)(/.*)?'] = '$0';
-$route['search'] = 'test/search';
+$route['search'] = 'search/index';
 
 // The redirect hook validates this pattern against active locales in the DB.
 // Keeping the route generic allows a newly activated locale to work without
@@ -45,8 +45,7 @@ $route['contact-us'] = 'home/contactUs'; {
 
     // $route["{$lang}/terms-conditions"] = "home/staticPages";
     $route["{$lang}/check-user"] = "categoriess/checkUser";
-    $route["{$lang}/test/search"] = "test/search";
-    $route["{$lang}/search"] = "test/search";
+    $route["{$lang}/search"] = "search/index";
     // $route["{$lang}/faq"] = "home/staticPages";
     $route["{$lang}/login"] = "auth/login";
     $route["{$lang}/login/google"] = "auth/googleLogin";
