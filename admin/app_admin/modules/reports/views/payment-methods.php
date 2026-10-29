@@ -45,7 +45,9 @@ foreach ($daily as $d) {
 }
 $kpis = [
 	['Toplam Ödeme İşlemi', $num($summary['count']), 'all', ''],
-	['Toplam Ödeme Tutarı', $money($summary['success_amount']), 'money', 'pr-ok'],
+	['Başarılı Tutar (Komisyon Hariç)', $money($summary['success_amount']), 'money', 'pr-ok'],
+	['Başarılı İşlem Komisyonu', $money($summary['success_commission']), 'money', 'pr-ok'],
+	['Komisyon Dahil Tahsilat', $money($summary['success_gross_amount']), 'money', 'pr-ok'],
 	['Başarılı İşlem Sayısı', $num($summary['success']), 'check', 'pr-ok'],
 	['Bekleyen İşlem', $num($summary['pending']) . ' · ' . $money($summary['pending_amount']), 'clock', 'pr-wait'],
 	['Başarısız İşlem Sayısı', $num($summary['failed']), 'fail', 'pr-bad'],
@@ -557,7 +559,7 @@ $kpis = [
 		<div class="pm-charts">
 			<div class="pm-chart">
 				<h3>Günlük Ödeme Tutarları</h3>
-				<div class="pm-legend"><span><i style="background:#ffb511"></i>Başarılı tutar</span><span><i style="background:#fa507b"></i>Başarısız tutar</span></div>
+				<div class="pm-legend"><span><i style="background:#ffb511"></i>Başarılı (komisyon dahil)</span><span><i style="background:#fa507b"></i>Başarısız (komisyon hariç)</span></div>
 				<?php if (empty($daily)): ?>
 					<p class="pm-empty">Bu dönemde ödeme bulunamadı.</p>
 				<?php else: ?>
@@ -565,8 +567,8 @@ $kpis = [
 						<?php foreach ($daily as $day => $amounts): ?>
 							<div class="pm-bar-day">
 								<div class="pm-bar-pair">
-									<div class="pm-bar ok" style="height:<?= round($amounts['success'] / $maxDaily * 140, 1) ?>px" title="<?= html_escape(date('d.m.Y', strtotime($day)) . ' · Başarılı: ' . $money($amounts['success'])) ?>"></div>
-									<div class="pm-bar bad" style="height:<?= round($amounts['failed'] / $maxDaily * 140, 1) ?>px" title="<?= html_escape(date('d.m.Y', strtotime($day)) . ' · Başarısız: ' . $money($amounts['failed'])) ?>"></div>
+									<div class="pm-bar ok" style="height:<?= round($amounts['success'] / $maxDaily * 140, 1) ?>px" title="<?= html_escape(date('d.m.Y', strtotime($day)) . ' · Komisyon dahil başarılı: ' . $money($amounts['success'])) ?>"></div>
+									<div class="pm-bar bad" style="height:<?= round($amounts['failed'] / $maxDaily * 140, 1) ?>px" title="<?= html_escape(date('d.m.Y', strtotime($day)) . ' · Başarısız (komisyon hariç): ' . $money($amounts['failed'])) ?>"></div>
 								</div>
 								<small><?= html_escape(date('d.m', strtotime($day))) ?></small>
 							</div>
@@ -591,6 +593,6 @@ $kpis = [
 			</div>
 		</div>
 
-		<p class="pm-note">Toplam ödeme tutarı başarılı işlemlerin brüt toplamıdır; bekleyen ve başarısız işlemler tahsilata dahil edilmez. Başarı oranı yalnızca sonuçlanmış (başarılı + başarısız) işlemlere göre hesaplanır. Cüzdan bakiyesiyle yapılan siparişler ve iade/harcama hareketleri bu rapora dahil değildir. İşlem no ön eki: S = sipariş ödemesi, B = bakiye yükleme.</p>
+		<p class="pm-note">Başarılı tutar komisyon hariç ana tutardır; başarılı işlemlerin komisyonu ve komisyon dahil tahsilatı, kart için %2,7 ve mobil ödeme için %60 oranı uygulanarak hesaplanır. Bekleyen ve başarısız tutarlar komisyonsuz ana tutardır ve tahsilat toplamına dahil değildir. Havalede komisyon eklenmez. Oranlar ödeme akışındaki güncel oranlara göre hesaplanır; kesinleşmiş banka/sağlayıcı mutabakatı yerine geçmez. Başarı oranı yalnızca sonuçlanmış (başarılı + başarısız) işlemlere göre hesaplanır. Cüzdan bakiyesiyle yapılan siparişler ve iade/harcama hareketleri bu rapora dahil değildir. İşlem no ön eki: S = sipariş ödemesi, B = bakiye yükleme.</p>
 	</div>
 </div>

@@ -856,24 +856,48 @@ class Reports extends MX_Controller
 			}
 		}
 
-		$summary = ['count' => count($rows), 'success' => 0, 'failed' => 0, 'pending' => 0, 'success_amount' => 0.0, 'failed_amount' => 0.0, 'pending_amount' => 0.0];
+		$commissionRates = ['card' => 2.7, 'mobile' => 60.0];
+		$summary = [
+			'count' => count($rows), 'success' => 0, 'failed' => 0, 'pending' => 0,
+			'success_amount' => 0.0, 'success_commission' => 0.0, 'success_gross_amount' => 0.0,
+			'failed_amount' => 0.0, 'pending_amount' => 0.0,
+		];
+		$dailyMethodAmounts = [];
 		$daily = [];
+		$amountsByStatusAndMethod = [];
 		$bankSummary = [];
 		foreach ($rows as $row) {
 			$summary[$row['status']]++;
 			$summary[$row['status'] . '_amount'] += $row['amount'];
+			$amountsByStatusAndMethod[$row['status']][$row['method']] =
+				($amountsByStatusAndMethod[$row['status']][$row['method']] ?? 0.0) + $row['amount'];
 			$day = substr($row['date'], 0, 10);
 			if (!isset($daily[$day])) {
 				$daily[$day] = ['success' => 0.0, 'failed' => 0.0];
 			}
 			if ($row['status'] === 'success' || $row['status'] === 'failed') {
-				$daily[$day][$row['status']] += $row['amount'];
+				$dailyMethodAmounts[$day][$row['status']][$row['method']] =
+					($dailyMethodAmounts[$day][$row['status']][$row['method']] ?? 0.0) + $row['amount'];
 			}
 			if ($row['method'] === 'bank' && $row['status'] === 'success') {
 				$name = $row['bank'] !== '' ? $row['bank'] : 'Banka belirtilmemiş';
 				$bankSummary[$name] = $bankSummary[$name] ?? ['count' => 0, 'amount' => 0.0];
 				$bankSummary[$name]['count']++;
 				$bankSummary[$name]['amount'] += $row['amount'];
+			}
+		}
+		foreach ($amountsByStatusAndMethod['success'] ?? [] as $methodKey => $amount) {
+			$rate = $commissionRates[$methodKey] ?? 0.0;
+			$methodCommission = round($amount * ($rate / 100), 2);
+			$summary['success_commission'] += $methodCommission;
+			$summary['success_gross_amount'] += $amount + $methodCommission;
+		}
+		foreach ($dailyMethodAmounts as $day => $statuses) {
+			foreach ($statuses as $statusKey => $methodAmounts) {
+				foreach ($methodAmounts as $methodKey => $amount) {
+					$rate = $statusKey === 'success' ? ($commissionRates[$methodKey] ?? 0.0) : 0.0;
+					$daily[$day][$statusKey] += round($amount * (1 + ($rate / 100)), 2);
+				}
 			}
 		}
 		ksort($daily);
@@ -901,7 +925,7 @@ class Reports extends MX_Controller
 		$rows = [];
 		$orderMethods = [3 => 'bank', 4 => 'card', 5 => 'mobile'];
 		$orders = $this->db
-			->select('o.order_id, o.order_payment_type, o.order_status, o.order_sale_price, o.order_created_at, u.user_email')
+			->select('o.order_id, o.order_payment_type, o.order_status, COALESCE(o.order_sale_price_tl, o.order_sale_price) AS order_amount, o.order_created_at, u.user_email', false)
 			->from('orders o')
 			->join('users u', 'u.user_id = o.order_reseller_id', 'left')
 			->where_in('o.order_payment_type', array_keys($orderMethods))
@@ -915,7 +939,7 @@ class Reports extends MX_Controller
 				'method' => $orderMethods[(int)$o->order_payment_type],
 				'bank' => '',
 				'email' => (string)$o->user_email,
-				'amount' => (float)$o->order_sale_price,
+				'amount' => (float)$o->order_amount,
 				'status' => in_array($st, [2, 12], true) ? 'failed' : (in_array($st, [0, 11, 13], true) ? 'pending' : 'success'),
 				'date' => (string)$o->order_created_at,
 			];
