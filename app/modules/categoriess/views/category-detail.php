@@ -1340,19 +1340,32 @@ if (!function_exists('format_category_seo_tables')) {
       margin: 0 !important;
     }
 
-    #products-grid .product-item:not([data-epin="1"]) .product-item-divider {
-      display: none !important;
-    }
-
     #products-grid .product-item-side {
       padding-right: 0 !important;
     }
 
     #products-grid .product-item-qty-wrap {
+      display: flex !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
       width: 100% !important;
+      height: 25px !important;
+      min-height: 25px !important;
       justify-content: center !important;
-      margin-top: 12px !important;
+      align-items: center !important;
+      margin-top: 10px !important;
       margin-bottom: 2px !important;
+      box-sizing: border-box !important;
+      transition: opacity 0.2s ease, visibility 0.2s ease !important;
+    }
+
+    #products-grid .product-item.selected .product-item-qty-wrap,
+    #products-grid .product-item[data-epin="1"].selected .product-item-qty-wrap {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
     }
   }
 
@@ -2794,15 +2807,15 @@ if (!function_exists('format_category_seo_tables')) {
 
                     <div class="product-item-divider"></div>
 
-                    <?php if ($isEpinProduct): ?>
-                      <div class="product-item-qty-wrap">
+                    <div class="product-item-qty-wrap">
+                      <?php if ($isEpinProduct): ?>
                         <div class="cd-qty" role="group" aria-label="Adet Seçimi">
                           <button type="button" class="cd-qty-btn cd-qty-minus" aria-label="Azalt" disabled>-</button>
                           <span class="cd-qty-val">1</span>
                           <button type="button" class="cd-qty-btn cd-qty-plus" aria-label="Arttır">+</button>
                         </div>
-                      </div>
-                    <?php endif; ?>
+                      <?php endif; ?>
+                    </div>
                   </div>
                 </div>
               <?php endforeach; ?>
