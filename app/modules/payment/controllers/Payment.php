@@ -243,6 +243,7 @@ class Payment extends MY_Controller
 
 		$data['cities_json'] = json_encode($groupedCities);
 		// pre($data['banks']);die;
+		$data['title'] = 'Güvenli Ödeme';
 
 		$this->template->content->view('checkout', $data);
 		$this->template->publish();

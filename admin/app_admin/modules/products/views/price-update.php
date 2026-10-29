@@ -29,7 +29,7 @@
         <button class="btn btn-secondary btn-sm me-2" id="cost-to-inputs-btn">
             <i class="fas fa-sync-alt"></i> Maliyetleri Inputlara Taşı
         </button>
-        <a href="<?= base_url('products/productPricesReport') ?>" class="btn btn-info btn-sm me-2">
+        <a href="<?= base_url('products/productPricesReport' . (!empty($categoryID) ? '/' . (int) $categoryID . '/' . rawurlencode($localeID) : '')) ?>" class="btn btn-info btn-sm me-2">
             Zarar Kontrol Raporu
         </a>
         <button class="btn btn-success btn-sm" id="save-all-prices-btn">
@@ -99,9 +99,12 @@
                     }
 
                     $bolen = 1;
-                    if (!$product->product_is_bundle && in_array($product->provider_product_provider_id, [9132, 9156, 9266, 9162])):
+                    $providerID = (int) $product->provider_product_provider_id;
+                    if (!$product->product_is_bundle && in_array($providerID, [9132, 9156, 9266, 9162, 9302, 9303], true)) {
                         $bolen = 0.805;
-                    endif;
+                    } elseif (!$product->product_is_bundle && $providerID === 9284) {
+                        $bolen = 0.85;
+                    }
 
                     $carpan = ($costCurrency === 'USD') ? 1.0045 : 1;
                     $pCostCalc = currencyCalculator($costCurrency, $rawCostVal) * $carpan;

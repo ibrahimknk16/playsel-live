@@ -625,6 +625,7 @@ if (!empty($user->user_reference_id)) {
                                             <div class="cd-vrow"><span>İlk açılan sayfa</span><strong style="max-width:420px;overflow-wrap:anywhere;text-align:right"><?= html_escape($acquisition['landing_page'] !== '' ? $acquisition['landing_page'] : '—') ?></strong></div>
                                             <div class="cd-vrow"><span>Reklam tıklama kimliği</span><strong style="max-width:420px;overflow-wrap:anywhere;text-align:right"><?= html_escape($acquisition['click_id'] !== '' ? $acquisition['click_id'] : '—') ?></strong></div>
                                             <div class="cd-vrow"><span>Kayıt yöntemi</span><strong><?= html_escape($acquisition['signup_method'] !== '' ? $acquisition['signup_method'] : 'Bilinmiyor') ?></strong></div>
+                                            <div class="cd-vrow"><span>Kayıt IP adresi</span><strong><?= html_escape($acquisition['ip'] !== '' ? $acquisition['ip'] : ($registerIp ?? '—')) ?></strong></div>
                                             <div class="cd-vrow"><span>Edinim kaydı zamanı</span><strong><?= html_escape($acquisition['created_at'] !== '' ? $acquisition['created_at'] : '—') ?></strong></div>
                                         </div>
                                     </div>

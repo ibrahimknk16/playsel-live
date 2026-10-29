@@ -360,7 +360,7 @@
     var ADMIN_ACTION_CSRF = <?= json_encode($adminActionCsrfToken) ?>;
     jQuery.ajaxSetup({ headers: { 'X-Admin-CSRF': ADMIN_ACTION_CSRF } });
     var $ = function (id) { return document.getElementById(id); };
-    var state = { page: 1, sort: 'id', dir: 'asc', total: 0, filtered: 0, req: 0 };
+    var state = { page: 1, sort: 'id', dir: 'desc', total: 0, filtered: 0, req: 0 };
     var typeClass = { 'Son Kullanıcı': 'end' };
     var regionNames = (window.Intl && Intl.DisplayNames) ? new Intl.DisplayNames(['tr'], { type: 'region' }) : null;
 
@@ -548,7 +548,7 @@
     $('resetBtn').addEventListener('click', function () {
         $('fSearch').value = ''; $('fIp').value = ''; $('fId').value = ''; $('fName').value = ''; $('fDateFrom').value = ''; $('fDateTo').value = '';
         ['fType', 'fStatus', 'fBalance', 'fCountry', 'fMailVerified', 'fPhoneVerified', 'fRestricted', 'fFraud'].forEach(function (id) { $(id).value = ''; });
-        state.sort = 'id'; state.dir = 'asc';
+        state.sort = 'id'; state.dir = 'desc';
         updateSortMarks();
         reload();
     });

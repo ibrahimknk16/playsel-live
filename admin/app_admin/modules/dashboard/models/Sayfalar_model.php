@@ -180,6 +180,60 @@ class Sayfalar_model extends MY_Model
 		];
 	}
 
+	public function getUserAcquisitionKpis()
+	{
+		$empty = [
+			'available' => false,
+			'totals' => ['signups' => 0, 'unknown' => 0, 'paid' => 0, 'campaigns' => 0],
+			'sources' => [],
+			'campaigns' => [],
+			'landing_pages' => [],
+		];
+		if (!$this->db->table_exists('user_acquisitions')) {
+			return $empty;
+		}
+
+		$totals = $this->db->select(
+			"COUNT(*) AS signups,
+			SUM(CASE WHEN acquisition_source = 'direct' OR acquisition_source = '' THEN 1 ELSE 0 END) AS unknown,
+			SUM(CASE WHEN acquisition_medium IN ('cpc', 'ppc', 'paid', 'paid_social', 'display', 'affiliate') THEN 1 ELSE 0 END) AS paid,
+			SUM(CASE WHEN acquisition_campaign <> '' THEN 1 ELSE 0 END) AS campaigns",
+			false
+		)->get('user_acquisitions')->row_array();
+
+		$sources = $this->db->select('acquisition_source, acquisition_medium, COUNT(*) AS signups', false)
+			->group_by(['acquisition_source', 'acquisition_medium'])
+			->order_by('signups', 'DESC')
+			->limit(10)
+			->get('user_acquisitions')->result_array();
+
+		$campaigns = $this->db->select('acquisition_source, acquisition_medium, acquisition_campaign, COUNT(*) AS signups', false)
+			->where('acquisition_campaign <>', '')
+			->group_by(['acquisition_source', 'acquisition_medium', 'acquisition_campaign'])
+			->order_by('signups', 'DESC')
+			->limit(10)
+			->get('user_acquisitions')->result_array();
+
+		$landingPages = $this->db->select('acquisition_landing_page, COUNT(*) AS signups', false)
+			->group_by('acquisition_landing_page')
+			->order_by('signups', 'DESC')
+			->limit(10)
+			->get('user_acquisitions')->result_array();
+
+		return [
+			'available' => true,
+			'totals' => [
+				'signups' => (int)($totals['signups'] ?? 0),
+				'unknown' => (int)($totals['unknown'] ?? 0),
+				'paid' => (int)($totals['paid'] ?? 0),
+				'campaigns' => (int)($totals['campaigns'] ?? 0),
+			],
+			'sources' => $sources,
+			'campaigns' => $campaigns,
+			'landing_pages' => $landingPages,
+		];
+	}
+
 	private function getUserKpiPeriod($start, $end)
 	{
 		$registrations = $this->db

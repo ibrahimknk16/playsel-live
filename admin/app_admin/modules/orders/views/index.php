@@ -1926,7 +1926,21 @@ $statusOptions = [
                     const statusLabel = escapeHtml(statusText(data));
                     const paymentInfo = data.order_payment_info ? escapeHtml(JSON.stringify(data.order_payment_info, null, 2)) : 'Yok';
                     const requireData = data.order_require_data ? escapeHtml(JSON.stringify(data.order_require_data, null, 2)) : '-';
-                    const voucherText = data.order_voucher ? escapeHtml(data.order_voucher) : '-';
+                    let voucherValues = Array.isArray(data.order_voucher) ? data.order_voucher : [];
+                    if (!voucherValues.length && data.order_voucher) {
+                        const rawVoucher = String(data.order_voucher).trim();
+                        try {
+                            const decodedVoucher = JSON.parse(rawVoucher);
+                            voucherValues = Array.isArray(decodedVoucher) ? decodedVoucher : [decodedVoucher];
+                        } catch (error) {
+                            voucherValues = rawVoucher.split(/\r\n|\r|\n/);
+                        }
+                    }
+                    const voucherCodes = voucherValues
+                        .filter(function(value) { return typeof value === 'string' || typeof value === 'number'; })
+                        .map(function(value) { return String(value).trim(); })
+                        .filter(function(value) { return value !== ''; });
+                    const orderLogs = Array.isArray(data.api_logs) ? data.api_logs : [];
 
                     const odValue = function(value, fallback) {
                         return (value === null || value === undefined || value === '') ? (fallback === undefined ? '-' : fallback) : value;
@@ -1954,7 +1968,7 @@ $statusOptions = [
                     }).join('') : '';
                     const imageSrc = escapeHtml((function(p) { p = String(p || '').trim(); return !p || /^https?:\/\//i.test(p) ? p : '<?= rtrim((string)getenv('CDN_URL'), '/') ?>/' + p.replace(/^\/+/, ''); })(data.product_image));
                     const orderId = Number(data.order_id);
-                    const hasEpin = !!data.order_voucher;
+                    const hasEpin = voucherCodes.length > 0;
                     const isEpinProduct = hasEpin || Number(data.product_category_id) === 1;
                     const channel = Number(data.order_site_id) > 0 || data.reseller_name ? 'API' : 'Web';
                     const noteByStatus = {
@@ -2018,11 +2032,24 @@ $statusOptions = [
                         odRow('Tedarikçi Dönüş', data.order_answered_at, 'clock') +
                         odRow('Teslim', data.order_sended_at, 'circle-check') +
                         '</div>' +
+                        '<h4 class="od-heading">' + odIcon('list') + 'Siparişe ait tüm log kayıtları (' + orderLogs.length + ')</h4>' +
+                        (orderLogs.length ? orderLogs.map(function(log) {
+                            const logMessage = log.log_message === null || log.log_message === undefined ? '' : String(log.log_message);
+                            return '<details class="od-raw"><summary>' +
+                                escapeHtml(odValue(log.log_created_at, 'Tarih yok')) + ' · ' +
+                                escapeHtml(odValue(log.log_controller, 'Bilinmeyen işlem')) + ' · #' +
+                                escapeHtml(odValue(log.log_id, '')) + ' · Kod: ' +
+                                escapeHtml(odValue(log.log_error_code, '-')) +
+                                '</summary><pre>' + escapeHtml(logMessage || 'Log mesajı boş.') + '</pre></details>';
+                        }).join('') : '<div class="od-note">Bu sipariş için log kaydı bulunamadı.</div>') +
                         '<details class="od-raw"><summary>Ödeme / kart bilgisi (ham veri)</summary><pre>' + paymentInfo + '</pre></details>' +
                         '<details class="od-raw"><summary>Sipariş verisi (ham)</summary><pre>' + requireData + '</pre></details>';
 
                     const paneEpin = '<h4 class="od-heading">' + odIcon('key') + 'E-Pin Teslimat Bilgisi</h4>' +
-                        '<div class="od-tile od-epin-tile"><small>E-Pin Kodu</small><strong>' + (hasEpin ? voucherText : 'Henüz teslim edilmedi') + '</strong>' + (hasEpin ? copyBtn(data.order_voucher) : '') + '</div>';
+                        (hasEpin ? voucherCodes.map(function(code, index) {
+                            return '<div class="od-tile od-epin-tile"><small>E-Pin Kodu' + (voucherCodes.length > 1 ? ' ' + (index + 1) : '') + '</small><strong>' +
+                                escapeHtml(code) + '</strong>' + copyBtn(code) + '</div>';
+                        }).join('') : '<div class="od-tile od-epin-tile"><small>E-Pin Kodu</small><strong>Henüz teslim edilmedi</strong></div>');
 
                     const modalContent = '<div class="od-tabs" role="tablist">' +
                         '<button type="button" class="active" data-od-tab="detail">' + odIcon('receipt') + ' Sipariş Detayı</button>' +

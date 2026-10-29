@@ -24,7 +24,7 @@ class Profile extends MY_Controller
 		$this->data['currentLocale'] = $this->db->get_where('locales', ['locale_lang_code' => $lang, 'locale_code' => $country])->row();
 		$this->data['lang'] = $lang;
 		$this->data['country'] = $country;
-		$this->data['title'] = site_setting('site_name', getenv('SITE_NAME') ?: 'Playsel') . ' | ';
+		$this->data['title'] = '';
 		$this->load->model('Wallet_model');
 		$this->data['userBalance'] = $this->Wallet_model->get_user_balances($this->data['user']['user_id'] ?? 0) ?? [
 			'withdrawable_balance' => 0,
@@ -2675,7 +2675,7 @@ class Profile extends MY_Controller
 		$content = preg_replace('/(<td colspan="3" style="text-align: right;" class="bold">Ödeme Yöntemi:<\/td>\s*<td class="bold">)(.*?)(<\/td>)/s', '${1}' . html_escape($paymentMethod) . '${3}', $content);
 
 		$data['content'] = $content;
-		$data['title'] = $type == 'distance-sales-agreement' ? 'Mesafeli Satış Sözleşmesi' : 'İade Politikası';
+		$data['title'] = ($type == 'distance-sales-agreement' ? 'Mesafeli Satış Sözleşmesi' : 'İade Politikası') . ' | Playsell';
 		
 		$this->load->view('contract-view', $data);
 	}

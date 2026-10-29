@@ -3,7 +3,7 @@
         <button class="btn btn-secondary btn-sm me-2" id="cost-to-inputs-btn">
             <i class="fas fa-sync-alt"></i> Maliyetleri Inputlara Taşı
         </button>
-        <a href="<?= base_url('products/productPrices') ?>" class="btn btn-info btn-sm me-2">
+        <a href="<?= base_url('products/productPrices' . (!empty($categoryID) ? '/' . (int) $categoryID . '/' . rawurlencode($localeID) : '')) ?>" class="btn btn-info btn-sm me-2">
             Ürün Fiyatları
         </a>
         <button class="btn btn-success btn-sm" id="save-all-prices-btn">
@@ -33,13 +33,27 @@
     <tbody>
         <?php foreach ($products as $product): ?>
             <?php
-            $bolen = 1;
-            if (in_array($product->provider_product_provider_id, [9132, 9156, 9162, 9266])): ?>
-                <?php $bolen = 0.805 ?>
-            <?php endif; ?>
-            <?php $carpan = ($product->provider_product_product_cost_currency === 'USD') ? 1.0045 : 1;?>
-            <?php $pCost = currencyCalculator($product->provider_product_product_cost_currency, $product->provider_product_product_cost) * $carpan ?>
-            <?php if ($pCost < $product->product_price_cost || ($product->product_status == 0 || $product->product_api_status == 0) || $product->product_category_id == 36 || $product->product_category_id == 33 || $product->product_category_id == 131 || $product->product_category_id == 35) continue; ?>
+            $providerID = (int) $product->provider_product_provider_id;
+            $bolen = in_array($providerID, [9132, 9156, 9266, 9162, 9302, 9303], true) ? 0.805 : 1;
+            if ($providerID === 9284) {
+                $bolen = 0.85;
+            }
+
+            $carpan = ($product->provider_product_product_cost_currency === 'USD') ? 1.0045 : 1;
+            $pCostCalc = currencyCalculator($product->provider_product_product_cost_currency, $product->provider_product_product_cost) * $carpan;
+            $pCost = !empty($pCostCalc) ? $pCostCalc : $product->epin_pool_cost;
+            $finalCalculatedCost = round($pCost * $bolen, 2);
+            $currentProductCost = (float) $product->product_price_cost;
+
+            if (
+                $finalCalculatedCost <= $currentProductCost
+                || (int) $product->product_status === 0
+                || (int) $product->product_api_status === 0
+                || in_array((int) $product->product_category_id, [36, 33, 131, 35], true)
+            ) {
+                continue;
+            }
+            ?>
 
             <tr data-product-id="<?= $product->product_id ?>">
                 <!-- <input type="hidden" name="product_price_country" value="<?= $product->product_price_country ?>"> -->
@@ -49,7 +63,7 @@
                 <td>
                     <div class="d-flex align-items-center">
                         <div class="symbol symbol-50px me-3">
-                            <span class="symbol-label" style="background-image:url('<?= $product->product_image ?>')"></span>
+                            <span class="symbol-label" style="background-image:url('<?= getenv('CDN_URL') . $product->product_image ?>')"></span>
                         </div>
                         <div class="fw-bold">
                             <div class="text-muted fs-7"><?= $product->category_title ?></div>
@@ -66,20 +80,9 @@
                         value="<?= $product->product_price_cost ?>">
 
                     <?php
-                    $bolen = 1;
-                    if (in_array($product->provider_product_provider_id, [9132, 9156, 9162, 9266])):
-                        $bolen = 0.805;
-                    endif;
-
-                    $carpan = ($product->provider_product_product_cost_currency === 'USD') ? 1.0045 : 1;
-                    $pCostCalc = currencyCalculator($product->provider_product_product_cost_currency, $product->provider_product_product_cost) * $carpan;
-                    $pCost = !empty($pCostCalc) ? $pCostCalc : $product->epin_pool_cost;
-
-                    $finalCalculatedCost = $pCost * $bolen;
                     $rawFinalCost = number_format($finalCalculatedCost, 2, '.', '');
 
-                    // Zarar kontrolü
-                    $isLoss = $finalCalculatedCost > $product->product_price_cost;
+                    $isLoss = $finalCalculatedCost > $currentProductCost;
                     ?>
 
                     <!-- Zarar varsa 'is-loss' class'ını ekliyoruz -->

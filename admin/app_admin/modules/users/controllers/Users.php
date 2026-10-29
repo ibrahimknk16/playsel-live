@@ -423,7 +423,7 @@ class Users extends MY_Controller
 			'restricted' => $yesNo('restricted'),
 			'fraud' => $yesNo('fraud'),
 			'sort' => (string)($p['sort'] ?? 'id'),
-			'dir' => strtolower((string)($p['dir'] ?? 'asc')) === 'desc' ? 'DESC' : 'ASC',
+			'dir' => strtolower((string)($p['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC',
 		];
 	}
 
@@ -598,9 +598,10 @@ class Users extends MY_Controller
 			$select .= ', COALESCE(ub.current_balance, 0) AS current_balance, COALESCE(ub.withdrawable_balance, 0) AS withdrawable_balance';
 		}
 		$orderColumns = $this->usersListOrderColumns();
-		$this->db->select($select, false)->order_by($orderColumns[$f['sort']] ?? 'users.user_id', $f['dir']);
-		if (($orderColumns[$f['sort']] ?? 'users.user_id') !== 'users.user_id') {
-			$this->db->order_by('users.user_id', 'ASC');
+		$sortColumn = $orderColumns[$f['sort']] ?? 'users.user_id';
+		$this->db->select($select, false)->order_by($sortColumn, $f['dir']);
+		if ($sortColumn !== 'users.user_id') {
+			$this->db->order_by('users.user_id', $f['sort'] === 'date' && $f['dir'] === 'DESC' ? 'DESC' : 'ASC');
 		}
 		$users = $this->db->limit($limit, $offset)->get()->result();
 
@@ -818,10 +819,11 @@ class Users extends MY_Controller
 			'landing_page' => '',
 			'click_id' => '',
 			'signup_method' => '',
+			'ip' => '',
 			'created_at' => '',
 		];
 		if ($this->db->table_exists('user_acquisitions')) {
-			$acquisition = $this->db->select('acquisition_source, acquisition_medium, acquisition_campaign, acquisition_term, acquisition_content, acquisition_referrer, acquisition_landing_page, acquisition_click_id, acquisition_signup_method, acquisition_created_at')
+			$acquisition = $this->db->select('acquisition_source, acquisition_medium, acquisition_campaign, acquisition_term, acquisition_content, acquisition_referrer, acquisition_landing_page, acquisition_click_id, acquisition_signup_method, acquisition_ip, acquisition_created_at')
 				->where('user_id', (int)$userID)
 				->get('user_acquisitions')
 				->row();
@@ -836,8 +838,12 @@ class Users extends MY_Controller
 					'landing_page' => (string)$acquisition->acquisition_landing_page,
 					'click_id' => (string)$acquisition->acquisition_click_id,
 					'signup_method' => (string)$acquisition->acquisition_signup_method,
+					'ip' => (string)$acquisition->acquisition_ip,
 					'created_at' => (string)$acquisition->acquisition_created_at,
 				];
+				if ($data['registerIp'] === '—' && $data['acquisition']['ip'] !== '') {
+					$data['registerIp'] = $data['acquisition']['ip'];
+				}
 			}
 		}
 		$data['lastPayments'] = $this->lastPayments($userID);
@@ -2869,6 +2875,7 @@ class Users extends MY_Controller
 		$data['acquisitionCampaigns'] = [];
 		$data['acquisitionMethods'] = [];
 		$data['acquisitionLandingPages'] = [];
+		$data['acquisitionRegistrations'] = [];
 
 		if (!$data['acquisitionTableMissing']) {
 			$applyDateRange = function () use ($dateFrom, $dateTo) {
@@ -2927,6 +2934,27 @@ class Users extends MY_Controller
 			$data['acquisitionMethods'] = $methodQuery
 				->group_by('ua.acquisition_signup_method')
 				->order_by('signups', 'DESC')
+				->get()->result();
+
+			$registrationsQuery = $this->db->select(
+				"ua.user_id, u.user_name, u.user_surname,
+				COALESCE(NULLIF(ua.acquisition_ip, ''), (
+					SELECT ul.user_logs_user_ip
+					FROM user_logs ul
+					WHERE ul.user_logs_user_id = ua.user_id
+						AND ul.user_logs_user_event = 'REGISTER'
+					ORDER BY ul.user_logs_id ASC
+					LIMIT 1
+				)) AS registration_ip,
+				ua.acquisition_source, ua.acquisition_medium, ua.acquisition_campaign,
+				ua.acquisition_signup_method, ua.acquisition_created_at",
+				false
+			)->from('user_acquisitions ua')
+				->join('users u', 'u.user_id = ua.user_id', 'left');
+			$applyDateRange();
+			$data['acquisitionRegistrations'] = $registrationsQuery
+				->order_by('ua.acquisition_created_at', 'DESC')
+				->limit(200)
 				->get()->result();
 		}
 

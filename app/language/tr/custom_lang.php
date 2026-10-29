@@ -102,7 +102,7 @@ $lang['index_good_price_desc'] = 'İndirimli ve en uygun fiyatlarla alışveriş
 $lang['general'] = 'Genel';
 $lang['finance'] = 'Finans';
 $lang['account'] = 'Hesap';
-$lang['profile_title'] = 'Profil';
+$lang['profile_title'] = 'Hesabım';
 
 //Kontrol paneli
 $lang['control_panel'] = 'Kontrol Paneli';

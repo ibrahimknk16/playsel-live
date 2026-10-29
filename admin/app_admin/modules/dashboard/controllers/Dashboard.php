@@ -80,6 +80,7 @@ class Dashboard extends MY_Controller
         $data['periods'] = $periods;
         $data['activeCustomerWindowDays'] = 30;
         $data['userKpis'] = $this->Sayfalar_model->getUserKpis($periods, date('Y-m-d 00:00:00', strtotime('-29 days')), $tomorrow);
+        $data['userAcquisitionKpis'] = $this->Sayfalar_model->getUserAcquisitionKpis();
         $this->template->content->view('user-kpi', $data);
         $this->template->publish();
     }

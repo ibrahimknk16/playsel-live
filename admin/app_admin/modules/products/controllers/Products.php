@@ -915,7 +915,7 @@ class Products extends MY_Controller
 		$categoryID = $this->uri->segment(3);
 		$localeID = $this->uri->segment(4) ? $this->uri->segment(4) : 'tr';
 		$data = $this->data;
-		$products = $this->db->select('pr.*, pp.*, p.product_id, p.product_name, p.product_image, p.product_status, p.product_api_status, c.category_title, u.user_name, ep.epin_pool_cost')
+		$productsQuery = $this->db->select('pr.*, pp.*, p.product_id, p.product_name, p.product_image, p.product_status, p.product_api_status, p.product_category_id, c.category_title, u.user_name, ep.epin_pool_cost')
 			->from('products as p')
 			->join('categories as c', 'c.category_id = p.product_category_id')
 			->join('provider_products as pp', 'pp.provider_product_id = p.product_provider_id', 'left')
@@ -929,11 +929,14 @@ class Products extends MY_Controller
 			->or_where('ep.epin_pool_products IS NULL')
 			->or_where('ep.epin_pool_products', '')
 			->or_where('ep.epin_pool_products', '[]')
-			->group_end()
-			->group_start()
-			->where('p.product_category_id', $categoryID)
-			->or_where('p.product_sub_category_id', $categoryID)
-			->group_end()
+			->group_end();
+		if (ctype_digit((string) $categoryID) && (int) $categoryID > 0) {
+			$productsQuery->group_start()
+				->where('p.product_category_id', (int) $categoryID)
+				->or_where('p.product_sub_category_id', (int) $categoryID)
+				->group_end();
+		}
+		$products = $productsQuery
 			->where('p.product_status !=', 2)
 			->get()
 			->result();

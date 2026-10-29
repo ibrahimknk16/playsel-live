@@ -23,6 +23,10 @@ class Vomsis
             return null;
         }
         $curl = curl_init();
+        if ($curl === false) {
+            log_message('error', 'Vomsis authentication request could not be initialized.');
+            return null;
+        }
         curl_setopt_array($curl, array(CURLOPT_URL => self::$url . 'authenticate', CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_CUSTOMREQUEST => 'POST', CURLOPT_POSTFIELDS => http_build_query(['app_key' => self::$appKey, 'app_secret' => self::$appSecret]), CURLOPT_HTTPHEADER => array('Content-Type: application/x-www-form-urlencoded')));
 
         $response = curl_exec($curl);

@@ -134,6 +134,42 @@
 		</div>
 	</div>
 
+	<div class="card admin-card mt-6">
+		<div class="card-header">
+			<h3 class="card-title fw-bold">Kayıt detayları</h3>
+			<div class="card-toolbar text-muted fs-7">Seçili tarih aralığındaki en yeni 200 kayıt</div>
+		</div>
+		<div class="card-body pt-0">
+			<div class="table-responsive">
+				<table class="table align-middle table-row-dashed fs-7 gy-3">
+					<thead>
+						<tr class="text-start text-gray-500 fw-bold text-uppercase">
+							<th>Kayıt tarihi</th><th>Kullanıcı</th><th>Kayıt IP</th><th>Kaynak / kanal</th><th>Kampanya</th><th>Yöntem</th>
+						</tr>
+					</thead>
+					<tbody class="fw-semibold">
+						<?php if (empty($acquisitionRegistrations)): ?>
+							<tr><td colspan="6" class="text-muted">Seçilen tarih aralığında kayıt bulunamadı.</td></tr>
+						<?php else: foreach ($acquisitionRegistrations as $row): ?>
+							<tr>
+								<td><?= html_escape($row->acquisition_created_at) ?></td>
+								<td>
+									<a href="<?= base_url('users/detail/' . (int)$row->user_id) ?>" class="fw-bold text-gray-800 text-hover-primary">
+										<?= html_escape(trim((string)$row->user_name . ' ' . (string)$row->user_surname) ?: ('Kullanıcı #' . (int)$row->user_id)) ?>
+									</a>
+								</td>
+								<td class="text-break"><?= html_escape($row->registration_ip ?: '—') ?></td>
+								<td><?= html_escape($row->acquisition_source ?: 'Bilinmiyor') ?> / <?= html_escape($row->acquisition_medium ?: 'belirtilmemiş') ?></td>
+								<td><?= html_escape($row->acquisition_campaign ?: '—') ?></td>
+								<td><?= html_escape($row->acquisition_signup_method ?: 'Bilinmiyor') ?></td>
+							</tr>
+						<?php endforeach; endif; ?>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+
 	<div class="alert alert-info mt-6">
 		<strong>Yorumlama:</strong> Arama motoru ve sosyal ağ referrer’ları, UTM veya tıklama kimliği olmadığında tahmin edilir. Referrer bilgisi tarayıcı/gizlilik ayarlarıyla gizlenebilir; bu kayıtlar doğrudan veya kaynak bilgisi yok olarak görünebilir. Reklam ve organik trafiği kesin ayırmak için kampanya linklerinde UTM kullanın.
 	</div>

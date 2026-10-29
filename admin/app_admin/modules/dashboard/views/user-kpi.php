@@ -1,5 +1,7 @@
 <?php
 $kpis = $userKpis ?? [];
+$acquisitionKpis = $userAcquisitionKpis ?? ['available' => false];
+$acquisitionTotals = $acquisitionKpis['totals'] ?? [];
 $totals = $kpis['totals'] ?? [];
 $periodsData = $kpis['periods'] ?? [];
 $money = static function ($value) {
@@ -42,6 +44,13 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 	.user-kpi-header p { margin:.45rem 0 0; color:#94a3b8; }
 	.user-kpi-refresh { color:#bae6fd; font-size:.85rem; white-space:nowrap; }
 	.user-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.9rem; margin-bottom:1rem; }
+	.acquisition-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.75rem; margin-bottom:1rem; }
+	.acquisition-kpi { min-width:0; padding:.8rem; border:1px solid rgba(148,163,184,.13); border-radius:12px; background:rgba(255,255,255,.025); }
+	.acquisition-kpi small { display:block; color:#94a3b8; font-size:.68rem; font-weight:700; text-transform:uppercase; }
+	.acquisition-kpi strong { display:block; margin-top:.3rem; color:#f8fafc; font-size:1.2rem; }
+	.acquisition-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
+	.acquisition-table-wrap { min-width:0; overflow-x:auto; }
+	.acquisition-table td:first-child { overflow-wrap:anywhere; }
 	.user-kpi-card, .user-kpi-panel { background:rgba(255,255,255,.02); border:1px solid rgba(148,163,184,.16); border-radius:16px; padding:1.1rem; }
 	.user-kpi-card small { color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; font-size:.72rem; font-weight:700; }
 	.user-kpi-card strong { display:block; margin-top:.5rem; color:#f8fafc; font-size:1.55rem; }
@@ -85,7 +94,7 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 	.kpi-bar { width:100%; min-height:2px; border-radius:5px 5px 0 0; background:linear-gradient(180deg,#38bdf8,#6366f1); }
 	.kpi-bar-label { color:#64748b; font-size:.64rem; writing-mode:vertical-rl; transform:rotate(180deg); }
 	.user-kpi-chart-wrap { position:relative; min-height:320px; background:rgba(255,255,255,.01); border:1px solid rgba(148,163,184,.12); border-radius:14px; padding:.85rem; }
-	@media (max-width:1100px) { .user-kpi-grid { grid-template-columns:repeat(2,1fr); } }
+	@media (max-width:1100px) { .user-kpi-grid, .acquisition-kpi-grid { grid-template-columns:repeat(2,1fr); } .acquisition-grid { grid-template-columns:1fr; } }
 	@media (max-width:800px) { .leaderboard-grid { grid-template-columns:1fr; } }
 	@media (max-width:700px) { .user-kpi-header { display:block; } .user-kpi-grid, .period-grid { grid-template-columns:1fr; } .period-leaderboard-header { align-items:flex-start; flex-direction:column; gap:.55rem; } .kpi-table th, .kpi-table td { padding:.6rem .3rem; } }
 </style>
@@ -105,6 +114,79 @@ $registrationTrendValuesJson = json_encode($registrationTrendValues, JSON_HEX_TA
 		<div class="user-kpi-card"><small>Aktiflik oranı</small><strong><?= number_format(($totals['total_users'] ?? 0) > 0 ? (($totals['active_users'] ?? 0) / $totals['total_users']) * 100 : 0, 2, ',', '.') ?>%</strong><span>Son <?= $activeCustomerWindowDays ?> günde son tamamlanan siparişi olan müşteriler</span></div>
 		<div class="user-kpi-card"><small>Bu ay yeni kayıt</small><strong><?= $number($periodsData['monthly']['registrations'] ?? 0) ?></strong><span>Ay başından bugüne</span></div>
 	</div>
+
+	<section class="user-kpi-panel" style="margin-bottom:1rem;">
+		<div class="period-leaderboard-header">
+			<div>
+				<h2>Kullanıcı edinimi</h2>
+				<p style="margin:.25rem 0 0;">Edinim tablosuna kaydedilmiş tüm yeni müşteri kayıtları.</p>
+			</div>
+			<a href="<?= base_url('users/acquisitionReport') ?>" class="period-window">Detaylı edinim raporu →</a>
+		</div>
+		<?php if (empty($acquisitionKpis['available'])): ?>
+			<div class="leaderboard-empty">Edinim veritabanı tablosu henüz oluşturulmamış. `user_acquisitions` tablosu kurulduğunda bu bölüm raporları gösterecek.</div>
+		<?php else: ?>
+			<div class="acquisition-kpi-grid">
+				<div class="acquisition-kpi"><small>Takip edilen kayıt</small><strong><?= $number($acquisitionTotals['signups'] ?? 0) ?></strong></div>
+				<div class="acquisition-kpi"><small>Doğrudan / kaynak belirsiz</small><strong><?= $number($acquisitionTotals['unknown'] ?? 0) ?></strong></div>
+				<div class="acquisition-kpi"><small>Ücretli kanal sinyali</small><strong><?= $number($acquisitionTotals['paid'] ?? 0) ?></strong></div>
+				<div class="acquisition-kpi"><small>Kampanya etiketli</small><strong><?= $number($acquisitionTotals['campaigns'] ?? 0) ?></strong></div>
+			</div>
+			<div class="acquisition-grid">
+				<div class="acquisition-table-wrap">
+					<h3 class="leaderboard-card-header" style="color:#f8fafc;font-size:.95rem;">Kaynak / kanal</h3>
+					<table class="kpi-table">
+						<thead><tr><th>Kaynak</th><th>Kanal</th><th>Kayıt</th></tr></thead>
+						<tbody>
+							<?php if (empty($acquisitionKpis['sources'])): ?>
+								<tr><td colspan="3" class="leaderboard-empty">Henüz edinim kaydı yok.</td></tr>
+							<?php else: foreach ($acquisitionKpis['sources'] as $source): ?>
+								<tr>
+									<td><?= $escape($source['acquisition_source'] !== '' ? $source['acquisition_source'] : 'Bilinmiyor') ?></td>
+									<td><?= $escape($source['acquisition_medium'] !== '' ? $source['acquisition_medium'] : '—') ?></td>
+									<td class="leader-metric"><?= $number($source['signups']) ?></td>
+								</tr>
+							<?php endforeach; endif; ?>
+						</tbody>
+					</table>
+				</div>
+				<div class="acquisition-table-wrap">
+					<h3 class="leaderboard-card-header" style="color:#f8fafc;font-size:.95rem;">Kampanyalar</h3>
+					<table class="kpi-table">
+						<thead><tr><th>Kampanya</th><th>Kaynak</th><th>Kayıt</th></tr></thead>
+						<tbody>
+							<?php if (empty($acquisitionKpis['campaigns'])): ?>
+								<tr><td colspan="3" class="leaderboard-empty">UTM kampanyası bulunamadı.</td></tr>
+							<?php else: foreach ($acquisitionKpis['campaigns'] as $campaign): ?>
+								<tr>
+									<td><?= $escape($campaign['acquisition_campaign']) ?></td>
+									<td><?= $escape($campaign['acquisition_source']) ?> / <?= $escape($campaign['acquisition_medium'] !== '' ? $campaign['acquisition_medium'] : '—') ?></td>
+									<td class="leader-metric"><?= $number($campaign['signups']) ?></td>
+								</tr>
+							<?php endforeach; endif; ?>
+						</tbody>
+					</table>
+				</div>
+				<div class="acquisition-table-wrap">
+					<h3 class="leaderboard-card-header" style="color:#f8fafc;font-size:.95rem;">İlk açılan sayfalar</h3>
+					<table class="kpi-table">
+						<thead><tr><th>Sayfa</th><th>Kayıt</th></tr></thead>
+						<tbody>
+							<?php if (empty($acquisitionKpis['landing_pages'])): ?>
+								<tr><td colspan="2" class="leaderboard-empty">Sayfa kaydı bulunamadı.</td></tr>
+							<?php else: foreach ($acquisitionKpis['landing_pages'] as $landingPage): ?>
+								<tr>
+									<td><?= $escape($landingPage['acquisition_landing_page'] !== '' ? $landingPage['acquisition_landing_page'] : 'Bilinmiyor') ?></td>
+									<td class="leader-metric"><?= $number($landingPage['signups']) ?></td>
+								</tr>
+							<?php endforeach; endif; ?>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<p style="margin:1rem 0 0;color:#64748b;font-size:.75rem;">Gösterilen tablolar tüm zamanları kapsar ve en yüksek kayıt sayısına sahip ilk 10 satırla sınırlıdır.</p>
+		<?php endif; ?>
+	</section>
 
 	<section class="user-kpi-panel" style="margin-bottom:1rem;">
 			<h2>Dönem karşılaştırması</h2>

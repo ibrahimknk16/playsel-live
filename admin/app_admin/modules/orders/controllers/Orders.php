@@ -362,6 +362,12 @@ class Orders extends MY_Controller
 		$order->order_sended_at = $this->formatDateTime($order->order_sended_at);
 		$order->order_group = $this->buildOrderGroup($order, $order->order_payment_info);
 		$order->order_payment_info = !empty($order->order_payment_info) ? json_decode($order->order_payment_info) : null;
+		$order->api_logs = $this->db
+			->select('log_id, log_controller, log_message, log_error_code, log_created_at')
+			->where('log_order_id', $orderID)
+			->order_by('log_id', 'ASC')
+			->get('logs')
+			->result_array();
 		$order->order_status_name = !empty($order->order_status_name) ? $order->order_status_name : 'Bilinmiyor';
 		$order->islemeAl = $islemeAl;
 		$order->pinTeslim = $pinTeslim;

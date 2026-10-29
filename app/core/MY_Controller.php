@@ -330,6 +330,8 @@ class MY_Controller extends MX_Controller
 
 		$attribution = $this->session->userdata('user_acquisition');
 		$attribution = $this->normalizeUserAcquisition(is_array($attribution) ? $attribution : []);
+		$registrationIp = getIp();
+		$registrationIp = filter_var($registrationIp, FILTER_VALIDATE_IP) ? $registrationIp : null;
 		$inserted = $this->db->insert('user_acquisitions', [
 			'user_id' => (int)$userId,
 			'acquisition_source' => $attribution['source'],
@@ -341,6 +343,7 @@ class MY_Controller extends MX_Controller
 			'acquisition_referrer' => $attribution['referrer'],
 			'acquisition_click_id' => $attribution['click_id'],
 			'acquisition_signup_method' => in_array($signupMethod, ['email', 'google'], true) ? $signupMethod : 'unknown',
+			'acquisition_ip' => $registrationIp,
 			'acquisition_created_at' => date('Y-m-d H:i:s'),
 		]);
 		if (!$inserted) {
