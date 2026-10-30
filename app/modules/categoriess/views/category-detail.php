@@ -726,7 +726,7 @@ if (!function_exists('format_category_seo_tables')) {
     line-height: 1.35;
     margin: 0 0 4px;
     color: #f4f5fa !important;
-    font-family: Arial,"Segoe UI",sans-serif !important;
+    font-family: Arial, "Segoe UI", sans-serif !important;
   }
 
   .ps-pass-copy small {
@@ -936,7 +936,7 @@ if (!function_exists('format_category_seo_tables')) {
     margin: 0 !important;
     display: block;
     transition: color 0.2s ease;
-    font-family: "Segoe UI",Arial,sans-serif !important;
+    font-family: "Segoe UI", Arial, sans-serif !important;
   }
 
   #products-grid .product-item.selected .product-item-name {
@@ -1476,61 +1476,149 @@ if (!function_exists('format_category_seo_tables')) {
   /* --- Fixed Payment Section --- */
   .payment-section-fixed {
     position: fixed;
-    bottom: 0;
+    bottom: 24px;
     left: 0;
-    width: 100%;
+    right: 0;
+    margin: 0 auto;
+    width: calc(100% - 32px);
+    max-width: 860px;
     z-index: 1000;
     transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
   }
 
-  .cd-payment-card {
-    border: none;
-    border-top: 1px solid rgba(255, 200, 0, 0.2);
-    border-radius: 0;
-    padding: 16px 5%;
+  .category-detail-page .payment-section-fixed .cd-payment-card {
+    border: 1px solid rgba(255, 190, 40, 0.16);
+    border-radius: 16px;
+    padding: 12px 16px;
     position: relative;
     overflow: hidden;
-    background: rgba(17, 21, 29, 0.98);
-    backdrop-filter: blur(15px);
-    box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.8);
+    background: rgba(19, 23, 31, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
+    gap: 20px;
   }
 
-  .cd-payment-card::before {
-    content: '';
-    position: absolute;
-    top: -30px;
-    right: -30px;
-    width: 120px;
-    height: 120px;
-    background: radial-gradient(circle, rgba(255, 200, 0, 0.06) 0%, transparent 70%);
-    border-radius: 50%;
-    pointer-events: none;
+  .category-detail-page .payment-section-fixed .cd-payment-card::before {
+    display: none;
   }
 
-  .cd-payment-total {
+  .cd-payment-product {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .cd-payment-product-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    flex-shrink: 0;
+  }
+
+  .cd-payment-product-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+  }
+
+  .cd-payment-product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .cd-payment-product-info .selected-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #7e8b9b;
+    line-height: 1.2;
+  }
+
+  .cd-payment-product-info .selected-name {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cd-payment-right {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-shrink: 0;
+  }
+
+  .payment-section-fixed .cd-payment-total {
     margin-bottom: 0;
     padding: 0;
     background: transparent;
     border: none;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
+    text-align: right;
+    gap: 1px;
   }
 
-  .cd-payment-total .total-label {
-    font-size: 13px;
+  .payment-section-fixed .cd-payment-total .total-label {
+    font-size: 11px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
+    color: #7e8b9b;
+    line-height: 1.15;
   }
 
-  .cd-payment-total .total-value {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--white);
+  .payment-section-fixed .cd-payment-total .total-value {
+    font-size: 19px;
+    font-weight: 800;
+    color: #ffb817;
     letter-spacing: -0.3px;
+    line-height: 1.15;
+  }
+
+  .payment-section-fixed .cd-payment-total .total-old-value {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: #647082;
+    text-decoration: line-through;
+    line-height: 1.1;
+  }
+
+  .category-detail-page .payment-section-fixed .cd-btn-pay {
+    width: auto;
+    padding: 13px 22px;
+    background: linear-gradient(110deg, #ffb817 0%, #ff9900 100%);
+    border: none;
+    border-radius: 11px;
+    color: #141109;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+  }
+
+  .category-detail-page .payment-section-fixed .cd-btn-pay i:not(.fa-spin) {
+    display: none;
   }
 
   .cd-btn-pay {
@@ -1570,17 +1658,17 @@ if (!function_exists('format_category_seo_tables')) {
   }
 
   /* --- Login Required Card --- */
-  .cd-login-card {
-    border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 0;
-    padding: 12px 5%;
-    background: rgba(17, 21, 29, 0.98);
-    backdrop-filter: blur(15px);
-    box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.8);
+  .category-detail-page .payment-section-fixed .cd-login-card {
+    border: 1px solid rgba(255, 190, 40, 0.16);
+    border-radius: 16px;
+    padding: 12px 16px;
+    background: rgba(19, 23, 31, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
     display: flex;
     flex-direction: row;
-    justify-content: space-evenly;
+    justify-content: space-between;
     align-items: center;
     gap: 15px;
   }
@@ -2184,24 +2272,29 @@ if (!function_exists('format_category_seo_tables')) {
     position: fixed;
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     left: 50%;
-    width: calc(100% - 32px);
+    width: calc(100% - 16px);
     max-width: 600px;
-    background: rgba(17, 23, 32, 0.88);
+    background: rgba(18, 22, 30, 0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 184, 23, 0.28);
-    border-radius: 20px;
-    box-shadow: 0 24px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 190, 40, 0.18);
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px 10px 20px;
+    gap: 10px;
+    padding: 10px 12px;
     z-index: 9001;
     box-sizing: border-box;
     opacity: 0;
     transform: translate(-50%, 120%);
     pointer-events: none;
-    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease, bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .floating-action-bar.above-nav {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
   .floating-action-bar.is-visible {
@@ -2210,43 +2303,100 @@ if (!function_exists('format_category_seo_tables')) {
     pointer-events: auto;
   }
 
+  .floating-action-bar .fab-product {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .floating-action-bar .fab-product-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+
+  .floating-action-bar .fab-product-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 5px;
+  }
+
   .floating-action-bar .fab-info {
     display: flex;
     flex-direction: column;
     gap: 2px;
     text-align: left;
+    min-width: 0;
+    flex: 1;
   }
 
-  .floating-action-bar .fab-label {
-    font-size: 0.75rem;
-    color: #9ba7b6;
-    font-weight: 600;
+  .floating-action-bar .fab-product-name {
+    font-size: 0.78rem;
+    color: #ffffff;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .floating-action-bar .fab-price-row {
+    display: flex;
+    align-items: baseline;
+    column-gap: 6px;
+    row-gap: 2px;
+    flex-wrap: wrap;
   }
 
   .floating-action-bar .fab-price {
-    font-size: 1.15rem;
-    color: #fff;
+    font-size: clamp(0.95rem, 4.2vw, 1.1rem);
+    color: #ffb817;
     font-weight: 850;
     letter-spacing: -0.02em;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .floating-action-bar .fab-old-price {
+    font-size: 0.68rem;
+    color: #748192;
+    font-weight: 500;
+    text-decoration: line-through;
+    line-height: 1.1;
+    white-space: nowrap;
   }
 
   .floating-action-bar .fab-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
     background: linear-gradient(110deg, #ffc52e, #ff9d05);
     color: #17130a;
     border: none;
-    border-radius: 14px;
-    padding: 0 18px;
-    min-height: 46px;
-    font-size: 0.85rem;
-    font-weight: 850;
+    border-radius: 12px;
+    padding: 8px 12px;
+    min-height: 44px;
+    max-width: 138px;
+    font-size: 0.76rem;
+    font-weight: 800;
     cursor: pointer;
     box-shadow: 0 8px 20px rgba(255, 157, 5, 0.25);
     transition: transform 0.2s ease, filter 0.2s ease;
     text-decoration: none;
-    line-height: 1;
+    line-height: 1.2;
+    flex-shrink: 0;
   }
 
   .floating-action-bar .fab-btn:hover {
@@ -2254,9 +2404,10 @@ if (!function_exists('format_category_seo_tables')) {
     filter: brightness(1.08);
   }
 
-  .floating-action-bar .fab-btn svg {
-    width: 18px;
-    height: 18px;
+
+  .floating-action-bar .fab-btn svg,
+  .floating-action-bar .fab-btn i:not(.fa-spin) {
+    display: none;
   }
 
   @media (min-width: 851px) {
@@ -2268,12 +2419,13 @@ if (!function_exists('format_category_seo_tables')) {
   @media (max-width: 850px) {
     .payment-section-fixed {
       display: none !important;
-      
+
     }
-      .ps-pass-image {
-    margin-top: -8px !important;
-    margin-left: -8px !important;
-  }
+
+    .ps-pass-image {
+      margin-top: -8px !important;
+      margin-left: -8px !important;
+    }
   }
 
   /* --- MLBB Dynamic Verification Card & Flow States --- */
@@ -2767,8 +2919,10 @@ if (!function_exists('format_category_seo_tables')) {
                   class="product-item <?= !$isInStock ? 'product-out-of-stock' : ($isSelected ? 'selected' : '') ?>"
                   <?= $isFeaturedItem ? 'style="display: none !important;"' : '' ?>
                   data-product="<?= htmlspecialchars($product->product_id) ?>"
-                  data-price="<?= htmlspecialchars($product->user_price) ?>" data-epin="<?= $isEpinProduct ? '1' : '0' ?>"
-                  data-qty="1" data-name="<?= htmlspecialchars($product->product_name) ?>">
+                  data-price="<?= htmlspecialchars($product->user_price) ?>"
+                  data-list-price="<?= (!empty($product->list_price) && $product->list_price > $product->user_price) ? htmlspecialchars($product->list_price) : '' ?>"
+                  data-epin="<?= $isEpinProduct ? '1' : '0' ?>" data-qty="1"
+                  data-name="<?= htmlspecialchars($product->product_name) ?>">
 
                   <div class="product-item-main">
                     <div class="product-item-icon">
@@ -2886,39 +3040,29 @@ if (!function_exists('format_category_seo_tables')) {
 
         <!-- MOBİL YÜZEN ÖDEME BARI (FLOATING ACTION BAR) -->
         <div class="floating-action-bar" id="paymentBar">
-          <div class="fab-info">
-            <span class="fab-label">Toplam Tutar</span>
-            <strong class="fab-price total-transfer-text">0,00 <?= $displayCurrency ?></strong>
+          <div class="fab-product">
+            <div class="fab-product-icon">
+              <img id="fab-selected-icon" src="" alt="">
+            </div>
+            <div class="fab-info">
+              <span class="fab-product-name" id="fab-selected-name">-</span>
+              <div class="fab-price-row">
+                <strong class="fab-price total-transfer-text">0,00 <?= $displayCurrency ?></strong>
+                <span class="fab-old-price" id="fab-selected-old-price" style="display: none;"></span>
+              </div>
+            </div>
           </div>
           <?php if (!empty($user['user_id'])): ?>
             <button class="fab-btn btn-submit-order-class<?= ($category->category_id == 13) ? ' is-need-id' : '' ?>"
               type="button">
               <?php if ($category->category_id == 13): ?>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"
-                  style="width: 18px; height: 18px; flex-shrink: 0;">
-                  <rect x="3" y="4" width="18" height="16" rx="3" />
-                  <circle cx="9" cy="10" r="2" />
-                  <path d="M15 8h2" />
-                  <path d="M15 12h2" />
-                  <path d="M7 16h10" />
-                </svg>
                 ID Bilgilerini Tanımlayın
               <?php else: ?>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                  <path d="M5 11V7a7 7 0 0 1 14 0v4" />
-                  <rect x="3" y="11" width="18" height="11" rx="2" />
-                  <path d="M12 15v3" />
-                </svg>
                 Güvenli Ödemeye Geç
               <?php endif; ?>
             </button>
           <?php else: ?>
             <a href="<?= topupcenter() ?>login?redirect=<?= $this->uri->segment(2) ?>" class="fab-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                <polyline points="10 17 15 12 10 7" />
-                <line x1="15" y1="12" x2="3" y2="12" />
-              </svg>
               Giriş Yapın
             </a>
           <?php endif; ?>
@@ -2927,29 +3071,54 @@ if (!function_exists('format_category_seo_tables')) {
         <?php if (!empty($user['user_id'])): ?>
           <section class="payment-section-fixed" id="payment-section-fixed">
             <div class="cd-payment-card">
-              <div class="cd-payment-total">
-                <span class="total-label">Toplam Tutar</span>
-                <span class="total-value total-transfer-text">0,00 <?= $displayCurrency ?></span>
+              <div class="cd-payment-product">
+                <div class="cd-payment-product-icon">
+                  <img id="fixed-selected-icon" src="" alt="">
+                </div>
+                <div class="cd-payment-product-info">
+                  <span class="selected-label">Seçilen Ürün</span>
+                  <strong class="selected-name" id="fixed-selected-name">-</strong>
+                </div>
               </div>
-              <button class="cd-btn-pay btn-submit-order-class<?= ($category->category_id == 13) ? ' is-need-id' : '' ?>">
-                <?php if ($category->category_id == 13): ?>
-                  <i class="fa-solid fa-id-card" style="margin-right: 6px;"></i>ID Bilgilerini Tanımlayın
-                <?php else: ?>
-                  <i class="fa-solid fa-lock" style="margin-right: 6px;"></i>Güvenli Ödemeye Geç
-                <?php endif; ?>
-              </button>
+              <div class="cd-payment-right">
+                <div class="cd-payment-total">
+                  <span class="total-label">Toplam Tutar</span>
+                  <span class="total-value total-transfer-text">0,00 <?= $displayCurrency ?></span>
+                  <span class="total-old-value" id="fixed-selected-old-price" style="display: none;"></span>
+                </div>
+                <button
+                  class="cd-btn-pay btn-submit-order-class<?= ($category->category_id == 13) ? ' is-need-id' : '' ?>">
+                  <?php if ($category->category_id == 13): ?>
+                    <i class="fa-solid fa-id-card" style="margin-right: 6px;"></i>ID Bilgilerini Tanımlayın
+                  <?php else: ?>
+                    <i class="fa-solid fa-lock" style="margin-right: 6px;"></i>Güvenli Ödemeye Geç
+                  <?php endif; ?>
+                </button>
+              </div>
             </div>
           </section>
         <?php else: ?>
           <section class="payment-section-fixed" id="payment-section-fixed">
-            <div class="cd-login-card">
-              <div class="cd-login-icon">
-                <i class="fa-solid fa-right-to-bracket" style="color: var(--accent);"></i>
+            <div class="cd-payment-card">
+              <div class="cd-payment-product">
+                <div class="cd-payment-product-icon">
+                  <img id="fixed-selected-icon" src="" alt="">
+                </div>
+                <div class="cd-payment-product-info">
+                  <span class="selected-label">Seçilen Ürün</span>
+                  <strong class="selected-name" id="fixed-selected-name">-</strong>
+                </div>
               </div>
-              <h3>Giriş Gerekli</h3>
-              <p>Sipariş verebilmek için lütfen hesabınıza giriş yapın</p>
-              <a href="<?= topupcenter() ?>login?redirect=<?= $this->uri->segment(2) ?>" class="cd-btn-login">Giriş
-                Yapın</a>
+              <div class="cd-payment-right">
+                <div class="cd-payment-total">
+                  <span class="total-label">Toplam Tutar</span>
+                  <span class="total-value total-transfer-text">0,00 <?= $displayCurrency ?></span>
+                  <span class="total-old-value" id="fixed-selected-old-price" style="display: none;"></span>
+                </div>
+                <a href="<?= topupcenter() ?>login?redirect=<?= $this->uri->segment(2) ?>" class="cd-btn-pay"
+                  style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Giriş
+                  Yapın</a>
+              </div>
             </div>
           </section>
         <?php endif; ?>
@@ -2981,7 +3150,8 @@ if (!function_exists('format_category_seo_tables')) {
                   </div>
                   <div class="review-user-info">
                     <div class="review-username"><?= html_escape($reviewerName) ?></div>
-                    <div class="review-product"><?= html_escape(!empty($rev->product_name) ? $rev->product_name : $title) ?>
+                    <div class="review-product">
+                      <?= html_escape(!empty($rev->product_name) ? $rev->product_name : $title) ?>
                     </div>
                   </div>
                   <div class="review-stars">
@@ -3295,16 +3465,25 @@ if (!function_exists('format_category_seo_tables')) {
 
       // Mobil yüzen ödeme barı ve bottomNav kontrolü
       if (paymentBar) {
-        // Aşağı kaydırırken ve sayfa tepesinde değilken ödeme barı açılır, alt menü gizlenir
-        // Yukarı kaydırırken veya sayfa tepesindeyken alt menü geri gelir
-        const shouldShowPaymentBar = hasSelectedProduct && !isStaticVisible && !isAtTop && (scrollDirection === 'down');
+        const shouldShowPaymentBar = hasSelectedProduct && !isStaticVisible;
+        const hideBottomNav = shouldShowPaymentBar && !isAtTop && (scrollDirection === 'down');
 
         if (shouldShowPaymentBar) {
           paymentBar.classList.add('is-visible');
-          if (bottomNav) bottomNav.classList.add('is-hidden');
         } else {
           paymentBar.classList.remove('is-visible');
+        }
+
+        if (hideBottomNav) {
+          if (bottomNav) bottomNav.classList.add('is-hidden');
+          paymentBar.classList.remove('above-nav');
+        } else {
           if (bottomNav) bottomNav.classList.remove('is-hidden');
+          if (bottomNav) {
+            paymentBar.classList.add('above-nav');
+          } else {
+            paymentBar.classList.remove('above-nav');
+          }
         }
       }
     }
@@ -3404,9 +3583,50 @@ if (!function_exists('format_category_seo_tables')) {
 
     function updateTotalPrice() {
       const selected = document.querySelector('.product-item.selected');
+      const qty = selectedQty();
       const unit = selected ? parseFloat(selected.dataset.price) : 0;
-      const text = selected ? formatPrice(unit * selectedQty()) : '0,00 <?= $displayCurrency ?>';
+      const text = selected ? formatPrice(unit * qty) : '0,00 <?= $displayCurrency ?>';
       $totalTransfers.forEach(el => el.textContent = text);
+
+      const fixedIcon = document.getElementById('fixed-selected-icon');
+      const fixedName = document.getElementById('fixed-selected-name');
+      const fixedOldPrice = document.getElementById('fixed-selected-old-price');
+      const fabIcon = document.getElementById('fab-selected-icon');
+      const fabName = document.getElementById('fab-selected-name');
+      const fabOldPrice = document.getElementById('fab-selected-old-price');
+
+      if (selected) {
+        const iconImg = selected.querySelector('.product-item-icon img');
+        const iconSrc = iconImg ? (iconImg.getAttribute('src') || '') : '';
+        const prodName = selected.dataset.name || '';
+        const listUnit = parseFloat(selected.dataset.listPrice || '0');
+        const hasOldPrice = listUnit > unit;
+        const oldPriceText = hasOldPrice ? formatPrice(listUnit * qty) : '';
+
+        if (fixedIcon) {
+          fixedIcon.src = iconSrc;
+          fixedIcon.alt = prodName;
+        }
+        if (fixedName) {
+          fixedName.textContent = prodName;
+        }
+        if (fixedOldPrice) {
+          fixedOldPrice.textContent = oldPriceText;
+          fixedOldPrice.style.display = hasOldPrice ? 'block' : 'none';
+        }
+
+        if (fabIcon) {
+          fabIcon.src = iconSrc;
+          fabIcon.alt = prodName;
+        }
+        if (fabName) {
+          fabName.textContent = prodName;
+        }
+        if (fabOldPrice) {
+          fabOldPrice.textContent = oldPriceText;
+          fabOldPrice.style.display = hasOldPrice ? 'inline' : 'none';
+        }
+      }
     }
 
     function syncFeaturedPasses() {

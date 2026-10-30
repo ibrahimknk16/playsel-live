@@ -8,7 +8,7 @@ $lang['region_lang'] = 'Bölge/Dil';
 $lang['categories'] = 'Kategoriler';
 $lang['popular_categories'] = 'Popüler Kategoriler';
 $lang['view_all'] = 'Tümünü Gör';
-$lang['login_register'] = 'Kayıt Ol / Giriş Yap';
+$lang['login_register'] = 'Giriş Yap';
 $lang['my_accounts'] = 'Hesabım';
 $lang['search'] = 'Arama';
 $lang['welcome_discount_text'] = 'Yeni üyelere özel %15 indirim fırsatından yararlanmak için <a href="{register_url}">hemen kayıt olun!</a>';

@@ -156,43 +156,94 @@
     .region-confirm-btn {
         width: 100% !important;
     }
+
+    /* === Mobilde JivoChat Yüzen Baloncuğunu Gizle (Sadece Sohbet Açıkken Göster) === */
+    @media (max-width: 850px) {
+
+        body:not(.jivo-chat-open) jdiv,
+        body:not(.jivo-chat-open) #jvlabelWrap {
+            display: none !important;
+        }
+    }
 </style>
 
 <nav class="mobile-bottom-nav" id="bottomNav">
     <?php
-        $currentUrl = current_url();
-        $isCategories = (strpos($currentUrl, '/categories') !== false);
-        $isWallet = (strpos($currentUrl, '/wallet') !== false);
-        $isProfile = (strpos($currentUrl, '/profile') !== false || strpos($currentUrl, '/login') !== false) && !$isWallet;
-        $isHome = (!$isCategories && !$isProfile && !$isWallet);
-        $walletUrl = $this->session->userdata('user') ? topupcenter() . ($uri ?? '') . '/profile/wallet' : topupcenter() . ($uri ?? '') . '/login';
-        $loginUrl = $this->session->userdata('user') ? topupcenter() . ($uri ?? '') . '/profile' : topupcenter() . ($uri ?? '') . '/login';
+    $currentUrl = current_url();
+    $isCategories = (strpos($currentUrl, '/categories') !== false);
+    $isWallet = (strpos($currentUrl, '/wallet') !== false);
+    $isProfile = (strpos($currentUrl, '/profile') !== false || strpos($currentUrl, '/login') !== false) && !$isWallet;
+    $isHome = (!$isCategories && !$isProfile && !$isWallet);
+    $walletUrl = $this->session->userdata('user') ? topupcenter() . ($uri ?? '') . '/profile/wallet' : topupcenter() . ($uri ?? '') . '/login';
+    $loginUrl = $this->session->userdata('user') ? topupcenter() . ($uri ?? '') . '/profile' : topupcenter() . ($uri ?? '') . '/login';
     ?>
     <a href="<?= topupcenter() ?>" class="nav-item <?= $isHome ? 'active' : '' ?>">
         <div class="icon-box">
-            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <svg viewBox="0 0 24 24">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
         </div>
-        <span class="nav-text"><?= $this->lang->line('home_page') ?? 'Anasayfa' ?></span>
+        <span class="nav-text"><?= $this->lang->line('home_page') ?: 'Anasayfa' ?></span>
     </a>
 
     <a href="<?= topupcenter() . ($uri ?? '') . '/categories' ?>" class="nav-item <?= $isCategories ? 'active' : '' ?>">
         <div class="icon-box">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+            <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                <rect x="3" y="14" width="7" height="7" height="7" rx="1.5"></rect>
+            </svg>
         </div>
-        <span class="nav-text"><?= $this->lang->line('categories') ?? 'Kategoriler' ?></span>
+        <span class="nav-text"><?= $this->lang->line('categories') ?: 'Kategoriler' ?></span>
     </a>
 
     <a href="<?= $walletUrl ?>" class="nav-item <?= $isWallet ? 'active' : '' ?>">
         <div class="icon-box">
-            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"></rect><path d="M3 8h18M16 14h2"></path></svg>
+            <svg viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="15" rx="2"></rect>
+                <path d="M3 8h18M16 14h2"></path>
+            </svg>
         </div>
-        <span class="nav-text">Cüzdan</span>
+        <span class="nav-text"><?= $this->lang->line('wallet') ?: 'Cüzdan' ?></span>
+    </a>
+
+    <a href="javascript:void(0);" onclick="openMobileJivoChat();" class="nav-item" id="mobileSupportBtn">
+        <div class="icon-box">
+            <svg viewBox="0 0 24 24">
+                <path d="M4 13v-2a8 8 0 0 1 16 0v2"></path>
+                <rect x="3" y="13" width="4" height="6" rx="1.5"></rect>
+                <rect x="17" y="13" width="4" height="6" rx="1.5"></rect>
+                <path d="M19 19v1a2 2 0 0 1-2 2h-4"></path>
+            </svg>
+        </div>
+        <span class="nav-text">Destek</span>
     </a>
 
     <a href="<?= $loginUrl ?>" class="nav-item <?= $isProfile ? 'active' : '' ?>">
         <div class="icon-box">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4 4-7 8-7s8 3 8 7"></path></svg>
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4 20c0-4 4-7 8-7s8 3 8 7"></path>
+            </svg>
         </div>
-        <span class="nav-text"><?= $this->session->userdata('user') ? ($this->lang->line('my_accounts') ?? 'Hesabım') : ($this->lang->line('login_register') ?? 'Giriş Yap') ?></span>
+        <span
+            class="nav-text"><?= !empty($this->session->userdata('user')) ? ($this->lang->line('my_accounts') ?: 'Hesabım') : ($this->lang->line('login_register') ?: 'Giriş Yap') ?></span>
     </a>
 </nav>
+
+<script>
+    function openMobileJivoChat() {
+        document.body.classList.add('jivo-chat-open');
+        if (typeof jivo_api !== 'undefined') {
+            jivo_api.open();
+        }
+    }
+    window.jivo_onOpen = function () {
+        document.body.classList.add('jivo-chat-open');
+    };
+    window.jivo_onClose = function () {
+        document.body.classList.remove('jivo-chat-open');
+    };
+</script>
